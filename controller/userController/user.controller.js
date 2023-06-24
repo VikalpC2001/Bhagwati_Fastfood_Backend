@@ -297,18 +297,3 @@ module.exports = {
     updateUserDetails,
     fillUserDetails
 }
-
-// let token;
-// token = req.headers.authorization.split(" ")[1];
-// if (token) {
-//     const decoded = jwt.verify(token, process.env.JWT_SECRET);
-//     const userRights = decoded.id.rights;
-//     if (userRights == 1) {
-
-//     } else {
-//         return res.status(400).send('Unauthorised Person');
-//     }
-// } else {
-//     res.status(401);
-//     res.send("Please Login Firest.....!");
-// }

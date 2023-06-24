@@ -1,23 +1,79 @@
 const pool = require('../../database');
 
-// Product Dropdown API
+// Product List with Search Api
 
-const ddlProduct = (req, res) => {
+const getProductList = (req, res) => {
     try {
-        const sql_querry_getddlProduct = `SELECT productId, productName FROM inventory_product_data ORDER BY productName`;
-        pool.query(sql_querry_getddlProduct, (err, data) => {
+        const searchProduct = req.query.searchProduct
+        sql_querry_getProductList = `SELECT
+                                        p.productName, CONCAT(p.minProductQty, " ", p.minProductUnit) AS minProductQty,
+                                            CONCAT(COALESCE(si.total_quantity, 0) - COALESCE(so.total_quantity, 0), " ", p.minProductUnit) AS remainingStock,
+                                                CASE WHEN COALESCE(si.total_quantity, 0) - COALESCE(so.total_quantity, 0) >= p.minProductQty THEN 'In Stock'
+                                        		 ELSE 'Out of Stock'
+                                        END AS stockStatus
+                                        FROM
+                                            inventory_product_data AS p
+                                        LEFT JOIN
+                                            (
+                                                SELECT
+                                                    inventory_stockIn_data.productId,
+                                                SUM(inventory_stockIn_data.productQty) AS total_quantity
+                                                FROM
+                                                    inventory_stockIn_data
+                                                GROUP BY
+                                                    inventory_stockIn_data.productId
+                                            ) AS si ON p.productId = si.productId
+                                        LEFT JOIN
+                                            (
+                                                SELECT
+                                                    inventory_stockOut_data.productId,
+                                                SUM(inventory_stockOut_data.productQty) AS total_quantity
+                                                FROM
+                                                    inventory_stockOut_data
+                                                GROUP BY
+                                                    inventory_stockOut_data.productId
+                                            ) AS so ON p.productId = so.productId
+                                            WHERE p.productName LIKE'%` + searchProduct + `%'`;
+        pool.query(sql_querry_getProductList, (err, data) => {
+            if (err) {
+                console.error("An error occurd in SQL Queery", err);
+                return res.status(500).send('Database Error');
+            }
+            else if (data == '') {
+                const msg = [{
+                    'msg': 'No Data Found'
+                }]
+                return res.status(400).send(msg);
+            } else {
+                return res.status(200).send(data);
+            }
+        })
+    } catch (error) {
+        console.error('An error occurd', error);
+        res.status(500).json('Internal Server Error');
+    }
+}
+
+// Select Unit Using ProductId API
+
+const fillProductWiseUnit = (req, res) => {
+    try {
+
+        const productId = req.query.productId;
+        sql_querry_getddlandUnit = `SELECT minProductUnit AS productUnit  FROM inventory_product_data WHERE productId = '${productId}'`;
+        pool.query(sql_querry_getddlandUnit, (err, data) => {
             if (err) {
                 console.error("An error occurd in SQL Queery", err);
                 return res.status(500).send('Database Error');
             }
             return res.status(200).send(data);
         })
+
     } catch (error) {
         console.error('An error occurd', error);
-        res.status(500).send('Internal Server Error');
+        res.status(500).json('Internal Server Error');
     }
 }
-
 
 // Add Product API
 
@@ -69,7 +125,7 @@ const addProduct = async (req, res) => {
 const removeProduct = async (req, res) => {
 
     try {
-        productId = req.query.productId.trim();
+        var productId = req.query.productId.trim();
         req.query.productId = pool.query(`SELECT productId FROM inventory_product_data WHERE productId= '${productId}'`, (err, row) => {
             if (err) {
                 console.error("An error occurd in SQL Queery", err);
@@ -82,7 +138,7 @@ const removeProduct = async (req, res) => {
                         console.error("An error occurd in SQL Queery", err);
                         return res.status(500).send('Database Error');
                     }
-                    return res.json({ status: 200, message: "Product Deleted Successfully" })
+                    return res.status(200).send("Product Deleted Successfully");
                 })
             } else {
                 return res.send('ProductId Not Found');
@@ -91,6 +147,24 @@ const removeProduct = async (req, res) => {
     } catch (error) {
         console.error('An error occurd', error);
         res.status(500).send('Internal Server Error');
+    }
+}
+// Fill Product API
+
+const fillProduct = (req, res) => {
+    try {
+        const productId = req.query.productId
+        sql_querry_fillUser = `SELECT productName, minProductQty, minProductUnit FROM inventory_product_data WHERE productId = '${productId}'`;
+        pool.query(sql_querry_fillUser, (err, data) => {
+            if (err) {
+                console.error("An error occurd in SQL Queery", err);
+                return res.status(500).send('Database Error');
+            }
+            return res.status(200).send(data);
+        })
+    } catch (error) {
+        console.error('An error occurd', error);
+        res.status(500).json('Internal Server Error');
     }
 }
 
@@ -123,7 +197,10 @@ const updateProduct = async (req, res) => {
 
 module.exports = {
     addProduct,
+    fillProductWiseUnit,
+    fillProduct,
     updateProduct,
     removeProduct,
-    ddlProduct
+    getProductList
 }
+

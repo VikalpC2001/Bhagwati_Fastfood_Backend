@@ -16,10 +16,32 @@ const getSupplierdata = (req, res) => {
             } else {
                 const numRows = rows[0].numRows;
                 const numPages = Math.ceil(numRows / numPerPage);
-                pool.query(`SELECT inventory_supplier_data.supplierId, CONCAT(supplierFirstName,' ',supplierLastName) AS supplierName, supplierFirmName, GROUP_CONCAT(inventory_product_data.productName SEPARATOR ', ') as productList, supplierPhoneNumber FROM inventory_supplier_data
-                            INNER JOIN inventory_supplierProducts_data ON inventory_supplierProducts_data.supplierId = inventory_supplier_data.supplierId
+                pool.query(`SELECT sd.supplierId, CONCAT(supplierFirstName, ' ', supplierLastName) AS supplierName, sd.supplierFirmName, sd.supplierPhoneNumber, GROUP_CONCAT(inventory_product_data.productName SEPARATOR ', ') as productList,
+                            COALESCE(sisd.total_price, 0) - COALESCE(sosd.total_paid, 0) AS remainingAmount FROM inventory_supplier_data AS sd
+                            INNER JOIN inventory_supplierProducts_data ON inventory_supplierProducts_data.supplierId = sd.supplierId
                             INNER JOIN inventory_product_data ON inventory_product_data.productId = inventory_supplierProducts_data.productId
-                            GROUP BY inventory_supplierProducts_data.supplierId LIMIT ` + limit, (err, rows, fields) => {
+                            LEFT JOIN
+                                        (
+                                            SELECT
+                                                inventory_stockIn_data.supplierId,
+                                                SUM(inventory_stockIn_data.totalPrice) AS total_price
+                                            FROM
+                                                inventory_stockIn_data
+                                            WHERE inventory_stockIn_data.stockInPaymentMethod = 'debit'
+                                            GROUP BY
+                                                inventory_stockIn_data.supplierId
+                                        ) AS sisd ON sd.supplierId = sisd.supplierId
+                            LEFT JOIN
+                                        (
+                                            SELECT
+                                                inventory_supplierTransaction_data.supplierId,
+                                                SUM(inventory_supplierTransaction_data.paidAmount) AS total_paid
+                                            FROM
+                                                inventory_supplierTransaction_data
+                                            GROUP BY
+                                                inventory_supplierTransaction_data.supplierId
+                                        ) AS sosd ON sd.supplierId = sosd.supplierId
+                            GROUP BY inventory_supplierProducts_data.supplierId LIMIT `+ limit, (err, rows, fields) => {
                     if (err) {
                         console.error("An error occurd in SQL Queery", err);
                         return res.status(500).send('Database Error');;

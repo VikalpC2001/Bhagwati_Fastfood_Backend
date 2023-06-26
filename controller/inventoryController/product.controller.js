@@ -5,35 +5,46 @@ const pool = require('../../database');
 const getProductList = (req, res) => {
     try {
         const searchProduct = req.query.searchProduct
-        sql_querry_getProductList = `SELECT
-                                        p.productName, CONCAT(p.minProductQty, " ", p.minProductUnit) AS minProductQty,
-                                            CONCAT(COALESCE(si.total_quantity, 0) - COALESCE(so.total_quantity, 0), " ", p.minProductUnit) AS remainingStock,
-                                                CASE WHEN COALESCE(si.total_quantity, 0) - COALESCE(so.total_quantity, 0) >= p.minProductQty THEN 'In Stock'
-                                        		 ELSE 'Out of Stock'
-                                        END AS stockStatus
-                                        FROM
-                                            inventory_product_data AS p
-                                        LEFT JOIN
-                                            (
-                                                SELECT
-                                                    inventory_stockIn_data.productId,
+        sql_querry_getProductList = `SELECT p.productId, p.productName, CONCAT(p.minProductQty, " ", p.minProductUnit) AS minProductQty,
+                                            CONCAT(COALESCE(si.total_quantity, 0) - COALESCE(so.total_quantity, 0), " ", p.minProductUnit) AS remainingStock, 
+                                            CONCAT(COALESCE(siLu.productQty, 0)," ",p.minProductUnit) AS lastUpdatedQty, COALESCE(DATE_FORMAT(siLu.stockInDate, '%d-%M-%Y'), "No data Available") AS lastUpdatedStockInDate,
+                                            CASE WHEN COALESCE(si.total_quantity, 0) - COALESCE(so.total_quantity, 0) >= p.minProductQty THEN 'In Stock'
+                                                 ELSE 'Out of Stock'
+                                            END AS stockStatus
+                                    FROM
+                                        inventory_product_data AS p
+                                    LEFT JOIN
+                                        (
+                                            SELECT
+                                                inventory_stockIn_data.productId,
                                                 SUM(inventory_stockIn_data.productQty) AS total_quantity
-                                                FROM
-                                                    inventory_stockIn_data
-                                                GROUP BY
-                                                    inventory_stockIn_data.productId
-                                            ) AS si ON p.productId = si.productId
-                                        LEFT JOIN
-                                            (
-                                                SELECT
-                                                    inventory_stockOut_data.productId,
+                                            FROM
+                                                inventory_stockIn_data
+                                            GROUP BY
+                                                inventory_stockIn_data.productId
+                                        ) AS si ON p.productId = si.productId
+                                    LEFT JOIN
+                                        (
+                                            SELECT
+                                                inventory_stockOut_data.productId,
                                                 SUM(inventory_stockOut_data.productQty) AS total_quantity
-                                                FROM
-                                                    inventory_stockOut_data
-                                                GROUP BY
-                                                    inventory_stockOut_data.productId
-                                            ) AS so ON p.productId = so.productId
-                                            WHERE p.productName LIKE'%` + searchProduct + `%'`;
+                                            FROM
+                                                inventory_stockOut_data
+                                            GROUP BY
+                                                inventory_stockOut_data.productId
+                                        ) AS so ON p.productId = so.productId
+                                    LEFT JOIN
+                                        (
+                                            SELECT
+                                                productId,
+                                                productQty,
+                                                stockInDate
+                                            FROM
+                                                inventory_stockIn_data
+                                            WHERE
+                                                (productId, stockInCreationDate) IN(SELECT productId, MAX(stockInCreationDate) FROM inventory_stockIn_data GROUP BY productId)
+                                        ) AS siLu ON p.productId = siLu.productId
+                                        WHERE p.productName LIKE'%` + searchProduct + `%'`;
         pool.query(sql_querry_getProductList, (err, data) => {
             if (err) {
                 console.error("An error occurd in SQL Queery", err);
@@ -92,7 +103,7 @@ const addProduct = async (req, res) => {
         console.log(">>?>?>?>", data.productName);
         if (!data.productName || !data.minProductQty || !data.minProductUnit) {
             res.status(400);
-            res.send("Please Add Product")
+            res.send("Please Fill All The Fields")
         } else {
             req.body.productName = pool.query(`SELECT productName FROM inventory_product_data WHERE productName = '${data.productName}'`, function (err, row) {
                 if (err) {

@@ -52,13 +52,13 @@ const addStockInDetails = async (req, res) => {
     }
 }
 
-// Remove Supplier API
+// Remove StockIn API
 
 const removeStockInTransaction = async (req, res) => {
 
     try {
         const stockInId = req.query.stockInId
-        req.query.userId = pool.query(`SELECT stockInId FROM inventory_stockIn_data WHERE stockInId = '${stockInId}'`, (err, row) => {
+        req.query.stockInId = pool.query(`SELECT stockInId FROM inventory_stockIn_data WHERE stockInId = '${stockInId}'`, (err, row) => {
             if (err) {
                 console.error("An error occurd in SQL Queery", err);
                 return res.status(500).send('Database Error');
@@ -73,7 +73,7 @@ const removeStockInTransaction = async (req, res) => {
                     return res.status(200).send("Transaction Deleted Successfully");
                 })
             } else {
-                return res.send('Transaction Not Found');
+                return res.status(400).send('Transaction Not Found');
             }
         })
     } catch (error) {
@@ -123,6 +123,9 @@ const updateStockInTransaction = async (req, res) => {
                 stockInPaymentMethod: req.body.stockInPaymentMethod,
                 stockInComment: req.body.stockInComment ? req.body.stockInComment.trim() : null,
                 stockInDate: new Date(req.body.stockInDate ? req.body.stockInDate : "10/10/1001").toString().slice(4, 15)
+            }
+            if (!data.productId || !data.productQty || !data.productUnit || !data.productPrice || !data.totalPrice || !data.supplierId || !data.stockInPaymentMethod || !data.stockInDate) {
+                return res.status(400).send("Please Fill all the feilds");
             }
             const sql_querry_updatedetails = `UPDATE inventory_stockIn_data SET userId = '${userId}',
                                                                                 productId = '${data.productId}',

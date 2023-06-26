@@ -47,6 +47,9 @@ router.post('/updateStockOutCategory', protect, stockOutCategoryController.updat
 const stockOutController = require("../../controller/inventoryController/stockOut.controller.js");
 
 router.post('/addStockOutDetails', protect, stockOutController.addStockOutDetails);
+router.delete('/removeStockOutTransaction', protect, stockOutController.removeStockOutTransaction);
+router.get('/fillStockOutTransaction', protect, stockOutController.fillStockOutTransaction);
+router.post('/updateStockOutTransaction', protect, stockOutController.updateStockOutTransaction);
 
 // Inventory Dropdown List Routs
 
@@ -55,7 +58,6 @@ const ddlInventoryController = require("../../controller/inventoryController/ddl
 router.get('/productWiseSupplierDDL', protect, ddlInventoryController.productWiseSupplierDDL);
 router.get('/ddlStockOutCategory', protect, ddlInventoryController.ddlStockOutCategory);
 router.get('/ddlProduct', protect, ddlInventoryController.ddlProduct);
-
 
 
 module.exports = router;

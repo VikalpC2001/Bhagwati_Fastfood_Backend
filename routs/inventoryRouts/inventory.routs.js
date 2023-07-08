@@ -10,10 +10,12 @@ router.post('/addProduct', protect, productController.addProduct);
 router.post('/updateProduct', protect, productController.updateProduct);
 router.delete('/removeProduct', protect, productController.removeProduct);
 router.get('/fillProductWiseUnit', protect, productController.fillProductWiseUnit);
-router.get('/fillProduct', protect, productController.fillProduct);
 router.get('/getProductList', protect, productController.getProductList);
+router.get('/getProductListCounter', protect, productController.getProductListCounter);
+router.get('/getProductCountDetailsById', protect, productController.getProductCountDetailsById);
+router.get('/getSupplierByProductId', protect, productController.getSupplierByProductId);
 
-// Suppler Routs
+// Supplier Routs
 
 const supplierController = require("../../controller/inventoryController/supplier.controller.js");
 
@@ -22,6 +24,9 @@ router.post('/addSupplierDetails', protect, supplierController.addSupplierDetail
 router.post('/updateSupplierDetails', protect, supplierController.updateSupplierDetails);
 router.delete('/removeSupplierDetails', protect, supplierController.removeSupplierDetails);
 router.get('/fillSupplierDetails', protect, supplierController.fillSupplierDetails);
+router.get('/getSupplierDetailsById', protect, supplierController.getSupplierDetailsById);
+router.get('/getSupplierCounterDetailsById', protect, supplierController.getSupplierCounterDetailsById);
+router.get('/getProductDetailsBySupplierId', protect, supplierController.getProductDetailsBySupplierId);
 
 // StockIn Routs
 
@@ -31,15 +36,16 @@ router.post('/addStockInDetails', protect, stockInController.addStockInDetails);
 router.delete('/removeStockInTransaction', protect, stockInController.removeStockInTransaction);
 router.post('/updateStockInTransaction', protect, stockInController.updateStockInTransaction);
 router.get('/fillStockInTransaction', protect, stockInController.fillStockInTransaction);
-
+router.get('/getStockInList', protect, stockInController.getStockInList);
+router.get('/exportExcelSheetForStockin', stockInController.exportExcelSheetForStockin);
 
 // StockOut Category Routs
 
 const stockOutCategoryController = require("../../controller/inventoryController/stockOutCategory.controller.js");
 
+router.get('/getCategoryList', protect, stockOutCategoryController.getCategoryList);
 router.post('/addstockOutCategory', protect, stockOutCategoryController.addstockOutCategory);
 router.delete('/removeStockOutCategory', protect, stockOutCategoryController.removeStockOutCategory);
-router.get('/fillStockOutCategory', protect, stockOutCategoryController.fillStockOutCategory);
 router.post('/updateStockOutCategory', protect, stockOutCategoryController.updateStockOutCategory);
 
 // StockOut Routs
@@ -50,6 +56,25 @@ router.post('/addStockOutDetails', protect, stockOutController.addStockOutDetail
 router.delete('/removeStockOutTransaction', protect, stockOutController.removeStockOutTransaction);
 router.get('/fillStockOutTransaction', protect, stockOutController.fillStockOutTransaction);
 router.post('/updateStockOutTransaction', protect, stockOutController.updateStockOutTransaction);
+router.get('/getStockOutList', protect, stockOutController.getStockOutList);
+router.get('/exportExcelSheetForStockout', stockOutController.exportExcelSheetForStockout);
+router.get('/getCategoryWiseUsedByProduct', protect, stockOutController.getCategoryWiseUsedByProduct);
+
+// Supplier Transaction Routs
+
+const supplierTransactionController = require("../../controller/inventoryController/supplierTransaction.controller.js");
+
+router.post('/addSupplierTransactionDetails', protect, supplierTransactionController.addSupplierTransactionDetails);
+router.post('/updateSupplierTransactionDetails', protect, supplierTransactionController.updateSupplierTransactionDetails);
+router.delete('/removeSupplierTransactionDetails', protect, supplierTransactionController.removeSupplierTransactionDetails);
+router.get('/fillSupplieTransactionrDetails', protect, supplierTransactionController.fillSupplieTransactionrDetails);
+router.get('/getDebitTransactionList', protect, supplierTransactionController.getDebitTransactionList);
+router.get('/getCashTransactionList', protect, supplierTransactionController.getCashTransactionList);
+router.get('/exportExcelSheetForDebitTransactionList', protect, supplierTransactionController.exportExcelSheetForDebitTransactionList);
+router.get('/exportExcelSheetForCashTransactionList', protect, supplierTransactionController.exportExcelSheetForCashTransactionList);
+router.get('/getCashTransactionCounter', protect, supplierTransactionController.getCashTransactionCounter);
+router.get('/getDebitTransactionCounter', protect, supplierTransactionController.getDebitTransactionCounter);
+router.get('/exportTransactionInvoice', supplierTransactionController.exportTransactionInvoice);
 
 // Inventory Dropdown List Routs
 

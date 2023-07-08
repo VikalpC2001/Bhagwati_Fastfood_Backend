@@ -4,7 +4,31 @@ const pool = require('../../database');
 
 const ddlProduct = (req, res) => {
     try {
-        const sql_querry_getddlProduct = `SELECT productId, productName FROM inventory_product_data ORDER BY productName`;
+        const sql_querry_getddlProduct = `SELECT p.productId, UCASE(p.productName) AS productName, p.minProductUnit AS productUnit,
+                                                COALESCE(si.total_quantity, 0) - COALESCE(so.total_quantity, 0) AS remainingStock
+                                            FROM
+                                                inventory_product_data AS p
+                                            LEFT JOIN
+                                                    (
+                                                        SELECT
+                                                            inventory_stockIn_data.productId,
+                                                            SUM(inventory_stockIn_data.productQty) AS total_quantity
+                                                        FROM
+                                                            inventory_stockIn_data
+                                                        GROUP BY
+                                                            inventory_stockIn_data.productId
+                                                    ) AS si ON p.productId = si.productId
+                                            LEFT JOIN
+                                                    (
+                                                        SELECT
+                                                            inventory_stockOut_data.productId,
+                                                            SUM(inventory_stockOut_data.productQty) AS total_quantity
+                                                        FROM
+                                                            inventory_stockOut_data
+                                                        GROUP BY
+                                                            inventory_stockOut_data.productId
+                                                    ) AS so ON p.productId = so.productId
+                                            ORDER BY p.productName`;
         pool.query(sql_querry_getddlProduct, (err, data) => {
             if (err) {
                 console.error("An error occurd in SQL Queery", err);

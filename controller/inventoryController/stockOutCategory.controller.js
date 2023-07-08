@@ -1,5 +1,49 @@
 const pool = require('../../database');
 
+// Get Category List
+
+const getCategoryList = async (req, res) => {
+    try {
+        const page = req.query.page;
+        const numPerPage = req.query.numPerPage;
+        const skip = (page - 1) * numPerPage;
+        const limit = skip + ',' + numPerPage;
+        sql_querry_getdetails = `SELECT count(*) as numRows FROM inventory_stockOutCategory_data`;
+        pool.query(sql_querry_getdetails, (err, rows, fields) => {
+            if (err) {
+                console.error("An error occurd in SQL Queery", err);
+                return res.status(500).send('Database Error');
+            } else {
+                const numRows = rows[0].numRows;
+                const numPages = Math.ceil(numRows / numPerPage);
+                pool.query(`SELECT stockOutCategoryId, stockOutCategoryName FROM inventory_stockOutCategory_data LIMIT ` + limit, (err, rows, fields) => {
+                    if (err) {
+                        console.error("An error occurd in SQL Queery", err);
+                        return res.status(500).send('Database Error');;
+                    } else {
+                        console.log(rows);
+                        console.log(numRows);
+                        console.log("Total Page :-", numPages);
+                        if (numRows === 0) {
+                            const rows = [{
+                                'msg': 'No Data Found'
+                            }]
+                            return res.status(200).send({ rows, numRows });
+                        } else {
+                            return res.status(200).send({ rows, numRows });
+                        }
+                    }
+                });
+            }
+        })
+
+
+    } catch (error) {
+        console.error('An error occurd', error);
+        res.status(500).json('Internal Server Error');
+    }
+}
+
 // Add stockOut Category API
 
 const addstockOutCategory = async (req, res) => {
@@ -26,7 +70,7 @@ const addstockOutCategory = async (req, res) => {
                     return res.status(400).send('Category is Already In Use');
                 } else {
                     const sql_querry_addCategory = `INSERT INTO inventory_stockOutCategory_data (stockOutCategoryId, stockOutCategoryName)  
-                                                 VALUES ('${stockOutCategoryId}','${data.stockOutCategoryName}')`;
+                                                    VALUES ('${stockOutCategoryId}','${data.stockOutCategoryName}')`;
                     pool.query(sql_querry_addCategory, (err, data) => {
                         if (err) {
                             console.error("An error occurd in SQL Queery", err);
@@ -73,25 +117,6 @@ const removeStockOutCategory = async (req, res) => {
     }
 }
 
-// Fill StockOut Category Transaction API
-
-const fillStockOutCategory = (req, res) => {
-    try {
-        const stockOutCategoryId = req.query.stockOutCategoryId
-        sql_querry_fillUser = `SELECT stockOutCategoryName FROM inventory_stockOutCategory_data WHERE stockOutCategoryId = '${stockOutCategoryId}'`;
-        pool.query(sql_querry_fillUser, (err, data) => {
-            if (err) {
-                console.error("An error occurd in SQL Queery", err);
-                return res.status(500).send('Database Error');
-            }
-            return res.status(200).send(data);
-        })
-    } catch (error) {
-        console.error('An error occurd', error);
-        res.status(500).json('Internal Server Error');
-    }
-}
-
 // Update stockOut Category API
 
 const updateStockOutCategory = async (req, res) => {
@@ -99,6 +124,10 @@ const updateStockOutCategory = async (req, res) => {
         const data = {
             stockOutCategoryId: req.body.stockOutCategoryId.trim(),
             stockOutCategoryName: req.body.stockOutCategoryName.trim()
+        }
+        if (!data.stockOutCategoryName) {
+            res.status(400);
+            res.send("Please Add Category");
         }
         const sql_querry_updatedetails = `UPDATE inventory_stockOutCategory_data SET stockOutCategoryName = '${data.stockOutCategoryName}'
                                                                                WHERE stockOutCategoryId = '${data.stockOutCategoryId}'`;
@@ -116,8 +145,8 @@ const updateStockOutCategory = async (req, res) => {
 }
 
 module.exports = {
+    getCategoryList,
     addstockOutCategory,
     removeStockOutCategory,
-    fillStockOutCategory,
     updateStockOutCategory
 }

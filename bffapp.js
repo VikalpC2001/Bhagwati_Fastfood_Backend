@@ -10,16 +10,16 @@ const port = process.env.PORT;
 const userrouter = require('./routs/userRouts/user.routs');
 const inventoryrouter = require('./routs/inventoryRouts/inventory.routs');
 
-app.use(cors({
-  credentials: true,
-  origin: [
-    "http://localhost:3000",
-    "http://localhost:5000"
-  ],
-  exposedHeaders: ["set-cookie"],
-}));
+// app.use(cors({
+//   credentials: true,
+//   origin: [
+//     "http://localhost:3000",
+//     "http://localhost:5000"
+//   ],
+//   exposedHeaders: ["set-cookie"],
+// }));
 
-
+app.use(cors());
 app.use((req, res, next) => {
   res.setHeader("Access-Control-Allow-Origin", "*");
   res.header(

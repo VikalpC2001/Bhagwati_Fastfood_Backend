@@ -1,6 +1,7 @@
 const pool = require('../../database');
 const jwt = require("jsonwebtoken");
 const excelJS = require("exceljs");
+const { all } = require('../../routs/inventoryRouts/inventory.routs');
 
 // StockOUT List API
 
@@ -526,49 +527,70 @@ const updateStockOutTransaction = async (req, res) => {
                 if (remainStock < productQty) {
                     return res.status(400).send(`Remaining Stock is ${remainStock} ${productUnit}. You Can Not Able To Out Stock`);
                 } else {
-                    const get_previous_data = `SELECT inventory_stockOut_data.productId, userId,productQty, productUnit, stockOutCategory, stockOutComment, stockOutDate, stockOutModificationDate FROM inventory_stockOut_data
-                                        WHERE stockOutId = '${stockOutId}'`;
+                    const get_previous_data = `SELECT inventory_stockOut_data.productId, productQty, productUnit, inventory_stockOutCategory_data.stockOutCategoryName AS stockOutCategory, stockOutComment, DATE_FORMAT(stockOutDate,'%b %d %Y') AS stockOutDate, stockOutModificationDate FROM inventory_stockOut_data
+                                                INNER JOIN inventory_stockOutCategory_data ON inventory_stockOutCategory_data.stockOutCategoryId = inventory_stockOut_data.stockOutCategory
+                                                WHERE stockOutId = '${stockOutId}';
+                                                SELECT inventory_stockOutCategory_data.stockOutCategoryName FROM inventory_stockOutCategory_data
+                                                WHERE stockOutCategoryId = '${stockOutCategory}'`;
                     pool.query(get_previous_data, (err, data) => {
                         if (err) {
                             console.error("An error occurd in SQL Queery", err);
                             return res.status(500).send('Database Error');
                         }
+                        const stockOutModificationDate = data[0][0].stockOutModificationDate ? new Date(data[0][0].stockOutModificationDate).toString().slice(4, 24) : new Date().toString().slice(4, 24);
                         const previousData = {
-                            productId: data[0].productId,
-                            productQty: data[0].productQty,
-                            userId: data[0].userId,
-                            productUnit: data[0].productUnit,
-                            stockOutCategory: data[0].stockOutCategory,
-                            stockOutComment: data[0].stockOutComment ? data[0].stockOutComment : null,
-                            stockOutDate: new Date(data[0].stockOutDate).toString().slice(4, 15),
-                            stockOutModificationDate: new Date(data[0].stockOutModificationDate).toString().slice(4, 24)
-
+                            productQty: data[0][0].productQty,
+                            stockOutCategory: data[0][0].stockOutCategory,
+                            stockOutComment: data[0][0].stockOutComment ? data[0][0].stockOutComment : null,
+                            stockOutDate: data[0][0].stockOutDate,
                         }
-                        console.log('/////???', previousData.stockOutModificationDate);
+                        const newData = {
+                            productQty: req.body.productQty,
+                            stockOutCategory: data[1][0].stockOutCategoryName,
+                            stockOutComment: req.body.stockOutComment,
+                            stockOutDate: new Date(req.body.stockOutDate).toString().slice(4, 15)
+                        }
+                        let dataEdited = {}
+                        console.log(">>>", previousData);
+                        console.log('/////???', Object.keys(previousData));
+                        console.log(">>>.....", newData);
+                        const previousKey = Object.keys(previousData);
+                        const updatedField = previousKey.filter((key) => {
+                            if (previousData[key] != newData[key]) {
+                                dataEdited = { ...dataEdited, [key]: newData[key] }
+                                return key;
+                            }
+                        })
+                        if (updatedField.includes('productQty')) {
+                            previousData.productQty = previousData.productQty + ' ' + productUnit;
+                            newData.productQty = newData.productQty + ' ' + productUnit;
+                        }
+                        if (updatedField == null || updatedField == '') {
+                            return res.status(500).send('No Change');
+                        }
+                        const editFields = () => {
+                            var string = ''
+                            updatedField.forEach((data, index) => {
+                                if (index == 0)
+                                    string = "(" + "'" + stockOutId + "'" + "," + "'" + userId + "'" + "," + "'" + productId + "'" + "," + "'" + previousData[data] + "'" + "," + "'" + newData[data] + "'" + "," + "'" + reason + "'" + "," + "STR_TO_DATE('" + stockOutModificationDate + "','%b %d %Y %H:%i:%s')" + "," + "STR_TO_DATE('" + currentModifyDate + "','%b %d %Y %H:%i:%s')" + ")";
+                                else
+                                    string = string + ",(" + "'" + stockOutId + "'" + "," + "'" + userId + "'" + "," + "'" + productId + "'" + "," + "'" + previousData[data] + "'" + "," + "'" + newData[data] + "'" + "," + "'" + reason + "'" + "," + "STR_TO_DATE('" + stockOutModificationDate + "','%b %d %Y %H:%i:%s')" + "," + "STR_TO_DATE('" + currentModifyDate + "','%b %d %Y %H:%i:%s')" + ")";
+                            });
+                            return string;
+                        }
+                        console.log(">>>>>>>><<<<<<<<<", editFields());
                         const sql_querry_addPreviousData = `INSERT INTO inventory_modified_history  (
-                                                                                                modifiedStatus,
                                                                                                 stockOutId,
                                                                                                 userId,
                                                                                                 ProductId,
-                                                                                                productQty,
-                                                                                                productUnit,
-                                                                                                stockOutCategory,
-                                                                                                stockOutComment,
-                                                                                                stockOutDate,
-                                                                                                historyDateAndTime
+                                                                                                previous,
+                                                                                                updated,
+                                                                                                modifiedReason,
+                                                                                                previousDateTime,
+                                                                                                updatedDateTime
                                                                                             )
-                                                                                            VALUES(
-                                                                                                'Previous Data',
-                                                                                                '${stockOutId}',
-                                                                                                '${previousData.userId}',
-                                                                                                '${previousData.productId}',
-                                                                                                ${previousData.productQty},
-                                                                                                '${previousData.productUnit}',
-                                                                                                '${previousData.stockOutCategory}',
-                                                                                                NULLIF('${previousData.stockOutComment}','null'),
-                                                                                                STR_TO_DATE('${previousData.stockOutDate}','%b %d %Y'),
-                                                                                                STR_TO_DATE('${previousData.stockOutModificationDate}','%b %d %Y %H:%i:%s')
-                                                                                            )`;
+                                                                                            VALUES ${editFields()}`;
+                        console.log(">>.....", sql_querry_addPreviousData);
                         pool.query(sql_querry_addPreviousData, (err, data) => {
                             if (err) {
                                 console.error("An error occurd in SQL Queery", err);
@@ -587,39 +609,7 @@ const updateStockOutTransaction = async (req, res) => {
                                     console.error("An error occurd in SQL Queery", err);
                                     return res.status(500).send('Database Error');
                                 }
-                                const sql_querry_addModifiedData = `INSERT INTO inventory_modified_history  (
-                                                                                                modifiedStatus,
-                                                                                                stockOutId,
-                                                                                                userId,
-                                                                                                ProductId,
-                                                                                                productQty,
-                                                                                                productUnit,
-                                                                                                stockOutCategory,
-                                                                                                stockOutComment,
-                                                                                                modifiedReason,
-                                                                                                stockOutDate,
-                                                                                                historyDateAndTime
-                                                                                            )
-                                                                                            VALUES(
-                                                                                                'Current Change',
-                                                                                                '${stockOutId}',
-                                                                                                '${userId}',
-                                                                                                '${productId}', 
-                                                                                                ${productQty}, 
-                                                                                                '${productUnit}', 
-                                                                                                '${stockOutCategory}', 
-                                                                                                NULLIF('${stockOutComment}','null'),
-                                                                                                NULLIF('${reason}','null'), 
-                                                                                                STR_TO_DATE('${stockOutDate}','%b %d %Y'),
-                                                                                                STR_TO_DATE('${currentModifyDate}','%b %d %Y %H:%i:%s')
-                                                                                            )`;
-                                pool.query(sql_querry_addModifiedData, (err, data) => {
-                                    if (err) {
-                                        console.error("An error occurd in SQL Queery", err);
-                                        return res.status(500).send('Database Error');
-                                    }
-                                    return res.status(200).send("Transaction Updated Successfully");
-                                })
+                                return res.status(200).send("Transaction Updated Successfully");
                             })
                         })
                     })
@@ -635,6 +625,110 @@ const updateStockOutTransaction = async (req, res) => {
     }
 }
 
+// Get Edited Details List
+
+const getUpdateStockOutList = (req, res) => {
+    try {
+        const page = req.query.page;
+        const numPerPage = req.query.numPerPage;
+        const skip = (page - 1) * numPerPage;
+        const limit = skip + ',' + numPerPage;
+        sql_queries_getNumberOFEdit = `SELECT count(*) as numRows FROM inventory_stockOut_data WHERE stockOutId IN (
+                                        SELECT COALESCE(stockOutId,null) FROM inventory_modified_history GROUP BY stockOutId)`;
+        pool.query(sql_queries_getNumberOFEdit, (err, rows, fields) => {
+            if (err) {
+                console.error("An error occurd in SQL Queery", err);
+                return res.status(500).send('Database Error');
+            } else {
+                const numRows = rows[0].numRows;
+                const numPages = Math.ceil(numRows / numPerPage);
+                sql_queries_getdetails = `SELECT stockOutId, user_details.userName AS outBy, CONCAT(user_details.userFirstName,' ',user_details.userLastName) AS userName,inventory_product_data.productName AS productName, CONCAT(productQty,' ',productUnit) AS Quantity, inventory_stockOutCategory_data.stockOutCategoryName AS stockOutCategoryName, stockOutComment, DATE_FORMAT(stockOutDate,'%d-%m-%Y') AS stockOutDate ,DATE_FORMAT(stockOutCreationDate,'%d-%M-%y / %r') AS stockOutCreationDate ,DATE_FORMAT(stockOutModificationDate,'%d-%M-%y / %r') AS stockOutModificationDate 
+                                                FROM inventory_stockOut_data
+                                                INNER JOIN user_details ON user_details.userId = inventory_stockOut_data.userId
+                                                INNER JOIN inventory_product_data ON inventory_product_data.productId = inventory_stockOut_data.productId
+                                                INNER JOIN inventory_stockOutCategory_data ON inventory_stockOutCategory_data.stockOutCategoryId = inventory_stockOut_data.stockOutCategory
+                                                WHERE stockOutId IN (SELECT COALESCE(stockOutId,null) FROM inventory_modified_history GROUP BY stockOutId) ORDER BY stockOutModificationDate DESC LIMIT ${limit}`;
+                pool.query(sql_queries_getdetails, (err, rows, fields) => {
+                    if (err) {
+                        console.error("An error occurd in SQL Queery", err);
+                        return res.status(500).send('Database Error');;
+                    } else {
+                        console.log(rows);
+                        console.log(numRows);
+                        console.log("Total Page :-", numPages);
+                        if (numRows === 0) {
+                            const rows = [{
+                                'msg': 'No Data Found'
+                            }]
+                            return res.status(200).send({ rows, numRows });
+                        } else {
+                            return res.status(200).send({ rows, numRows });
+                        }
+                    }
+                });
+            }
+        })
+        // return res.status(200).send(data);
+
+    } catch (error) {
+        console.error('An error occurd', error);
+        res.status(500).json('Internal Server Error');
+    }
+}
+
+// GET Updated StockOut List By Id
+
+const getUpdateStockOutListById = (req, res) => {
+    try {
+        const page = req.query.page;
+        const numPerPage = req.query.numPerPage;
+        const skip = (page - 1) * numPerPage;
+        const limit = skip + ',' + numPerPage;
+        const stockOutId = req.query.stockOutId
+        sql_queries_getNumberOFEdit = `SELECT count(*) as numRows FROM inventory_modified_history WHERE stockOutId = '${stockOutId}'`;
+        console.log(">>>.", sql_queries_getNumberOFEdit);
+        pool.query(sql_queries_getNumberOFEdit, (err, rows, fields) => {
+            if (err) {
+                console.error("An error occurd in SQL Queery", err);
+                return res.status(500).send('Database Error');
+            } else {
+                const numRows = rows[0].numRows;
+                const numPages = Math.ceil(numRows / numPerPage);
+                sql_queries_getdetails = `SELECT user_details.userName AS userName,CONCAT(user_details.userFirstName,' ',user_details.userLastName) AS userFullName, inventory_product_data.productName AS productName, previous, updated, modifiedReason, DATE_FORMAT(previousDateTime,'%d-%M-%y / %r') AS previousDateTime, DATE_FORMAT(updatedDateTime,'%d-%M-%y / %r') AS updatedDateTime 
+                                            FROM inventory_modified_history
+                                            INNER JOIN inventory_product_data ON inventory_product_data.productId = inventory_modified_history.ProductId
+                                            INNER JOIN user_details ON user_details.userId = inventory_modified_history.userId
+                                            WHERE stockOutId = '${stockOutId}' ORDER BY updateHistoryCreationDate DESC LIMIT ${limit}`;
+
+                console.log("aaaaa", sql_queries_getdetails);
+                pool.query(sql_queries_getdetails, (err, rows, fields) => {
+                    if (err) {
+                        console.error("An error occurd in SQL Queery", err);
+                        return res.status(500).send('Database Error');;
+                    } else {
+                        console.log(rows);
+                        console.log(numRows);
+                        console.log("Total Page :-", numPages);
+                        if (numRows === 0) {
+                            const rows = [{
+                                'msg': 'No Data Found'
+                            }]
+                            return res.status(200).send({ rows, numRows });
+                        } else {
+                            return res.status(200).send({ rows, numRows });
+                        }
+                    }
+                });
+            }
+        })
+        // return res.status(200).send(data);
+
+    } catch (error) {
+        console.error('An error occurd', error);
+        res.status(500).json('Internal Server Error');
+    }
+}
+
 module.exports = {
     addStockOutDetails,
     removeStockOutTransaction,
@@ -642,5 +736,7 @@ module.exports = {
     updateStockOutTransaction,
     getStockOutList,
     exportExcelSheetForStockout,
-    getCategoryWiseUsedByProduct
+    getCategoryWiseUsedByProduct,
+    getUpdateStockOutList,
+    getUpdateStockOutListById
 }

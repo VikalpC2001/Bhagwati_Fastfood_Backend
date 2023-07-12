@@ -62,6 +62,8 @@ router.post('/updateStockOutTransaction', protect, stockOutController.updateStoc
 router.get('/getStockOutList', protect, stockOutController.getStockOutList);
 router.get('/exportExcelSheetForStockout', stockOutController.exportExcelSheetForStockout);
 router.get('/getCategoryWiseUsedByProduct', protect, stockOutController.getCategoryWiseUsedByProduct);
+router.get('/getUpdateStockOutList', protect, stockOutController.getUpdateStockOutList);
+router.get('/getUpdateStockOutListById', protect, stockOutController.getUpdateStockOutListById);
 
 // Supplier Transaction Routs
 
@@ -91,7 +93,8 @@ router.get('/ddlProduct', protect, ddlInventoryController.ddlProduct);
 
 const bulkDeleteController = require("../../controller/inventoryController/bulkDeleteInventory.controller.js");
 
-router.delete('/emptyModifiedHistoryOfStockOut', bulkDeleteController.emptyModifiedHistoryOfStockOut);
+router.delete('/emptyModifiedHistoryOfStockOut', protect, bulkDeleteController.emptyModifiedHistoryOfStockOut);
+router.delete('/emptyModifiedHistoryOfStockOutById', protect, bulkDeleteController.emptyModifiedHistoryOfStockOutById);
 
 
 module.exports = router;

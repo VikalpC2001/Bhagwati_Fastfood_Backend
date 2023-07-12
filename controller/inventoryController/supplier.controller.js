@@ -531,7 +531,7 @@ const fillSupplierDetails = (req, res) => {
     try {
         const supplierId = req.query.supplierId
         sql_querry_fillUser = `SELECT supplierId, supplierFirstName, supplierLastName, supplierFirmName, supplierFirmAddress, supplierNickName, supplierPhoneNumber, supplierEmailId FROM inventory_supplier_data WHERE supplierId =  '${supplierId}';
-                               SELECT inventory_supplierProducts_data.productId, inventory_product_data.productName FROM inventory_supplierProducts_data 
+                               SELECT inventory_supplierProducts_data.productId, UPPER(inventory_product_data.productName) productName FROM inventory_supplierProducts_data 
                                 INNER JOIN inventory_product_data ON inventory_product_data.productId = inventory_supplierProducts_data.productId
                                 WHERE supplierId =  '${supplierId}';
                                 SELECT GROUP_CONCAT(productId SEPARATOR ',') as productList FROM inventory_supplierProducts_data WHERE supplierId = '${supplierId}' GROUP BY supplierId;`;

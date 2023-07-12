@@ -1,4 +1,5 @@
 const pool = require('../../database');
+const excelJS = require("exceljs");
 
 // Get Product Counter Details
 
@@ -7,9 +8,6 @@ const getProductCountDetailsById = (req, res) => {
         var date = new Date(), y = date.getFullYear(), m = (date.getMonth());
         var firstDay = new Date(y, m, 1).toString().slice(4, 15);
         var lastDay = new Date(y, m + 1, 0).toString().slice(4, 15);
-
-        console.log("1111>>>>", firstDay);
-        console.log("1111>>>>", lastDay);
 
         const data = {
             startDate: (req.query.startDate ? req.query.startDate : '').slice(4, 15),
@@ -181,7 +179,7 @@ const getSupplierByProductId = (req, res) => {
     }
 }
 
-// Product List with Search Api
+// Product List API
 
 const getProductList = (req, res) => {
     try {
@@ -198,7 +196,7 @@ const getProductList = (req, res) => {
                                                              DATE_FORMAT(siLu.stockInDate, '%d-%m-%Y'),
                                                              "No Update"
                                                          ) AS lastUpdatedStockInDate,
-                                                         CASE WHEN COALESCE(si.total_quantity, 0) - COALESCE(so.total_quantity, 0) > p.minProductQty THEN 'In Stock' WHEN COALESCE(si.total_quantity, 0) - COALESCE(so.total_quantity, 0) < p.minProductQty AND COALESCE(si.total_quantity, 0) - COALESCE(so.total_quantity, 0) != 0 THEN 'Under Stocked' ELSE 'Out of Stock'
+                                                         CASE WHEN COALESCE(si.total_quantity, 0) - COALESCE(so.total_quantity, 0) >= p.minProductQty THEN 'In Stock' WHEN COALESCE(si.total_quantity, 0) - COALESCE(so.total_quantity, 0) < p.minProductQty AND COALESCE(si.total_quantity, 0) - COALESCE(so.total_quantity, 0) != 0 THEN 'Under Stocked' ELSE 'Out of Stock'
                                                      END AS stockStatus
                                                      FROM
                                                          inventory_product_data AS p
@@ -248,7 +246,7 @@ const getProductList = (req, res) => {
                                                          p.productId = siLu.productId`;
         if (req.query.productStatus == 1) {
             sql_querry_getProductList = `${sql_querry_getProductListwithStatus}
-                                            WHERE COALESCE(si.total_quantity, 0) - COALESCE(so.total_quantity, 0) > p.minProductQty 
+                                            WHERE COALESCE(si.total_quantity, 0) - COALESCE(so.total_quantity, 0) >= p.minProductQty 
                                             ORDER BY p.productName`;
         } else if (req.query.productStatus == 2) {
             sql_querry_getProductList = `${sql_querry_getProductListwithStatus}
@@ -286,28 +284,28 @@ const getProductListCounter = (req, res) => {
         const sql_querry_joins = `LEFT JOIN
                                     (
                                         SELECT
-                                                                inventory_stockIn_data.productId,
-                                        SUM(inventory_stockIn_data.productQty) AS total_quantity
-                                                            FROM
-                                                                inventory_stockIn_data
-                                                            GROUP BY
-                                                                inventory_stockIn_data.productId
+                                            inventory_stockIn_data.productId,
+                                            SUM(inventory_stockIn_data.productQty) AS total_quantity
+                                        FROM
+                                            inventory_stockIn_data
+                                        GROUP BY
+                                            inventory_stockIn_data.productId
                                     ) AS si ON p.productId = si.productId
-                                                      LEFT JOIN
+                                  LEFT JOIN
                                     (
                                         SELECT
-                                                                inventory_stockOut_data.productId,
-                                        SUM(inventory_stockOut_data.productQty) AS total_quantity
-                                                            FROM
-                                                                inventory_stockOut_data
-                                                            GROUP BY
-                                                                inventory_stockOut_data.productId
+                                            inventory_stockOut_data.productId,
+                                            SUM(inventory_stockOut_data.productQty) AS total_quantity
+                                        FROM
+                                            inventory_stockOut_data
+                                        GROUP BY
+                                            inventory_stockOut_data.productId
                                     ) AS so ON p.productId = so.productId`;
         sql_querry_getProductList = `SELECT COUNT(*) AS inStockProduct
                                         FROM
                                             inventory_product_data AS p
                                         ${sql_querry_joins}
-                                        WHERE COALESCE(si.total_quantity, 0) - COALESCE(so.total_quantity, 0) > p.minProductQty;
+                                        WHERE COALESCE(si.total_quantity, 0) - COALESCE(so.total_quantity, 0) >= p.minProductQty;
                                         SELECT COUNT(*) AS underStockedProduct
                                         FROM
                                             inventory_product_data AS p
@@ -348,27 +346,6 @@ const getProductListCounter = (req, res) => {
     }
 }
 
-// Select Unit Using ProductId API
-
-const fillProductWiseUnit = (req, res) => {
-    try {
-
-        const productId = req.query.productId;
-        sql_querry_getddlandUnit = `SELECT minProductUnit AS productUnit  FROM inventory_product_data WHERE productId = '${productId}'`;
-        pool.query(sql_querry_getddlandUnit, (err, data) => {
-            if (err) {
-                console.error("An error occurd in SQL Queery", err);
-                return res.status(500).send('Database Error');
-            }
-            return res.status(200).send(data);
-        })
-
-    } catch (error) {
-        console.error('An error occurd', error);
-        res.status(500).json('Internal Server Error');
-    }
-}
-
 // Add Product API
 
 const addProduct = async (req, res) => {
@@ -376,7 +353,6 @@ const addProduct = async (req, res) => {
 
         const uid1 = new Date();
         const productId = String("product_" + uid1.getTime());
-        console.log("...", productId);
 
         const data = {
             productName: req.body.productName.trim(),
@@ -385,8 +361,7 @@ const addProduct = async (req, res) => {
         }
         console.log(">>?>?>?>", data.productName);
         if (!data.productName || !data.minProductQty || !data.minProductUnit) {
-            res.status(400);
-            res.send("Please Fill All The Fields")
+            return res.status(400).send("Please Fill All The Fields")
         } else {
             req.body.productName = pool.query(`SELECT productName FROM inventory_product_data WHERE productName = '${data.productName}'`, function (err, row) {
                 if (err) {
@@ -397,7 +372,7 @@ const addProduct = async (req, res) => {
                     return res.status(400).send('Product is Already In Use');
                 } else {
                     const sql_querry_addUser = `INSERT INTO inventory_product_data(productId, productName, minProductQty, minProductUnit)
-            VALUES('${productId}', '${data.productName}', ${data.minProductQty}, '${data.minProductUnit}')`;
+                                                VALUES('${productId}', '${data.productName}', ${data.minProductQty}, '${data.minProductUnit}')`;
                     pool.query(sql_querry_addUser, (err, data) => {
                         if (err) {
                             console.error("An error occurd in SQL Queery", err);
@@ -408,6 +383,541 @@ const addProduct = async (req, res) => {
                 }
             })
         }
+    } catch (error) {
+        console.error('An error occurd', error);
+        res.status(500).send('Internal Server Error');
+    }
+}
+
+// get Product Details Table
+
+const getProductDetailsTable = (req, res) => {
+    try {
+        const page = req.query.page;
+        const numPerPage = req.query.numPerPage;
+        const skip = (page - 1) * numPerPage;
+        const limit = skip + ',' + numPerPage;
+        var date = new Date(), y = date.getFullYear(), m = (date.getMonth());
+        var firstDay = new Date(y, m, 1).toString().slice(4, 15);
+        var lastDay = new Date(y, m + 1, 0).toString().slice(4, 15);
+
+        console.log("1111>>>>", firstDay);
+        console.log("1111>>>>", lastDay);
+        const data = {
+            startDate: (req.query.startDate ? req.query.startDate : '').slice(4, 15),
+            endDate: (req.query.endDate ? req.query.endDate : '').slice(4, 15),
+            productStatus: req.query.productStatus,
+            searchProduct: req.query.searchProduct
+        }
+        const sql_querry_staticQuery = `SELECT
+                                    p.productId,
+                                    UCASE(p.productName) AS productName,
+                                    p.minProductQty,
+                                    p.minProductUnit,
+                                    COALESCE(si.total_quantity, 0) - COALESCE(so.total_quantity, 0) AS remainingStock,
+                                    COALESCE(silu.productPrice, 0) AS lastPrice,
+                                    COALESCE(siLu.productQty, 0) AS lastUpdatedQty,
+                                    COALESCE(
+                                        DATE_FORMAT(siLu.stockInDate, '%d-%m-%Y'),
+                                        "No Update"
+                                    ) AS lastUpdatedStockInDate,
+                                    CASE WHEN COALESCE(si.total_quantity, 0) - COALESCE(so.total_quantity, 0) >= p.minProductQty THEN 'In-Stock' WHEN COALESCE(si.total_quantity, 0) - COALESCE(so.total_quantity, 0) < p.minProductQty AND COALESCE(si.total_quantity, 0) - COALESCE(so.total_quantity, 0) != 0 THEN 'Low-Stock' ELSE 'Out-Stock'
+                                END AS stockStatus
+                                FROM
+                                    inventory_product_data AS p
+                                LEFT JOIN(
+                                    SELECT
+                                        inventory_stockIn_data.productId,
+                                        SUM(
+                                            inventory_stockIn_data.productQty
+                                        ) AS total_quantity
+                                    FROM
+                                        inventory_stockIn_data
+                                    GROUP BY
+                                        inventory_stockIn_data.productId
+                                ) AS si
+                                ON
+                                    p.productId = si.productId
+                                LEFT JOIN(
+                                    SELECT
+                                        inventory_stockOut_data.productId,
+                                        SUM(
+                                            inventory_stockOut_data.productQty
+                                        ) AS total_quantity
+                                    FROM
+                                        inventory_stockOut_data
+                                    GROUP BY
+                                        inventory_stockOut_data.productId
+                                ) AS so
+                                ON
+                                    p.productId = so.productId
+                                LEFT JOIN(
+                                    SELECT
+                                        productId,
+                                        stockInDate,
+                                        productQty,
+                                        productPrice
+                                    FROM
+                                        inventory_stockIn_data
+                                    WHERE
+                                        (productId, stockInCreationDate) IN(
+                                        SELECT
+                                            productId,
+                                            MAX(stockInCreationDate)
+                                        FROM
+                                            inventory_stockIn_data
+                                        GROUP BY
+                                            productId
+                                    )
+                                ) AS siLu
+                                ON
+                                    p.productId = siLu.productId`;
+        const sql_querry_getMwSiSO = `SELECT
+                                        p.productId,
+                                        UCASE(p.productName) AS productName,
+                                        p.minProductQty,
+                                        p.minProductUnit,
+                                        COALESCE(simw.total_quantity, 0) AS purchese,
+                                        COALESCE(somw.total_quantity, 0) AS totalUsed,
+                                        COALESCE(simw.totalExpense,0) AS totalExpense,
+                                        COALESCE(si.total_quantity, 0) - COALESCE(so.total_quantity, 0) AS remainingStock,
+                                        COALESCE(silu.productPrice, 0) AS lastPrice,
+                                        COALESCE(siLu.productQty, 0) AS lastUpdatedQty,
+                                        COALESCE(
+                                            DATE_FORMAT(siLu.stockInDate, '%d-%m-%Y'),
+                                            "No Update"
+                                        ) AS lastUpdatedStockInDate,
+                                        CASE WHEN COALESCE(si.total_quantity, 0) - COALESCE(so.total_quantity, 0) >= p.minProductQty THEN 'In-Stock' WHEN COALESCE(si.total_quantity, 0) - COALESCE(so.total_quantity, 0) < p.minProductQty AND COALESCE(si.total_quantity, 0) - COALESCE(so.total_quantity, 0) != 0 THEN 'Low-Stock' ELSE 'Out-Stock'
+                                    END AS stockStatus
+                                    FROM
+                                        inventory_product_data AS p
+                                    LEFT JOIN(
+                                        SELECT
+                                            inventory_stockIn_data.productId,
+                                            SUM(
+                                                inventory_stockIn_data.productQty
+                                            ) AS total_quantity
+                                        FROM
+                                            inventory_stockIn_data
+                                        GROUP BY
+                                            inventory_stockIn_data.productId
+                                    ) AS si
+                                    ON
+                                        p.productId = si.productId
+                                    LEFT JOIN(
+                                        SELECT
+                                            inventory_stockOut_data.productId,
+                                            SUM(
+                                                inventory_stockOut_data.productQty
+                                            ) AS total_quantity
+                                        FROM
+                                            inventory_stockOut_data
+                                        GROUP BY
+                                            inventory_stockOut_data.productId
+                                    ) AS so
+                                    ON
+                                        p.productId = so.productId
+                                    LEFT JOIN(
+                                        SELECT
+                                            productId,
+                                            stockInDate,
+                                            productQty,
+                                            productPrice
+                                        FROM
+                                            inventory_stockIn_data
+                                        WHERE
+                                            (productId, stockInCreationDate) IN(
+                                            SELECT
+                                                productId,
+                                                MAX(stockInCreationDate)
+                                            FROM
+                                                inventory_stockIn_data
+                                            GROUP BY
+                                                productId
+                                        )
+                                    ) AS siLu
+                                    ON
+                                        p.productId = siLu.productId`;
+        const sql_querry_joins = `LEFT JOIN
+                                    (
+                                        SELECT
+                                                                inventory_stockIn_data.productId,
+                                        SUM(inventory_stockIn_data.productQty) AS total_quantity
+                                                            FROM
+                                                                inventory_stockIn_data
+                                                            GROUP BY
+                                                                inventory_stockIn_data.productId
+                                    ) AS si ON p.productId = si.productId
+                                                      LEFT JOIN
+                                    (
+                                        SELECT
+                                                                inventory_stockOut_data.productId,
+                                        SUM(inventory_stockOut_data.productQty) AS total_quantity
+                                                            FROM
+                                                                inventory_stockOut_data
+                                                            GROUP BY
+                                                                inventory_stockOut_data.productId
+                                    ) AS so ON p.productId = so.productId`;
+        if (req.query.productStatus == 1) {
+            sql_get_pagination = `SELECT COUNT(*) AS numRows
+                                        FROM
+                                        inventory_product_data AS p
+                                        ${sql_querry_joins}
+                                        WHERE COALESCE(si.total_quantity, 0) - COALESCE(so.total_quantity, 0) >= p.minProductQty`;
+        } else if (req.query.productStatus == 2) {
+            sql_get_pagination = `SELECT COUNT(*) AS numRows
+                                        FROM
+                                            inventory_product_data AS p
+                                        ${sql_querry_joins}
+                                        WHERE COALESCE(si.total_quantity, 0) - COALESCE(so.total_quantity, 0) < p.minProductQty AND COALESCE(si.total_quantity, 0) - COALESCE(so.total_quantity, 0) != 0`;
+        } else if (req.query.productStatus == 3) {
+            sql_get_pagination = `SELECT COUNT(*) AS numRows
+                                        FROM
+                                            inventory_product_data AS p
+                                        ${sql_querry_joins}
+                                        WHERE COALESCE(si.total_quantity, 0) - COALESCE(so.total_quantity, 0) = 0`;
+        } else if (req.query.startDate && req.query.endDate && req.query.searchProduct) {
+            sql_get_pagination = `SELECT COUNT(*) AS numRows
+                                        FROM
+                                        inventory_product_data AS p
+                                        ${sql_querry_joins}
+                                        LEFT JOIN(
+                                            SELECT
+                                                inventory_stockIn_data.productId,
+                                                SUM(
+                                                    inventory_stockIn_data.productQty
+                                                ) AS total_quantity,
+                                                SUM(
+                                                    inventory_stockIn_data.totalPrice
+                                                ) AS totalExpense
+                                            FROM
+                                                inventory_stockIn_data
+                                            WHERE
+                                                inventory_stockIn_data.stockInCreationDate BETWEEN STR_TO_DATE('${data.startDate}','%b %d %Y') AND STR_TO_DATE('${data.endDate}','%b %d %Y')
+                                            GROUP BY
+                                                inventory_stockIn_data.productId
+                                        ) AS simw
+                                        ON
+                                            p.productId = simw.productId
+                                        LEFT JOIN(
+                                            SELECT
+                                                inventory_stockOut_data.productId,
+                                                SUM(
+                                                    inventory_stockOut_data.productQty
+                                                ) AS total_quantity
+                                            FROM
+                                                inventory_stockOut_data
+                                            WHERE
+                                                inventory_stockOut_data.stockOutCreationDate BETWEEN STR_TO_DATE('${data.startDate}','%b %d %Y') AND STR_TO_DATE('${data.endDate}','%b %d %Y')
+                                            GROUP BY
+                                                inventory_stockOut_data.productId
+                                        ) AS somw
+                                        ON
+                                            p.productId = somw.productId
+                                        WHERE p.productName LIKE '%` + data.searchProduct + `%'`;
+        } else if (req.query.startDate && req.query.endDate) {
+            sql_get_pagination = `SELECT COUNT(*) AS numRows
+                                        FROM
+                                        inventory_product_data AS p
+                                        ${sql_querry_joins}
+                                        LEFT JOIN(
+                                            SELECT
+                                                inventory_stockIn_data.productId,
+                                                SUM(
+                                                    inventory_stockIn_data.productQty
+                                                ) AS total_quantity,
+                                                SUM(
+                                                    inventory_stockIn_data.totalPrice
+                                                ) AS totalExpense
+                                            FROM
+                                                inventory_stockIn_data
+                                            WHERE
+                                                inventory_stockIn_data.stockInCreationDate BETWEEN STR_TO_DATE('${data.startDate}','%b %d %Y') AND STR_TO_DATE('${data.endDate}','%b %d %Y')
+                                            GROUP BY
+                                                inventory_stockIn_data.productId
+                                        ) AS simw
+                                        ON
+                                            p.productId = simw.productId
+                                        LEFT JOIN(
+                                            SELECT
+                                                inventory_stockOut_data.productId,
+                                                SUM(
+                                                    inventory_stockOut_data.productQty
+                                                ) AS total_quantity
+                                            FROM
+                                                inventory_stockOut_data
+                                            WHERE
+                                                inventory_stockOut_data.stockOutCreationDate BETWEEN STR_TO_DATE('${data.startDate}','%b %d %Y') AND STR_TO_DATE('${data.endDate}','%b %d %Y')
+                                            GROUP BY
+                                                inventory_stockOut_data.productId
+                                        ) AS somw
+                                        ON
+                                            p.productId = somw.productId`;
+        } else if (req.query.searchProduct) {
+            sql_get_pagination = `SELECT COUNT(*) AS numRows
+                                        FROM
+                                        inventory_product_data AS p
+                                        ${sql_querry_joins}
+                                        LEFT JOIN(
+                                            SELECT
+                                                inventory_stockIn_data.productId,
+                                                SUM(
+                                                    inventory_stockIn_data.productQty
+                                                ) AS total_quantity,
+                                                SUM(
+                                                    inventory_stockIn_data.totalPrice
+                                                ) AS totalExpense
+                                            FROM
+                                                inventory_stockIn_data
+                                            WHERE
+                                                inventory_stockIn_data.stockInCreationDate BETWEEN STR_TO_DATE('${firstDay}','%b %d %Y') AND STR_TO_DATE('${lastDay}','%b %d %Y')
+                                            GROUP BY
+                                                inventory_stockIn_data.productId
+                                        ) AS simw
+                                        ON
+                                            p.productId = simw.productId
+                                        LEFT JOIN(
+                                            SELECT
+                                                inventory_stockOut_data.productId,
+                                                SUM(
+                                                    inventory_stockOut_data.productQty
+                                                ) AS total_quantity
+                                            FROM
+                                                inventory_stockOut_data
+                                            WHERE
+                                                inventory_stockOut_data.stockOutCreationDate BETWEEN STR_TO_DATE('${firstDay}','%b %d %Y') AND STR_TO_DATE('${lastDay}','%b %d %Y')
+                                            GROUP BY
+                                                inventory_stockOut_data.productId
+                                        ) AS somw
+                                        ON
+                                            p.productId = somw.productId
+                                        WHERE p.productName LIKE '%` + data.searchProduct + `%'`;
+        } else {
+            sql_get_pagination = `SELECT COUNT(*) AS numRows
+                                        FROM
+                                        inventory_product_data AS p
+                                        ${sql_querry_joins}
+                                        LEFT JOIN(
+                                            SELECT
+                                                inventory_stockIn_data.productId,
+                                                SUM(
+                                                    inventory_stockIn_data.productQty
+                                                ) AS total_quantity,
+                                                SUM(
+                                                    inventory_stockIn_data.totalPrice
+                                                ) AS totalExpense
+                                            FROM
+                                                inventory_stockIn_data
+                                            WHERE
+                                                inventory_stockIn_data.stockInCreationDate BETWEEN STR_TO_DATE('${firstDay}','%b %d %Y') AND STR_TO_DATE('${lastDay}','%b %d %Y')
+                                            GROUP BY
+                                                inventory_stockIn_data.productId
+                                        ) AS simw
+                                        ON
+                                            p.productId = simw.productId
+                                        LEFT JOIN(
+                                            SELECT
+                                                inventory_stockOut_data.productId,
+                                                SUM(
+                                                    inventory_stockOut_data.productQty
+                                                ) AS total_quantity
+                                            FROM
+                                                inventory_stockOut_data
+                                            WHERE
+                                                inventory_stockOut_data.stockOutCreationDate BETWEEN STR_TO_DATE('${firstDay}','%b %d %Y') AND STR_TO_DATE('${lastDay}','%b %d %Y')
+                                            GROUP BY
+                                                inventory_stockOut_data.productId
+                                        ) AS somw
+                                        ON
+                                            p.productId = somw.productId`;
+        }
+        console.log('>>>>', sql_get_pagination);
+        pool.query(sql_get_pagination, (err, rows, fields) => {
+            if (err) {
+                console.error("An error occurd in SQL Queery", err);
+                return res.status(500).send('Database Error');
+            } else {
+                const numRows = rows[0].numRows;
+                const numPages = Math.ceil(numRows / numPerPage);
+                if (req.query.productStatus == 1) {
+                    sql_queries_getdetails = `${sql_querry_staticQuery}
+                                                WHERE COALESCE(si.total_quantity, 0) - COALESCE(so.total_quantity, 0) >= p.minProductQty 
+                                                ORDER BY p.productName LIMIT ${limit}`;
+                } else if (req.query.productStatus == 2) {
+                    sql_queries_getdetails = `${sql_querry_staticQuery}
+                                                WHERE COALESCE(si.total_quantity, 0) - COALESCE(so.total_quantity, 0) < p.minProductQty AND COALESCE(si.total_quantity, 0) - COALESCE(so.total_quantity, 0) != 0
+                                                ORDER BY p.productName LIMIT ${limit}`;
+                } else if (req.query.productStatus == 3) {
+                    sql_queries_getdetails = `${sql_querry_staticQuery}
+                                                WHERE COALESCE(si.total_quantity, 0) - COALESCE(so.total_quantity, 0) = 0
+                                                ORDER BY p.productName LIMIT ${limit}`;
+                } else if (req.query.startDate && req.query.endDate && req.query.searchProduct) {
+                    sql_queries_getdetails = `${sql_querry_getMwSiSO}
+                                              LEFT JOIN(
+                                                SELECT
+                                                    inventory_stockIn_data.productId,
+                                                    SUM(
+                                                        inventory_stockIn_data.productQty
+                                                    ) AS total_quantity,
+                                                    SUM(
+                                                        inventory_stockIn_data.totalPrice
+                                                    ) AS totalExpense
+                                                FROM
+                                                    inventory_stockIn_data
+                                                WHERE
+                                                    inventory_stockIn_data.stockInCreationDate BETWEEN STR_TO_DATE('${data.startDate}','%b %d %Y') AND STR_TO_DATE('${data.endDate}','%b %d %Y')
+                                                GROUP BY
+                                                    inventory_stockIn_data.productId
+                                            ) AS simw
+                                            ON
+                                            p.productId = simw.productId
+                                        LEFT JOIN(
+                                            SELECT
+                                                inventory_stockOut_data.productId,
+                                                SUM(
+                                                    inventory_stockOut_data.productQty
+                                                ) AS total_quantity
+                                            FROM
+                                                inventory_stockOut_data
+                                            WHERE
+                                                inventory_stockOut_data.stockOutCreationDate BETWEEN STR_TO_DATE('${data.startDate}','%b %d %Y') AND STR_TO_DATE('${data.endDate}','%b %d %Y')
+                                            GROUP BY
+                                                inventory_stockOut_data.productId
+                                        ) AS somw
+                                        ON
+                                        p.productId = somw.productId 
+                                        WHERE p.productName LIKE '%` + data.searchProduct + `%'
+                                        ORDER BY p.productName LIMIT ${limit}`
+                } else if (req.query.startDate && req.query.endDate) {
+                    sql_queries_getdetails = `${sql_querry_getMwSiSO}
+                                              LEFT JOIN(
+                                                SELECT
+                                                    inventory_stockIn_data.productId,
+                                                    SUM(
+                                                        inventory_stockIn_data.productQty
+                                                    ) AS total_quantity,
+                                                    SUM(
+                                                        inventory_stockIn_data.totalPrice
+                                                    ) AS totalExpense
+                                                FROM
+                                                    inventory_stockIn_data
+                                                WHERE
+                                                    inventory_stockIn_data.stockInCreationDate BETWEEN STR_TO_DATE('${data.startDate}','%b %d %Y') AND STR_TO_DATE('${data.endDate}','%b %d %Y')
+                                                GROUP BY
+                                                    inventory_stockIn_data.productId
+                                            ) AS simw
+                                            ON
+                                            p.productId = simw.productId
+                                        LEFT JOIN(
+                                            SELECT
+                                                inventory_stockOut_data.productId,
+                                                SUM(
+                                                    inventory_stockOut_data.productQty
+                                                ) AS total_quantity
+                                            FROM
+                                                inventory_stockOut_data
+                                            WHERE
+                                                inventory_stockOut_data.stockOutCreationDate BETWEEN STR_TO_DATE('${data.startDate}','%b %d %Y') AND STR_TO_DATE('${data.endDate}','%b %d %Y')
+                                            GROUP BY
+                                                inventory_stockOut_data.productId
+                                        ) AS somw
+                                        ON
+                                        p.productId = somw.productId
+                                        ORDER BY p.productName LIMIT ${limit}`
+                } else if (req.query.searchProduct) {
+                    sql_queries_getdetails = `${sql_querry_getMwSiSO}
+                                              LEFT JOIN(
+                                                SELECT
+                                                    inventory_stockIn_data.productId,
+                                                    SUM(
+                                                        inventory_stockIn_data.productQty
+                                                    ) AS total_quantity,
+                                                    SUM(
+                                                        inventory_stockIn_data.totalPrice
+                                                    ) AS totalExpense
+                                                FROM
+                                                    inventory_stockIn_data
+                                                WHERE
+                                                    inventory_stockIn_data.stockInCreationDate BETWEEN STR_TO_DATE('${firstDay}','%b %d %Y') AND STR_TO_DATE('${lastDay}','%b %d %Y')
+                                                GROUP BY
+                                                    inventory_stockIn_data.productId
+                                            ) AS simw
+                                            ON
+                                            p.productId = simw.productId
+                                        LEFT JOIN(
+                                            SELECT
+                                                inventory_stockOut_data.productId,
+                                                SUM(
+                                                    inventory_stockOut_data.productQty
+                                                ) AS total_quantity
+                                            FROM
+                                                inventory_stockOut_data
+                                            WHERE
+                                                inventory_stockOut_data.stockOutCreationDate BETWEEN STR_TO_DATE('${firstDay}','%b %d %Y') AND STR_TO_DATE('${lastDay}','%b %d %Y')
+                                            GROUP BY
+                                                inventory_stockOut_data.productId
+                                        ) AS somw
+                                        ON
+                                        p.productId = somw.productId
+                                        WHERE p.productName LIKE '%` + data.searchProduct + `%'
+                                        ORDER BY p.productName LIMIT ${limit}`
+                } else {
+                    sql_queries_getdetails = `${sql_querry_getMwSiSO}
+                                              LEFT JOIN(
+                                                SELECT
+                                                    inventory_stockIn_data.productId,
+                                                    SUM(
+                                                        inventory_stockIn_data.productQty
+                                                    ) AS total_quantity,
+                                                    SUM(
+                                                        inventory_stockIn_data.totalPrice
+                                                    ) AS totalExpense
+                                                FROM
+                                                    inventory_stockIn_data
+                                                WHERE
+                                                    inventory_stockIn_data.stockInCreationDate BETWEEN STR_TO_DATE('${firstDay}','%b %d %Y') AND STR_TO_DATE('${lastDay}','%b %d %Y')
+                                                GROUP BY
+                                                    inventory_stockIn_data.productId
+                                            ) AS simw
+                                            ON
+                                            p.productId = simw.productId
+                                        LEFT JOIN(
+                                            SELECT
+                                                inventory_stockOut_data.productId,
+                                                SUM(
+                                                    inventory_stockOut_data.productQty
+                                                ) AS total_quantity
+                                            FROM
+                                                inventory_stockOut_data
+                                            WHERE
+                                                inventory_stockOut_data.stockOutCreationDate BETWEEN STR_TO_DATE('${firstDay}','%b %d %Y') AND STR_TO_DATE('${lastDay}','%b %d %Y')
+                                            GROUP BY
+                                                inventory_stockOut_data.productId
+                                        ) AS somw
+                                        ON
+                                        p.productId = somw.productId
+                                        ORDER BY p.productName LIMIT ${limit}`
+                }
+                pool.query(sql_queries_getdetails, (err, rows, fields) => {
+                    if (err) {
+                        console.error("An error occurd in SQL Queery", err);
+                        return res.status(500).send('Database Error');;
+                    } else {
+                        console.log(rows);
+                        console.log(numRows);
+                        console.log("Total Page :-", numPages);
+                        if (numRows === 0) {
+                            const rows = [{
+                                'msg': 'No Data Found'
+                            }]
+                            return res.status(200).send({ rows, numRows });
+                        } else {
+                            return res.status(200).send({ rows, numRows });
+                        }
+                    }
+                });
+            }
+        })
     } catch (error) {
         console.error('An error occurd', error);
         res.status(500).send('Internal Server Error');
@@ -458,9 +968,9 @@ const updateProduct = async (req, res) => {
             return res.status(400).send("Please Fill All The Fields");
         }
         const sql_querry_updatedetails = `UPDATE inventory_product_data SET productName = '${data.productName}',
-                minProductQty = ${data.minProductQty},
-            minProductUnit = '${data.minProductUnit}'
-                                                                      WHERE productId = '${data.productId}'`;
+                                            minProductQty = ${data.minProductQty},
+                                            minProductUnit = '${data.minProductUnit}'
+                                            WHERE productId = '${data.productId}'`;
         pool.query(sql_querry_updatedetails, (err, data) => {
             if (err) {
                 console.error("An error occurd in SQL Queery", err);
@@ -474,13 +984,285 @@ const updateProduct = async (req, res) => {
     }
 }
 
+// Export Excel Query for Product Table
+
+const exportExcelSheetForProductTable = (req, res) => {
+
+    var date = new Date(), y = date.getFullYear(), m = (date.getMonth());
+    var firstDay = new Date(y, m, 1).toString().slice(4, 15);
+    var lastDay = new Date(y, m + 1, 0).toString().slice(4, 15);
+
+    console.log("1111>>>>", firstDay);
+    console.log("1111>>>>", lastDay);
+
+    const data = {
+        startDate: (req.query.startDate ? req.query.startDate : '').slice(4, 15),
+        endDate: (req.query.endDate ? req.query.endDate : '').slice(4, 15)
+    }
+    const commanQuarry = `SELECT
+                            p.productId,
+                            UCASE(p.productName) AS productName,
+                            CONCAT(p.minProductQty,' ',p.minProductUnit) AS minQty,
+                            CONCAT(COALESCE(simw.total_quantity, 0),' ',p.minProductUnit) AS purchase,
+                            CONCAT(COALESCE(somw.total_quantity, 0),' ',p.minProductUnit) AS totalUsed,
+                            COALESCE(simw.totalExpense,0) AS totalExpense,
+                            CONCAT(COALESCE(si.total_quantity, 0) - COALESCE(so.total_quantity, 0),' ',p.minProductUnit) AS remainingStock,
+                            COALESCE(silu.productPrice, 0) AS lastPrice,
+                            CONCAT(COALESCE(siLu.productQty, 0),' ',p.minProductUnit) AS lastUpdatedQty,
+                            COALESCE(
+                                DATE_FORMAT(siLu.stockInDate, '%d-%m-%Y'),
+                                "No Update"
+                            ) AS lastUpdatedStockInDate,
+                            CASE WHEN COALESCE(si.total_quantity, 0) - COALESCE(so.total_quantity, 0) >= p.minProductQty THEN 'In-Stock' WHEN COALESCE(si.total_quantity, 0) - COALESCE(so.total_quantity, 0) < p.minProductQty AND COALESCE(si.total_quantity, 0) - COALESCE(so.total_quantity, 0) != 0 THEN 'Low-Stock' ELSE 'Out-Stock'
+                        END AS stockStatus
+                        FROM
+                            inventory_product_data AS p
+                        LEFT JOIN(
+                            SELECT
+                                inventory_stockIn_data.productId,
+                                SUM(
+                                    inventory_stockIn_data.productQty
+                                ) AS total_quantity
+                            FROM
+                                inventory_stockIn_data
+                            GROUP BY
+                                inventory_stockIn_data.productId
+                        ) AS si
+                        ON
+                            p.productId = si.productId
+                        LEFT JOIN(
+                            SELECT
+                                inventory_stockOut_data.productId,
+                                SUM(
+                                    inventory_stockOut_data.productQty
+                                ) AS total_quantity
+                            FROM
+                                inventory_stockOut_data
+                            GROUP BY
+                                inventory_stockOut_data.productId
+                        ) AS so
+                        ON
+                            p.productId = so.productId
+                        LEFT JOIN(
+                            SELECT
+                                productId,
+                                stockInDate,
+                                productQty,
+                                productPrice
+                            FROM
+                                inventory_stockIn_data
+                            WHERE
+                                (productId, stockInCreationDate) IN(
+                                SELECT
+                                    productId,
+                                    MAX(stockInCreationDate)
+                                FROM
+                                    inventory_stockIn_data
+                                GROUP BY
+                                    productId
+                            )
+                        ) AS siLu
+                        ON
+                            p.productId = siLu.productId`;
+
+    if (req.query.startDate && req.query.endDate) {
+        sql_queries_getdetails = `${commanQuarry}
+                                        LEFT JOIN(
+                                                SELECT
+                                                    inventory_stockIn_data.productId,
+                                                    SUM(
+                                                        inventory_stockIn_data.productQty
+                                                    ) AS total_quantity,
+                                                    SUM(
+                                                        inventory_stockIn_data.totalPrice
+                                                    ) AS totalExpense
+                                                FROM
+                                                    inventory_stockIn_data
+                                                WHERE
+                                                    inventory_stockIn_data.stockInCreationDate BETWEEN STR_TO_DATE('${data.startDate}','%b %d %Y') AND STR_TO_DATE('${data.endDate}','%b %d %Y')
+                                                GROUP BY
+                                                    inventory_stockIn_data.productId
+                                            ) AS simw
+                                            ON
+                                            p.productId = simw.productId
+                                        LEFT JOIN(
+                                            SELECT
+                                                inventory_stockOut_data.productId,
+                                                SUM(
+                                                    inventory_stockOut_data.productQty
+                                                ) AS total_quantity
+                                            FROM
+                                                inventory_stockOut_data
+                                            WHERE
+                                                inventory_stockOut_data.stockOutCreationDate BETWEEN STR_TO_DATE('${data.startDate}','%b %d %Y') AND STR_TO_DATE('${data.endDate}','%b %d %Y')
+                                            GROUP BY
+                                                inventory_stockOut_data.productId
+                                        ) AS somw
+                                        ON
+                                        p.productId = somw.productId 
+                                        ORDER BY p.productName`;
+    } else {
+        sql_queries_getdetails = `${commanQuarry}
+                                        LEFT JOIN(
+                                                SELECT
+                                                    inventory_stockIn_data.productId,
+                                                    SUM(
+                                                        inventory_stockIn_data.productQty
+                                                    ) AS total_quantity,
+                                                    SUM(
+                                                        inventory_stockIn_data.totalPrice
+                                                    ) AS totalExpense
+                                                FROM
+                                                    inventory_stockIn_data
+                                                WHERE
+                                                    inventory_stockIn_data.stockInCreationDate BETWEEN STR_TO_DATE('${firstDay}','%b %d %Y') AND STR_TO_DATE('${lastDay}','%b %d %Y')
+                                                GROUP BY
+                                                    inventory_stockIn_data.productId
+                                            ) AS simw
+                                            ON
+                                            p.productId = simw.productId
+                                        LEFT JOIN(
+                                            SELECT
+                                                inventory_stockOut_data.productId,
+                                                SUM(
+                                                    inventory_stockOut_data.productQty
+                                                ) AS total_quantity
+                                            FROM
+                                                inventory_stockOut_data
+                                            WHERE
+                                                inventory_stockOut_data.stockOutCreationDate BETWEEN STR_TO_DATE('${firstDay}','%b %d %Y') AND STR_TO_DATE('${lastDay}','%b %d %Y')
+                                            GROUP BY
+                                                inventory_stockOut_data.productId
+                                        ) AS somw
+                                        ON
+                                        p.productId = somw.productId
+                                        ORDER BY p.productName`;
+    }
+    console.log('find me', sql_queries_getdetails)
+    pool.query(sql_queries_getdetails, async (err, rows) => {
+        if (err) return res.status(404).send(err);
+        console.log(":::", rows)
+        const workbook = new excelJS.Workbook();  // Create a new workbook
+        const worksheet = workbook.addWorksheet("StockIn List"); // New Worksheet
+
+        if (req.query.startDate && req.query.endDate) {
+            worksheet.mergeCells('A1', 'K1');
+            worksheet.getCell('A1').value = `Products List From ${data.startDate} To ${data.endDate}`;
+        } else {
+            worksheet.mergeCells('A1', 'K1');
+            worksheet.getCell('A1').value = `Products List From ${firstDay} To ${lastDay}`;
+        }
+
+        /*Column headers*/
+        worksheet.getRow(2).values = ['S no.', 'Product Name', 'Total StockIn', 'Total Used', 'Remaining Stock', 'Total Expense', 'Last StockIn', 'Last Updated Price', 'Min ProductQty', 'Stock Status', 'LastIn DATE'];
+
+        // Column for data in excel. key must match data key
+        worksheet.columns = [
+            { key: "s_no", width: 10, },
+            { key: "productName", width: 30 },
+            { key: "purchase", width: 20 },
+            { key: "totalUsed", width: 20 },
+            { key: "remainingStock", width: 20 },
+            { key: "totalExpense", width: 20 },
+            { key: "lastUpdatedQty", width: 20 },
+            { key: "lastPrice", width: 20 },
+            { key: "minQty", width: 20 },
+            { key: "stockStatus", width: 30 },
+            { key: "lastUpdatedStockInDate", width: 15 }
+        ];
+        //Looping through User data
+        const arr = rows
+        console.log(">>>", arr);
+        let counter = 1;
+        arr.forEach((user, index) => {
+            user.s_no = counter;
+            const row = worksheet.addRow(user); // Add data in worksheet
+
+            // Get the stock status value for the current row
+            const stockStatus = user.stockStatus;
+
+            // Set color based on stock status
+            let textColor;
+            switch (stockStatus) {
+                case 'In-Stock':
+                    textColor = '008000'; // Green color
+                    break;
+                case 'Low-Stock':
+                    textColor = 'FFA500'; // Orange color
+                    break;
+                case 'Out-Stock':
+                    textColor = 'FF0000'; // Red color
+                    break;
+                default:
+                    textColor = '000000'; // Black color (default)
+                    break;
+            }
+
+            // Apply the color to the cells in the current row
+            row.eachCell((cell) => {
+                cell.font = {
+                    color: {
+                        argb: textColor
+                    }
+                };
+            });
+
+            counter++;
+        });
+        // Making first line in excel bold
+        worksheet.getRow(1).eachCell((cell) => {
+            cell.font = { bold: true, size: 13 }
+            cell.alignment = { vertical: 'middle', horizontal: 'center', wrapText: true };
+            height = 200
+        });
+        worksheet.getRow(2).eachCell((cell) => {
+            cell.font = { bold: true, size: 13, color: { argb: '808080' } }
+            cell.alignment = { vertical: 'middle', horizontal: 'center', wrapText: true };
+        });
+        worksheet.getRow(1).height = 30;
+        worksheet.getRow(2).height = 20;
+        worksheet.getRow(arr.length + 3).values = ['Total:', '', '', '', '', { formula: `SUM(F3:F${arr.length + 2})` }];
+
+        worksheet.getRow(arr.length + 3).eachCell((cell) => {
+            cell.font = { bold: true, size: 14, color: { argb: '808080' } }
+            cell.alignment = { vertical: 'middle', horizontal: 'center', wrapText: true };
+        })
+        worksheet.eachRow((row) => {
+            row.eachCell((cell) => {
+                cell.alignment = { horizontal: 'center', vertical: 'middle' };
+                row.height = 20
+            });
+        });
+        try {
+            const data = await workbook.xlsx.writeBuffer()
+            var fileName = new Date().toString().slice(4, 15) + ".xlsx";
+            console.log(">>>", fileName);
+            // res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+            // res.addHeader(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename="+ fileName)
+            res.contentType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+            res.type = 'blob';
+            res.send(data)
+            // res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+            // res.setHeader("Content-Disposition", "attachment; filename=" + "Report.xlsx");
+            // workbook.xlsx.write(res)
+            // .then((data)=>{
+            //     res.end();
+            //         console.log('File write done........');
+            //     });
+        } catch (err) {
+            throw new Error(err);
+        }
+    })
+};
+
 module.exports = {
     addProduct,
-    fillProductWiseUnit,
     getProductListCounter,
     updateProduct,
     removeProduct,
     getProductList,
     getProductCountDetailsById,
-    getSupplierByProductId
+    getSupplierByProductId,
+    getProductDetailsTable,
+    exportExcelSheetForProductTable
 }

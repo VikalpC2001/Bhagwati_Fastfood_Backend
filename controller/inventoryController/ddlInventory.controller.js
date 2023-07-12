@@ -48,7 +48,7 @@ const productWiseSupplierDDL = (req, res) => {
     try {
 
         const productId = req.query.productId;
-        sql_querry_getddlandUnit = `SELECT inventory_supplierProducts_data.supplierId, inventory_supplier_data.supplierNickName FROM inventory_supplierProducts_data
+        sql_querry_getddlandUnit = `SELECT inventory_supplierProducts_data.supplierId, UPPER(inventory_supplier_data.supplierNickName) AS supplierNickName FROM inventory_supplierProducts_data
                                     INNER JOIN inventory_supplier_data ON inventory_supplier_data.supplierId = inventory_supplierProducts_data.supplierId
                                     WHERE productId = '${productId}'`;
         pool.query(sql_querry_getddlandUnit, (err, data) => {
@@ -69,7 +69,7 @@ const productWiseSupplierDDL = (req, res) => {
 
 const ddlStockOutCategory = (req, res) => {
     try {
-        const sql_querry_getddlCategory = `SELECT stockOutCategoryId, stockOutCategoryName FROM inventory_stockOutCategory_data ORDER BY stockOutCategoryName`;
+        const sql_querry_getddlCategory = `SELECT stockOutCategoryId, UPPER(stockOutCategoryName) AS stockOutCategoryName FROM inventory_stockOutCategory_data ORDER BY stockOutCategoryName`;
         pool.query(sql_querry_getddlCategory, (err, data) => {
             if (err) {
                 console.error("An error occurd in SQL Queery", err);

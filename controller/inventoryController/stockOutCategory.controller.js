@@ -56,10 +56,8 @@ const addstockOutCategory = async (req, res) => {
         const data = {
             stockOutCategoryName: req.body.stockOutCategoryName.trim(),
         }
-        console.log(">>?>?>?>", data.productName);
         if (!data.stockOutCategoryName) {
-            res.status(400);
-            res.send("Please Add Category");
+            return res.status(400).send("Please Add Category");
         } else {
             req.body.productName = pool.query(`SELECT stockOutCategoryName FROM inventory_stockOutCategory_data WHERE stockOutCategoryName = '${data.stockOutCategoryName}'`, function (err, row) {
                 if (err) {
@@ -126,11 +124,10 @@ const updateStockOutCategory = async (req, res) => {
             stockOutCategoryName: req.body.stockOutCategoryName.trim()
         }
         if (!data.stockOutCategoryName) {
-            res.status(400);
-            res.send("Please Add Category");
+            res.status(400).send("Please Add Category");
         }
         const sql_querry_updatedetails = `UPDATE inventory_stockOutCategory_data SET stockOutCategoryName = '${data.stockOutCategoryName}'
-                                                                               WHERE stockOutCategoryId = '${data.stockOutCategoryId}'`;
+                                                                                    xsWHERE stockOutCategoryId = '${data.stockOutCategoryId}'`;
         pool.query(sql_querry_updatedetails, (err, data) => {
             if (err) {
                 console.error("An error occurd in SQL Queery", err);

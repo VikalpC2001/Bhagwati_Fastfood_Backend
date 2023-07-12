@@ -50,7 +50,7 @@ const getStockInList = async (req, res) => {
                                               ' ',
                                               user_details.userLastName
                                           ) AS userName,
-                                          inventory_product_data.productName AS productName,
+                                          UPPER(inventory_product_data.productName) AS productName,
                                           CONCAT(productQty, ' ', productUnit) AS Quantity,
                                           productPrice,
                                           totalPrice,
@@ -148,7 +148,7 @@ const exportExcelSheetForStockin = (req, res) => {
                                 ' ',
                                 user_details.userLastName
                             ) AS enteredBy,
-                            inventory_product_data.productName AS productName,
+                            UPPER(inventory_product_data.productName) AS productName,
                             productQty,
                             productUnit,
                             productPrice,
@@ -316,11 +316,10 @@ const addStockInDetails = async (req, res) => {
                 stockInDate: new Date(req.body.stockInDate ? req.body.stockInDate : null).toString().slice(4, 15)
             }
             if (!data.productId || !data.productQty || !data.productUnit || !data.productPrice || !data.totalPrice || !data.supplierId || !data.stockInPaymentMethod || !data.stockInDate) {
-                res.status(400);
-                res.send("Please Fill all the feilds")
+                return res.status(400).send("Please Fill all the feilds");
             } else {
                 const sql_querry_addStockIn = `INSERT INTO inventory_stockIn_data (stockInId, userId, productId, productQty, productUnit, productPrice, totalPrice, billNumber, supplierId, stockInPaymentMethod, stockInComment, stockInDate)  
-                                            VALUES ('${stockInId}', '${userId}', '${data.productId}', ${data.productQty}, '${data.productUnit}', ${data.productPrice}, ${data.totalPrice}, NULLIF('${data.billNumber}','null'), '${data.supplierId}', '${data.stockInPaymentMethod}', NULLIF('${data.stockInComment}','null'), STR_TO_DATE('${data.stockInDate}','%b %d %Y'))`;
+                                                VALUES ('${stockInId}', '${userId}', '${data.productId}', ${data.productQty}, '${data.productUnit}', ${data.productPrice}, ${data.totalPrice}, NULLIF('${data.billNumber}','null'), '${data.supplierId}', '${data.stockInPaymentMethod}', NULLIF('${data.stockInComment}','null'), STR_TO_DATE('${data.stockInDate}','%b %d %Y'))`;
                 pool.query(sql_querry_addStockIn, (err, data) => {
                     if (err) {
                         console.error("An error occurd in SQL Queery", err);
@@ -331,8 +330,7 @@ const addStockInDetails = async (req, res) => {
             }
 
         } else {
-            res.status(401);
-            res.send("Please Login Firest.....!");
+            res.status(401).send("Please Login Firest.....!");
         }
     } catch (error) {
         console.error('An error occurd', error);
@@ -375,13 +373,15 @@ const removeStockInTransaction = async (req, res) => {
 const fillStockInTransaction = (req, res) => {
     try {
         const stockInId = req.query.stockInId
-        sql_querry_fillUser = `SELECT productId, productQty, productUnit, productPrice, totalPrice, billNumber, supplierId, stockInPaymentMethod, stockInComment, stockInDate FROM inventory_stockIn_data WHERE stockInId = '${stockInId}'`;
+        sql_querry_fillUser = `SELECT inventory_stockIn_data.productId, inventory_product_data.productName, productQty, productUnit, productPrice, totalPrice, billNumber, supplierId, stockInPaymentMethod, stockInComment, stockInDate FROM inventory_stockIn_data
+                                INNER JOIN inventory_product_data ON inventory_product_data.productId = inventory_stockIn_data.productId 
+                                WHERE stockInId = '${stockInId}'`;
         pool.query(sql_querry_fillUser, (err, data) => {
             if (err) {
                 console.error("An error occurd in SQL Queery", err);
                 return res.status(500).send('Database Error');
             }
-            return res.status(200).send(data);
+            return res.status(200).send(data[0]);
         })
     } catch (error) {
         console.error('An error occurd', error);

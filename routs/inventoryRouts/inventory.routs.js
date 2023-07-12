@@ -9,11 +9,12 @@ const productController = require("../../controller/inventoryController/product.
 router.post('/addProduct', protect, productController.addProduct);
 router.post('/updateProduct', protect, productController.updateProduct);
 router.delete('/removeProduct', protect, productController.removeProduct);
-router.get('/fillProductWiseUnit', protect, productController.fillProductWiseUnit);
 router.get('/getProductList', protect, productController.getProductList);
 router.get('/getProductListCounter', protect, productController.getProductListCounter);
 router.get('/getProductCountDetailsById', protect, productController.getProductCountDetailsById);
 router.get('/getSupplierByProductId', protect, productController.getSupplierByProductId);
+router.get('/getProductDetailsTable', protect, productController.getProductDetailsTable);
+router.get('/exportExcelSheetForProductTable', productController.exportExcelSheetForProductTable);
 
 // Supplier Routs
 
@@ -27,6 +28,8 @@ router.get('/fillSupplierDetails', protect, supplierController.fillSupplierDetai
 router.get('/getSupplierDetailsById', protect, supplierController.getSupplierDetailsById);
 router.get('/getSupplierCounterDetailsById', protect, supplierController.getSupplierCounterDetailsById);
 router.get('/getProductDetailsBySupplierId', protect, supplierController.getProductDetailsBySupplierId);
+router.get('/getAllProductDetailsBySupplierId', protect, supplierController.getAllProductDetailsBySupplierId);
+router.get('/exportExcelSheetForAllProductBySupplierId', supplierController.exportExcelSheetForAllProductBySupplierId);
 
 // StockIn Routs
 
@@ -83,6 +86,12 @@ const ddlInventoryController = require("../../controller/inventoryController/ddl
 router.get('/productWiseSupplierDDL', protect, ddlInventoryController.productWiseSupplierDDL);
 router.get('/ddlStockOutCategory', protect, ddlInventoryController.ddlStockOutCategory);
 router.get('/ddlProduct', protect, ddlInventoryController.ddlProduct);
+
+// Bulk Delete Routs
+
+const bulkDeleteController = require("../../controller/inventoryController/bulkDeleteInventory.controller.js");
+
+router.delete('/emptyModifiedHistoryOfStockOut', bulkDeleteController.emptyModifiedHistoryOfStockOut);
 
 
 module.exports = router;

@@ -58,6 +58,8 @@ const getStockInList = async (req, res) => {
                                           inventory_supplier_data.supplierNickName AS supplier,
                                           stockInPaymentMethod,
                                           stockInComment,
+                                          productQty,
+                                          remainingQty,
                                           DATE_FORMAT(stockInDate, '%d-%m-%Y') AS stockInDate
                                       FROM
                                           inventory_stockIn_data
@@ -318,8 +320,8 @@ const addStockInDetails = async (req, res) => {
             if (!data.productId || !data.productQty || !data.productUnit || !data.productPrice || !data.totalPrice || !data.supplierId || !data.stockInPaymentMethod || !data.stockInDate) {
                 return res.status(400).send("Please Fill all the feilds");
             } else {
-                const sql_querry_addStockIn = `INSERT INTO inventory_stockIn_data (stockInId, userId, productId, productQty, productUnit, productPrice, totalPrice, billNumber, supplierId, stockInPaymentMethod, stockInComment, stockInDate)  
-                                                VALUES ('${stockInId}', '${userId}', '${data.productId}', ${data.productQty}, '${data.productUnit}', ${data.productPrice}, ${data.totalPrice}, NULLIF('${data.billNumber}','null'), '${data.supplierId}', '${data.stockInPaymentMethod}', NULLIF('${data.stockInComment}','null'), STR_TO_DATE('${data.stockInDate}','%b %d %Y'))`;
+                const sql_querry_addStockIn = `INSERT INTO inventory_stockIn_data (stockInId, userId, productId, productQty, productUnit, productPrice, totalPrice, billNumber, supplierId, stockInPaymentMethod, stockInComment, remainingQty, stockInDate)  
+                                                VALUES ('${stockInId}', '${userId}', '${data.productId}', ${data.productQty}, '${data.productUnit}', ${data.productPrice}, ${data.totalPrice}, NULLIF('${data.billNumber}','null'), '${data.supplierId}', '${data.stockInPaymentMethod}', NULLIF('${data.stockInComment}','null') ,${data.productQty}, STR_TO_DATE('${data.stockInDate}','%b %d %Y'))`;
                 pool.query(sql_querry_addStockIn, (err, data) => {
                     if (err) {
                         console.error("An error occurd in SQL Queery", err);

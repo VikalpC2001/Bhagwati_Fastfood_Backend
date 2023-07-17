@@ -804,7 +804,7 @@ async function createPDF(res, data) {
         })
 
         firstPage.drawText(details.remainingAmount, {
-            x: 515,
+            x: 476,
             y: 505,
             size: 9,
             font: helveticaFont

@@ -64,6 +64,7 @@ router.get('/exportExcelSheetForStockout', stockOutController.exportExcelSheetFo
 router.get('/getCategoryWiseUsedByProduct', protect, stockOutController.getCategoryWiseUsedByProduct);
 router.get('/getUpdateStockOutList', protect, stockOutController.getUpdateStockOutList);
 router.get('/getUpdateStockOutListById', protect, stockOutController.getUpdateStockOutListById);
+router.get('/categoryWisedUsed', stockOutController.categoryWisedUsed);
 
 // Supplier Transaction Routs
 

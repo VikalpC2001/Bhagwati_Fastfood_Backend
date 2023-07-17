@@ -70,11 +70,11 @@ const getProductCountDetailsById = (req, res) => {
                                           WHERE p.productId = '${data.productId}'`;
         if (req.query.startDate && req.query.endDate) {
             sql_querry_getProductCount = `SELECT COALESCE(SUM(productQty),0) AS purchase, COALESCE(SUM(totalPrice),0) AS totalRs FROM inventory_stockIn_data WHERE inventory_stockIn_data.productId = '${data.productId}' AND inventory_stockIn_data.stockInDate BETWEEN STR_TO_DATE('${data.startDate}','%b %d %Y') AND STR_TO_DATE('${data.endDate}','%b %d %Y');
-                                            SELECT COALESCE(SUM(productQty),0) AS used FROM inventory_stockOut_data WHERE inventory_stockOut_data.productId = '${data.productId}' AND inventory_stockOut_data.stockOutDate BETWEEN STR_TO_DATE('${data.startDate}','%b %d %Y') AND STR_TO_DATE('${data.endDate}','%b %d %Y');
+                                            SELECT COALESCE(SUM(productQty),0) AS used, COALESCE(SUM(stockOutPrice),0) AS totalUsedPrice FROM inventory_stockOut_data WHERE inventory_stockOut_data.productId = '${data.productId}' AND inventory_stockOut_data.stockOutDate BETWEEN STR_TO_DATE('${data.startDate}','%b %d %Y') AND STR_TO_DATE('${data.endDate}','%b %d %Y');
                                             ${sql_querry_StatickCCount}`;
         } else {
             sql_querry_getProductCount = `SELECT COALESCE(SUM(productQty),0) AS purchase, COALESCE(SUM(totalPrice),0) AS totalRs FROM inventory_stockIn_data WHERE inventory_stockIn_data.productId = '${data.productId}' AND inventory_stockIn_data.stockInDate BETWEEN STR_TO_DATE('${firstDay}','%b %d %Y') AND STR_TO_DATE('${lastDay}','%b %d %Y');
-                                            SELECT COALESCE(SUM(productQty),0) AS used FROM inventory_stockOut_data WHERE inventory_stockOut_data.productId = '${data.productId}' AND inventory_stockOut_data.stockOutDate BETWEEN STR_TO_DATE('${firstDay}','%b %d %Y') AND STR_TO_DATE('${lastDay}','%b %d %Y');
+                                            SELECT COALESCE(SUM(productQty),0) AS used, COALESCE(SUM(stockOutPrice),0) AS totalUsedPrice FROM inventory_stockOut_data WHERE inventory_stockOut_data.productId = '${data.productId}' AND inventory_stockOut_data.stockOutDate BETWEEN STR_TO_DATE('${firstDay}','%b %d %Y') AND STR_TO_DATE('${lastDay}','%b %d %Y');
                                             ${sql_querry_StatickCCount}`;
         }
         pool.query(sql_querry_getProductCount, (err, data) => {
@@ -87,7 +87,9 @@ const getProductCountDetailsById = (req, res) => {
                     totalPurchase: data[0][0].purchase,
                     totalRs: data[0][0].totalRs,
                     totalUsed: data[1][0].used,
+                    totalUsedPrice: data[1][0].totalUsedPrice,
                     remainingStock: data[2][0].remainingStock,
+                    remainUsedPrice: data[0][0].totalRs - data[1][0].totalUsedPrice,
                     lastPrice: data[2][0].lastPrice,
                     minProductQty: data[2][0].minProductQty
                 }
@@ -186,7 +188,7 @@ const getProductList = (req, res) => {
         req.query.productStatus
         const sql_querry_getProductListwithStatus = `SELECT
                                                          p.productId,
-                                                         UCASE(p.productName) AS productName,
+                                                         UPPER(p.productName) AS productName,
                                                          p.minProductQty,
                                                          p.minProductUnit,
                                                          COALESCE(si.total_quantity, 0) - COALESCE(so.total_quantity, 0) AS remainingStock,
@@ -480,6 +482,8 @@ const getProductDetailsTable = (req, res) => {
                                         COALESCE(simw.total_quantity, 0) AS purchese,
                                         COALESCE(somw.total_quantity, 0) AS totalUsed,
                                         COALESCE(simw.totalExpense,0) AS totalExpense,
+                                        COALESCE(somw.totalStockOutPrice,0) AS totalStockOutPrice,
+                                        (COALESCE(simw.totalExpense,0) - COALESCE(somw.totalStockOutPrice,0)) AS remainPrice,
                                         COALESCE(si.total_quantity, 0) - COALESCE(so.total_quantity, 0) AS remainingStock,
                                         COALESCE(siLu.productPrice, 0) AS lastPrice,
                                         COALESCE(siLu.productQty, 0) AS lastUpdatedQty,
@@ -776,7 +780,10 @@ const getProductDetailsTable = (req, res) => {
                                                 inventory_stockOut_data.productId,
                                                 SUM(
                                                     inventory_stockOut_data.productQty
-                                                ) AS total_quantity
+                                                ) AS total_quantity,
+                                                SUM(
+                                                    inventory_stockOut_data.stockOutPrice
+                                                ) AS totalStockOutPrice
                                             FROM
                                                 inventory_stockOut_data
                                             WHERE
@@ -813,7 +820,10 @@ const getProductDetailsTable = (req, res) => {
                                                 inventory_stockOut_data.productId,
                                                 SUM(
                                                     inventory_stockOut_data.productQty
-                                                ) AS total_quantity
+                                                ) AS total_quantity,
+                                                SUM(
+                                                        inventory_stockOut_data.stockOutPrice
+                                                ) AS totalStockOutPrice
                                             FROM
                                                 inventory_stockOut_data
                                             WHERE
@@ -849,7 +859,10 @@ const getProductDetailsTable = (req, res) => {
                                                 inventory_stockOut_data.productId,
                                                 SUM(
                                                     inventory_stockOut_data.productQty
-                                                ) AS total_quantity
+                                                ) AS total_quantity,
+                                                SUM(
+                                                    inventory_stockOut_data.stockOutPrice
+                                                ) AS totalStockOutPrice
                                             FROM
                                                 inventory_stockOut_data
                                             WHERE
@@ -886,7 +899,10 @@ const getProductDetailsTable = (req, res) => {
                                                 inventory_stockOut_data.productId,
                                                 SUM(
                                                     inventory_stockOut_data.productQty
-                                                ) AS total_quantity
+                                                ) AS total_quantity,
+                                                SUM(
+                                                    inventory_stockOut_data.stockOutPrice
+                                                ) AS totalStockOutPrice
                                             FROM
                                                 inventory_stockOut_data
                                             WHERE
@@ -898,6 +914,7 @@ const getProductDetailsTable = (req, res) => {
                                         p.productId = somw.productId
                                         ORDER BY p.productName LIMIT ${limit}`
                 }
+                console.log(">>>>>>>>>>>>>>>>", sql_queries_getdetails);
                 pool.query(sql_queries_getdetails, (err, rows, fields) => {
                     if (err) {
                         console.error("An error occurd in SQL Queery", err);
@@ -1006,7 +1023,9 @@ const exportExcelSheetForProductTable = (req, res) => {
                             CONCAT(COALESCE(simw.total_quantity, 0),' ',p.minProductUnit) AS purchase,
                             CONCAT(COALESCE(somw.total_quantity, 0),' ',p.minProductUnit) AS totalUsed,
                             COALESCE(simw.totalExpense,0) AS totalExpense,
+                            COALESCE(somw.total_usedPrice,0) AS totalUsedPrice,
                             CONCAT(COALESCE(si.total_quantity, 0) - COALESCE(so.total_quantity, 0),' ',p.minProductUnit) AS remainingStock,
+                            (COALESCE(simw.totalExpense,0) - COALESCE(somw.total_usedPrice,0)) AS remainPrice,
                             COALESCE(siLu.productPrice, 0) AS lastPrice,
                             CONCAT(COALESCE(siLu.productQty, 0),' ',p.minProductUnit) AS lastUpdatedQty,
                             COALESCE(
@@ -1090,7 +1109,10 @@ const exportExcelSheetForProductTable = (req, res) => {
                                                 inventory_stockOut_data.productId,
                                                 SUM(
                                                     inventory_stockOut_data.productQty
-                                                ) AS total_quantity
+                                                ) AS total_quantity,
+                                                SUM(
+                                                    inventory_stockOut_data.stockOutPrice
+                                                ) AS total_usedPrice
                                             FROM
                                                 inventory_stockOut_data
                                             WHERE
@@ -1100,7 +1122,124 @@ const exportExcelSheetForProductTable = (req, res) => {
                                         ) AS somw
                                         ON
                                         p.productId = somw.productId 
-                                        ORDER BY p.productName`;
+                                        ORDER BY p.productName;
+                                        ${commanQuarry}
+                                        LEFT JOIN(
+                                                SELECT
+                                                    inventory_stockIn_data.productId,
+                                                    SUM(
+                                                        inventory_stockIn_data.productQty
+                                                    ) AS total_quantity,
+                                                    SUM(
+                                                        inventory_stockIn_data.totalPrice
+                                                    ) AS totalExpense
+                                                FROM
+                                                    inventory_stockIn_data
+                                                WHERE
+                                                    inventory_stockIn_data.stockInCreationDate BETWEEN STR_TO_DATE('${data.startDate}','%b %d %Y') AND STR_TO_DATE('${data.endDate}','%b %d %Y')
+                                                GROUP BY
+                                                    inventory_stockIn_data.productId
+                                            ) AS simw
+                                            ON
+                                            p.productId = simw.productId
+                                        LEFT JOIN(
+                                            SELECT
+                                                inventory_stockOut_data.productId,
+                                                SUM(
+                                                    inventory_stockOut_data.productQty
+                                                ) AS total_quantity,
+                                                SUM(
+                                                    inventory_stockOut_data.stockOutPrice
+                                                ) AS total_usedPrice
+                                            FROM
+                                                inventory_stockOut_data
+                                            WHERE
+                                                inventory_stockOut_data.stockOutCreationDate BETWEEN STR_TO_DATE('${data.startDate}','%b %d %Y') AND STR_TO_DATE('${data.endDate}','%b %d %Y')
+                                            GROUP BY
+                                                inventory_stockOut_data.productId
+                                        ) AS somw
+                                        ON
+                                        p.productId = somw.productId
+                                        WHERE COALESCE(si.total_quantity, 0) - COALESCE(so.total_quantity, 0) >= p.minProductQty  
+                                        ORDER BY p.productName;
+                                        ${commanQuarry}
+                                        LEFT JOIN(
+                                                SELECT
+                                                    inventory_stockIn_data.productId,
+                                                    SUM(
+                                                        inventory_stockIn_data.productQty
+                                                    ) AS total_quantity,
+                                                    SUM(
+                                                        inventory_stockIn_data.totalPrice
+                                                    ) AS totalExpense
+                                                FROM
+                                                    inventory_stockIn_data
+                                                WHERE
+                                                    inventory_stockIn_data.stockInCreationDate BETWEEN STR_TO_DATE('${data.startDate}','%b %d %Y') AND STR_TO_DATE('${data.endDate}','%b %d %Y')
+                                                GROUP BY
+                                                    inventory_stockIn_data.productId
+                                            ) AS simw
+                                            ON
+                                            p.productId = simw.productId
+                                        LEFT JOIN(
+                                            SELECT
+                                                inventory_stockOut_data.productId,
+                                                SUM(
+                                                    inventory_stockOut_data.productQty
+                                                ) AS total_quantity,
+                                                SUM(
+                                                    inventory_stockOut_data.stockOutPrice
+                                                ) AS total_usedPrice
+                                            FROM
+                                                inventory_stockOut_data
+                                            WHERE
+                                                inventory_stockOut_data.stockOutCreationDate BETWEEN STR_TO_DATE('${data.startDate}','%b %d %Y') AND STR_TO_DATE('${data.endDate}','%b %d %Y')
+                                            GROUP BY
+                                                inventory_stockOut_data.productId
+                                        ) AS somw
+                                        ON
+                                        p.productId = somw.productId
+                                        WHERE COALESCE(si.total_quantity, 0) - COALESCE(so.total_quantity, 0) < p.minProductQty AND COALESCE(si.total_quantity, 0) - COALESCE(so.total_quantity, 0) != 0 
+                                        ORDER BY p.productName;
+                                        ${commanQuarry}
+                                        LEFT JOIN(
+                                                SELECT
+                                                    inventory_stockIn_data.productId,
+                                                    SUM(
+                                                        inventory_stockIn_data.productQty
+                                                    ) AS total_quantity,
+                                                    SUM(
+                                                        inventory_stockIn_data.totalPrice
+                                                    ) AS totalExpense
+                                                FROM
+                                                    inventory_stockIn_data
+                                                WHERE
+                                                    inventory_stockIn_data.stockInCreationDate BETWEEN STR_TO_DATE('${data.startDate}','%b %d %Y') AND STR_TO_DATE('${data.endDate}','%b %d %Y')
+                                                GROUP BY
+                                                    inventory_stockIn_data.productId
+                                            ) AS simw
+                                            ON
+                                            p.productId = simw.productId
+                                        LEFT JOIN(
+                                            SELECT
+                                                inventory_stockOut_data.productId,
+                                                SUM(
+                                                    inventory_stockOut_data.productQty
+                                                ) AS total_quantity,
+                                                SUM(
+                                                    inventory_stockOut_data.stockOutPrice
+                                                ) AS total_usedPrice
+                                            FROM
+                                                inventory_stockOut_data
+                                            WHERE
+                                                inventory_stockOut_data.stockOutCreationDate BETWEEN STR_TO_DATE('${data.startDate}','%b %d %Y') AND STR_TO_DATE('${data.endDate}','%b %d %Y')
+                                            GROUP BY
+                                                inventory_stockOut_data.productId
+                                        ) AS somw
+                                        ON
+                                        p.productId = somw.productId
+                                        WHERE COALESCE(si.total_quantity, 0) - COALESCE(so.total_quantity, 0) = 0
+                                        ORDER BY p.productName;`;
     } else {
         sql_queries_getdetails = `${commanQuarry}
                                         LEFT JOIN(
@@ -1126,7 +1265,10 @@ const exportExcelSheetForProductTable = (req, res) => {
                                                 inventory_stockOut_data.productId,
                                                 SUM(
                                                     inventory_stockOut_data.productQty
-                                                ) AS total_quantity
+                                                ) AS total_quantity,
+                                                SUM(
+                                                    inventory_stockOut_data.stockOutPrice
+                                                ) AS total_usedPrice
                                             FROM
                                                 inventory_stockOut_data
                                             WHERE
@@ -1136,34 +1278,153 @@ const exportExcelSheetForProductTable = (req, res) => {
                                         ) AS somw
                                         ON
                                         p.productId = somw.productId
-                                        ORDER BY p.productName`;
+                                        ORDER BY p.productName;
+                                        ${commanQuarry}
+                                        LEFT JOIN(
+                                                SELECT
+                                                    inventory_stockIn_data.productId,
+                                                    SUM(
+                                                        inventory_stockIn_data.productQty
+                                                    ) AS total_quantity,
+                                                    SUM(
+                                                        inventory_stockIn_data.totalPrice
+                                                    ) AS totalExpense
+                                                FROM
+                                                    inventory_stockIn_data
+                                                WHERE
+                                                    inventory_stockIn_data.stockInCreationDate BETWEEN STR_TO_DATE('${firstDay}','%b %d %Y') AND STR_TO_DATE('${lastDay}','%b %d %Y')
+                                                GROUP BY
+                                                    inventory_stockIn_data.productId
+                                            ) AS simw
+                                            ON
+                                            p.productId = simw.productId
+                                        LEFT JOIN(
+                                            SELECT
+                                                inventory_stockOut_data.productId,
+                                                SUM(
+                                                    inventory_stockOut_data.productQty
+                                                ) AS total_quantity,
+                                                SUM(
+                                                    inventory_stockOut_data.stockOutPrice
+                                                ) AS total_usedPrice
+                                            FROM
+                                                inventory_stockOut_data
+                                            WHERE
+                                                inventory_stockOut_data.stockOutCreationDate BETWEEN STR_TO_DATE('${firstDay}','%b %d %Y') AND STR_TO_DATE('${lastDay}','%b %d %Y')
+                                            GROUP BY
+                                                inventory_stockOut_data.productId
+                                        ) AS somw
+                                        ON
+                                        p.productId = somw.productId
+                                        WHERE COALESCE(si.total_quantity, 0) - COALESCE(so.total_quantity, 0) >= p.minProductQty  
+                                        ORDER BY p.productName;
+                                        ${commanQuarry}
+                                        LEFT JOIN(
+                                                SELECT
+                                                    inventory_stockIn_data.productId,
+                                                    SUM(
+                                                        inventory_stockIn_data.productQty
+                                                    ) AS total_quantity,
+                                                    SUM(
+                                                        inventory_stockIn_data.totalPrice
+                                                    ) AS totalExpense
+                                                FROM
+                                                    inventory_stockIn_data
+                                                WHERE
+                                                    inventory_stockIn_data.stockInCreationDate BETWEEN STR_TO_DATE('${firstDay}','%b %d %Y') AND STR_TO_DATE('${lastDay}','%b %d %Y')
+                                                GROUP BY
+                                                    inventory_stockIn_data.productId
+                                            ) AS simw
+                                            ON
+                                            p.productId = simw.productId
+                                        LEFT JOIN(
+                                            SELECT
+                                                inventory_stockOut_data.productId,
+                                                SUM(
+                                                    inventory_stockOut_data.productQty
+                                                ) AS total_quantity,
+                                                SUM(
+                                                    inventory_stockOut_data.stockOutPrice
+                                                ) AS total_usedPrice
+                                            FROM
+                                                inventory_stockOut_data
+                                            WHERE
+                                                inventory_stockOut_data.stockOutCreationDate BETWEEN STR_TO_DATE('${firstDay}','%b %d %Y') AND STR_TO_DATE('${lastDay}','%b %d %Y')
+                                            GROUP BY
+                                                inventory_stockOut_data.productId
+                                        ) AS somw
+                                        ON
+                                        p.productId = somw.productId
+                                        WHERE COALESCE(si.total_quantity, 0) - COALESCE(so.total_quantity, 0) < p.minProductQty AND COALESCE(si.total_quantity, 0) - COALESCE(so.total_quantity, 0) != 0 
+                                        ORDER BY p.productName;
+                                        ${commanQuarry}
+                                        LEFT JOIN(
+                                                SELECT
+                                                    inventory_stockIn_data.productId,
+                                                    SUM(
+                                                        inventory_stockIn_data.productQty
+                                                    ) AS total_quantity,
+                                                    SUM(
+                                                        inventory_stockIn_data.totalPrice
+                                                    ) AS totalExpense
+                                                FROM
+                                                    inventory_stockIn_data
+                                                WHERE
+                                                    inventory_stockIn_data.stockInCreationDate BETWEEN STR_TO_DATE('${firstDay}','%b %d %Y') AND STR_TO_DATE('${lastDay}','%b %d %Y')
+                                                GROUP BY
+                                                    inventory_stockIn_data.productId
+                                            ) AS simw
+                                            ON
+                                            p.productId = simw.productId
+                                        LEFT JOIN(
+                                            SELECT
+                                                inventory_stockOut_data.productId,
+                                                SUM(
+                                                    inventory_stockOut_data.productQty
+                                                ) AS total_quantity,
+                                                SUM(
+                                                    inventory_stockOut_data.stockOutPrice
+                                                ) AS total_usedPrice
+                                            FROM
+                                                inventory_stockOut_data
+                                            WHERE
+                                                inventory_stockOut_data.stockOutCreationDate BETWEEN STR_TO_DATE('${firstDay}','%b %d %Y') AND STR_TO_DATE('${lastDay}','%b %d %Y')
+                                            GROUP BY
+                                                inventory_stockOut_data.productId
+                                        ) AS somw
+                                        ON
+                                        p.productId = somw.productId
+                                        WHERE COALESCE(si.total_quantity, 0) - COALESCE(so.total_quantity, 0) = 0
+                                        ORDER BY p.productName;`;
     }
     console.log('find me', sql_queries_getdetails)
     pool.query(sql_queries_getdetails, async (err, rows) => {
         if (err) return res.status(404).send(err);
         console.log(":::", rows)
         const workbook = new excelJS.Workbook();  // Create a new workbook
-        const worksheet = workbook.addWorksheet("StockIn List"); // New Worksheet
+        const worksheet = workbook.addWorksheet("All Products"); // New Worksheet
 
         if (req.query.startDate && req.query.endDate) {
             worksheet.mergeCells('A1', 'K1');
-            worksheet.getCell('A1').value = `Products List From ${data.startDate} To ${data.endDate}`;
+            worksheet.getCell('A1').value = `Product List From ${data.startDate} To ${data.endDate}`;
         } else {
             worksheet.mergeCells('A1', 'K1');
-            worksheet.getCell('A1').value = `Products List From ${firstDay} To ${lastDay}`;
+            worksheet.getCell('A1').value = `Product List From ${firstDay} To ${lastDay}`;
         }
 
         /*Column headers*/
-        worksheet.getRow(2).values = ['S no.', 'Product Name', 'Total StockIn', 'Total Used', 'Remaining Stock', 'Total Expense', 'Last StockIn', 'Last Updated Price', 'Min ProductQty', 'Stock Status', 'LastIn DATE'];
+        worksheet.getRow(2).values = ['S no.', 'Product Name', 'Total StockIn', 'Total Expense', 'Total Used', 'Total Used Price', 'Remaining Stock', 'Remaining Price', 'Last StockIn', 'Last Updated Price', 'Min ProductQty', 'Stock Status', 'LastIn DATE'];
 
         // Column for data in excel. key must match data key
         worksheet.columns = [
             { key: "s_no", width: 10, },
             { key: "productName", width: 30 },
             { key: "purchase", width: 20 },
-            { key: "totalUsed", width: 20 },
-            { key: "remainingStock", width: 20 },
             { key: "totalExpense", width: 20 },
+            { key: "totalUsed", width: 20 },
+            { key: "totalUsedPrice", width: 20 },
+            { key: "remainingStock", width: 20 },
+            { key: "remainPrice", width: 20 },
             { key: "lastUpdatedQty", width: 20 },
             { key: "lastPrice", width: 20 },
             { key: "minQty", width: 20 },
@@ -1171,7 +1432,7 @@ const exportExcelSheetForProductTable = (req, res) => {
             { key: "lastUpdatedStockInDate", width: 15 }
         ];
         //Looping through User data
-        const arr = rows
+        const arr = rows[0]
         console.log(">>>", arr);
         let counter = 1;
         arr.forEach((user, index) => {
@@ -1221,7 +1482,7 @@ const exportExcelSheetForProductTable = (req, res) => {
         });
         worksheet.getRow(1).height = 30;
         worksheet.getRow(2).height = 20;
-        worksheet.getRow(arr.length + 3).values = ['Total:', '', '', '', '', { formula: `SUM(F3:F${arr.length + 2})` }];
+        worksheet.getRow(arr.length + 3).values = ['Total:', '', '', { formula: `SUM(D3:D${arr.length + 2})` }, '', { formula: `SUM(F3:F${arr.length + 2})` }, '', { formula: `SUM(H3:H${arr.length + 2})` }];
 
         worksheet.getRow(arr.length + 3).eachCell((cell) => {
             cell.font = { bold: true, size: 14, color: { argb: '808080' } }
@@ -1233,6 +1494,288 @@ const exportExcelSheetForProductTable = (req, res) => {
                 row.height = 20
             });
         });
+
+        const worksheetInStock = workbook.addWorksheet("In Stock"); // New Worksheet
+
+        if (req.query.startDate && req.query.endDate) {
+            worksheetInStock.mergeCells('A1', 'K1');
+            worksheetInStock.getCell('A1').value = `In-Stock Product List From ${data.startDate} To ${data.endDate}`;
+        } else {
+            worksheetInStock.mergeCells('A1', 'K1');
+            worksheetInStock.getCell('A1').value = `In-Stock Product List From ${firstDay} To ${lastDay}`;
+        }
+
+        /*Column headers*/
+        worksheetInStock.getRow(2).values = ['S no.', 'Product Name', 'Total StockIn', 'Total Expense', 'Total Used', 'Total Used Price', 'Remaining Stock', 'Remaining Price', 'Last StockIn', 'Last Updated Price', 'Min ProductQty', 'Stock Status', 'LastIn DATE'];
+
+        // Column for data in excel. key must match data key
+        worksheetInStock.columns = [
+            { key: "s_no", width: 10, },
+            { key: "productName", width: 30 },
+            { key: "purchase", width: 20 },
+            { key: "totalExpense", width: 20 },
+            { key: "totalUsed", width: 20 },
+            { key: "totalUsedPrice", width: 20 },
+            { key: "remainingStock", width: 20 },
+            { key: "remainPrice", width: 20 },
+            { key: "lastUpdatedQty", width: 20 },
+            { key: "lastPrice", width: 20 },
+            { key: "minQty", width: 20 },
+            { key: "stockStatus", width: 30 },
+            { key: "lastUpdatedStockInDate", width: 15 }
+        ];
+        //Looping through User data
+        const arrstockIn = rows[1]
+        console.log(">>>", arr);
+        let inStockcounter = 1;
+        arrstockIn.forEach((user, index) => {
+            user.s_no = inStockcounter;
+            const row = worksheetInStock.addRow(user); // Add data in worksheet
+
+            // Get the stock status value for the current row
+            const stockStatus = user.stockStatus;
+
+            // Set color based on stock status
+            let textColor;
+            switch (stockStatus) {
+                case 'In-Stock':
+                    textColor = '008000'; // Green color
+                    break;
+                case 'Low-Stock':
+                    textColor = 'FFA500'; // Orange color
+                    break;
+                case 'Out-Stock':
+                    textColor = 'FF0000'; // Red color
+                    break;
+                default:
+                    textColor = '000000'; // Black color (default)
+                    break;
+            }
+
+            // Apply the color to the cells in the current row
+            row.eachCell((cell) => {
+                cell.font = {
+                    color: {
+                        argb: textColor
+                    }
+                };
+            });
+
+            inStockcounter++;
+        });
+        // Making first line in excel bold
+        worksheetInStock.getRow(1).eachCell((cell) => {
+            cell.font = { bold: true, size: 13 }
+            cell.alignment = { vertical: 'middle', horizontal: 'center', wrapText: true };
+            height = 200
+        });
+        worksheetInStock.getRow(2).eachCell((cell) => {
+            cell.font = { bold: true, size: 13, color: { argb: '808080' } }
+            cell.alignment = { vertical: 'middle', horizontal: 'center', wrapText: true };
+        });
+        worksheetInStock.getRow(1).height = 30;
+        worksheetInStock.getRow(2).height = 20;
+        worksheetInStock.getRow(arr.length + 3).values = ['Total:', '', '', { formula: `SUM(D3:D${arr.length + 2})` }, '', { formula: `SUM(F3:F${arr.length + 2})` }, '', { formula: `SUM(H3:H${arr.length + 2})` }];
+
+        worksheetInStock.getRow(arr.length + 3).eachCell((cell) => {
+            cell.font = { bold: true, size: 14, color: { argb: '808080' } }
+            cell.alignment = { vertical: 'middle', horizontal: 'center', wrapText: true };
+        })
+        worksheetInStock.eachRow((row) => {
+            row.eachCell((cell) => {
+                cell.alignment = { horizontal: 'center', vertical: 'middle' };
+                row.height = 20
+            });
+        });
+
+        const worksheetLowStock = workbook.addWorksheet("Low Stock"); // New Worksheet
+
+        if (req.query.startDate && req.query.endDate) {
+            worksheetLowStock.mergeCells('A1', 'K1');
+            worksheetLowStock.getCell('A1').value = `Low-Stock Product List From ${data.startDate} To ${data.endDate}`;
+        } else {
+            worksheetLowStock.mergeCells('A1', 'K1');
+            worksheetLowStock.getCell('A1').value = `Low-Stock Product List From ${firstDay} To ${lastDay}`;
+        }
+
+        /*Column headers*/
+        worksheetLowStock.getRow(2).values = ['S no.', 'Product Name', 'Total StockIn', 'Total Expense', 'Total Used', 'Total Used Price', 'Remaining Stock', 'Remaining Price', 'Last StockIn', 'Last Updated Price', 'Min ProductQty', 'Stock Status', 'LastIn DATE'];
+
+        // Column for data in excel. key must match data key
+        worksheetLowStock.columns = [
+            { key: "s_no", width: 10, },
+            { key: "productName", width: 30 },
+            { key: "purchase", width: 20 },
+            { key: "totalExpense", width: 20 },
+            { key: "totalUsed", width: 20 },
+            { key: "totalUsedPrice", width: 20 },
+            { key: "remainingStock", width: 20 },
+            { key: "remainPrice", width: 20 },
+            { key: "lastUpdatedQty", width: 20 },
+            { key: "lastPrice", width: 20 },
+            { key: "minQty", width: 20 },
+            { key: "stockStatus", width: 30 },
+            { key: "lastUpdatedStockInDate", width: 15 }
+        ];
+        //Looping through User data
+        const arrstockLow = rows[2]
+        console.log(">>>", arr);
+        let lowStockcounter = 1;
+        arrstockLow.forEach((user, index) => {
+            if (Object.values(user).some((value) => value !== null && value !== "")) {
+                user.s_no = lowStockcounter;
+                const row = worksheetLowStock.addRow(user); // Add data in worksheet
+
+                // Get the stock status value for the current row
+                const stockStatus = user.stockStatus;
+
+                // Set color based on stock status
+                let textColor;
+                switch (stockStatus) {
+                    case 'In-Stock':
+                        textColor = '008000'; // Green color
+                        break;
+                    case 'Low-Stock':
+                        textColor = 'FFA500'; // Orange color
+                        break;
+                    case 'Out-Stock':
+                        textColor = 'FF0000'; // Red color
+                        break;
+                    default:
+                        textColor = '000000'; // Black color (default)
+                        break;
+                }
+
+                // Apply the color to the cells in the current row
+                row.eachCell((cell) => {
+                    cell.font = {
+                        color: {
+                            argb: textColor
+                        }
+                    };
+                });
+
+                lowStockcounter++;
+            }
+        });
+        // Making first line in excel bold
+        worksheetLowStock.getRow(1).eachCell((cell) => {
+            cell.font = { bold: true, size: 13 }
+            cell.alignment = { vertical: 'middle', horizontal: 'center', wrapText: true };
+            height = 200
+        });
+        worksheetLowStock.getRow(2).eachCell((cell) => {
+            cell.font = { bold: true, size: 13, color: { argb: '808080' } }
+            cell.alignment = { vertical: 'middle', horizontal: 'center', wrapText: true };
+        });
+        worksheetLowStock.getRow(1).height = 30;
+        worksheetLowStock.getRow(2).height = 20;
+        worksheetLowStock.getRow(arr.length + 3).values = ['Total:', '', '', { formula: `SUM(D3:D${arr.length + 2})` }, '', { formula: `SUM(F3:F${arr.length + 2})` }, '', { formula: `SUM(H3:H${arr.length + 2})` }];
+
+        worksheetLowStock.getRow(arr.length + 3).eachCell((cell) => {
+            cell.font = { bold: true, size: 14, color: { argb: '808080' } }
+            cell.alignment = { vertical: 'middle', horizontal: 'center', wrapText: true };
+        })
+        worksheetLowStock.eachRow((row) => {
+            row.eachCell((cell) => {
+                cell.alignment = { horizontal: 'center', vertical: 'middle' };
+                row.height = 20
+            });
+        });
+
+        const worksheetOutStock = workbook.addWorksheet("Out Stock"); // New Worksheet
+
+        if (req.query.startDate && req.query.endDate) {
+            worksheetOutStock.mergeCells('A1', 'K1');
+            worksheetOutStock.getCell('A1').value = `Out-Stock Product List From ${data.startDate} To ${data.endDate}`;
+        } else {
+            worksheetOutStock.mergeCells('A1', 'K1');
+            worksheetOutStock.getCell('A1').value = `Out-Stock Product List From ${firstDay} To ${lastDay}`;
+        }
+
+        /*Column headers*/
+        worksheetOutStock.getRow(2).values = ['S no.', 'Product Name', 'Total StockIn', 'Total Expense', 'Total Used', 'Total Used Price', 'Remaining Stock', 'Remaining Price', 'Last StockIn', 'Last Updated Price', 'Min ProductQty', 'Stock Status', 'LastIn DATE'];
+
+        // Column for data in excel. key must match data key
+        worksheetOutStock.columns = [
+            { key: "s_no", width: 10, },
+            { key: "productName", width: 30 },
+            { key: "purchase", width: 20 },
+            { key: "totalExpense", width: 20 },
+            { key: "totalUsed", width: 20 },
+            { key: "totalUsedPrice", width: 20 },
+            { key: "remainingStock", width: 20 },
+            { key: "remainPrice", width: 20 },
+            { key: "lastUpdatedQty", width: 20 },
+            { key: "lastPrice", width: 20 },
+            { key: "minQty", width: 20 },
+            { key: "stockStatus", width: 30 },
+            { key: "lastUpdatedStockInDate", width: 15 }
+        ];
+        //Looping through User data
+        const arrstockOut = rows[3]
+        console.log(">>>", arr);
+        let outStockcounter = 1;
+        arrstockOut.forEach((user, index) => {
+            user.s_no = outStockcounter;
+            const row = worksheetOutStock.addRow(user); // Add data in worksheet
+
+            // Get the stock status value for the current row
+            const stockStatus = user.stockStatus;
+
+            // Set color based on stock status
+            let textColor;
+            switch (stockStatus) {
+                case 'In-Stock':
+                    textColor = '008000'; // Green color
+                    break;
+                case 'Low-Stock':
+                    textColor = 'FFA500'; // Orange color
+                    break;
+                case 'Out-Stock':
+                    textColor = 'FF0000'; // Red color
+                    break;
+                default:
+                    textColor = '000000'; // Black color (default)
+                    break;
+            }
+
+            // Apply the color to the cells in the current row
+            row.eachCell((cell) => {
+                cell.font = {
+                    color: {
+                        argb: textColor
+                    }
+                };
+            });
+
+            outStockcounter++;
+        });
+        // Making first line in excel bold
+        worksheetOutStock.getRow(1).eachCell((cell) => {
+            cell.font = { bold: true, size: 13 }
+            cell.alignment = { vertical: 'middle', horizontal: 'center', wrapText: true };
+            height = 200
+        });
+        worksheetOutStock.getRow(2).eachCell((cell) => {
+            cell.font = { bold: true, size: 13, color: { argb: '808080' } }
+            cell.alignment = { vertical: 'middle', horizontal: 'center', wrapText: true };
+        });
+        worksheetOutStock.getRow(1).height = 30;
+        worksheetOutStock.getRow(2).height = 20;
+        worksheetOutStock.getRow(arr.length + 3).values = ['Total:', '', '', { formula: `SUM(D3:D${arr.length + 2})` }, '', { formula: `SUM(F3:F${arr.length + 2})` }, '', { formula: `SUM(H3:H${arr.length + 2})` }];
+
+        worksheetOutStock.getRow(arr.length + 3).eachCell((cell) => {
+            cell.font = { bold: true, size: 14, color: { argb: '808080' } }
+            cell.alignment = { vertical: 'middle', horizontal: 'center', wrapText: true };
+        })
+        worksheetOutStock.eachRow((row) => {
+            row.eachCell((cell) => {
+                cell.alignment = { horizontal: 'center', vertical: 'middle' };
+                row.height = 20
+            });
+        });
+
         try {
             const data = await workbook.xlsx.writeBuffer()
             var fileName = new Date().toString().slice(4, 15) + ".xlsx";

@@ -59,15 +59,11 @@ const getStockOutList = async (req, res) => {
                     sql_queries_getdetails = `${commonQuery}
                                                 ORDER BY inventory_stockOut_data.stockOutCreationDate DESC LIMIT ${limit}`
                 }
-                console.log("aaaaa", sql_queries_getdetails);
                 pool.query(sql_queries_getdetails, (err, rows, fields) => {
                     if (err) {
                         console.error("An error occurd in SQL Queery", err);
                         return res.status(500).send('Database Error');;
                     } else {
-                        console.log(rows);
-                        console.log(numRows);
-                        console.log("Total Page :-", numPages);
                         if (numRows === 0) {
                             const rows = [{
                                 'msg': 'No Data Found'
@@ -98,8 +94,6 @@ const getCategoryWiseUsedByProduct = (req, res) => {
         var firstDay = new Date(y, m, 1).toString().slice(4, 15);
         var lastDay = new Date(y, m + 1, 0).toString().slice(4, 15);
 
-        console.log("1111>>>>", firstDay);
-        console.log("1111>>>>", lastDay);
         const data = {
             startDate: (req.query.startDate ? req.query.startDate : '').slice(4, 15),
             endDate: (req.query.endDate ? req.query.endDate : '').slice(4, 15),
@@ -108,7 +102,8 @@ const getCategoryWiseUsedByProduct = (req, res) => {
         if (req.query.startDate && req.query.endDate) {
             sql_queries_getCategoryUsed = `SELECT
                                                 iscd.stockOutCategoryName,
-                                                COALESCE(so.usedQty, 0) AS usedQty
+                                                COALESCE(so.usedQty, 0) AS usedQty,
+                                                COALESCE(so.usedPrice,0) AS usedPrice
                                             FROM
                                                 inventory_stockOutCategory_data AS iscd
                                             LEFT JOIN(
@@ -116,7 +111,10 @@ const getCategoryWiseUsedByProduct = (req, res) => {
                                                     inventory_stockOut_data.stockOutCategory,
                                                     SUM(
                                                         inventory_stockOut_data.productQty
-                                                    ) AS usedQty
+                                                    ) AS usedQty,
+                                                    SUM(
+                                                        inventory_stockOut_data.stockOutPrice
+                                                    ) AS usedPrice
                                                 FROM
                                                     inventory_stockOut_data
                                                 WHERE
@@ -130,7 +128,8 @@ const getCategoryWiseUsedByProduct = (req, res) => {
         } else {
             sql_queries_getCategoryUsed = `SELECT
                                                 iscd.stockOutCategoryName,
-                                                COALESCE(so.usedQty, 0) AS usedQty
+                                                COALESCE(so.usedQty, 0) AS usedQty,
+                                                COALESCE(so.usedPrice,0) AS usedPrice
                                             FROM
                                                 inventory_stockOutCategory_data AS iscd
                                             LEFT JOIN(
@@ -138,7 +137,10 @@ const getCategoryWiseUsedByProduct = (req, res) => {
                                                     inventory_stockOut_data.stockOutCategory,
                                                     SUM(
                                                         inventory_stockOut_data.productQty
-                                                    ) AS usedQty
+                                                    ) AS usedQty,
+                                                    SUM(
+                                                        inventory_stockOut_data.stockOutPrice
+                                                    ) AS usedPrice
                                                 FROM
                                                     inventory_stockOut_data
                                                 WHERE
@@ -150,6 +152,7 @@ const getCategoryWiseUsedByProduct = (req, res) => {
                                               iscd.stockOutCategoryId = so.stockOutCategory
                                             ORDER BY so.usedQty DESC`
         }
+        console.log(">>>><<??", sql_queries_getCategoryUsed);
         pool.query(sql_queries_getCategoryUsed, (err, data) => {
             if (err) {
                 console.error("An error occurd in SQL Queery", err);
@@ -171,8 +174,6 @@ const exportExcelSheetForStockout = (req, res) => {
     var firstDay = new Date(y, m, 1).toString().slice(4, 15);
     var lastDay = new Date(y, m + 1, 0).toString().slice(4, 15);
 
-    console.log("1111>>>>", firstDay);
-    console.log("1111>>>>", lastDay);
 
     const data = {
         startDate: (req.query.startDate ? req.query.startDate : '').slice(4, 15),
@@ -221,10 +222,8 @@ const exportExcelSheetForStockout = (req, res) => {
                                    ORDER BY inventory_stockOut_data.stockOutCreationDate DESC`;
     }
 
-    console.log('find me', sql_queries_getdetails)
     pool.query(sql_queries_getdetails, async (err, rows) => {
         if (err) return res.status(404).send(err);
-        console.log(":::", rows)
         const workbook = new excelJS.Workbook();  // Create a new workbook
         const worksheet = workbook.addWorksheet("StockOut List"); // New Worksheet
 
@@ -362,14 +361,126 @@ const addStockOutDetails = async (req, res) => {
                 if (remainStock < productQty) {
                     return res.status(400).send(`Remaining Stock is ${remainStock} ${productUnit}. You Can Not Able To Out Stock`);
                 } else {
-                    const sql_querry_addStockOut = `INSERT INTO inventory_stockOut_data (stockOutId, userId, productId, productQty, productUnit, stockOutCategory, stockOutComment, stockOutDate)  
-                                                    VALUES ('${stockOutId}', '${userId}', '${productId}', ${productQty}, '${productUnit}', '${stockOutCategory}', NULLIF('${stockOutComment}','null'), STR_TO_DATE('${stockOutDate}','%b %d %Y'))`;
-                    pool.query(sql_querry_addStockOut, (err, data) => {
+                    sql_querry_getStockIndetail = `SELECT stockInId, productId, productQty, productPrice AS stockInPrice, remainingQty AS stockInQuantity FROM inventory_stockIn_data WHERE productId = '${productId}' AND remainingQty != 0 ORDER BY stockInDate ASC`;
+                    pool.query(sql_querry_getStockIndetail, (err, data) => {
                         if (err) {
                             console.error("An error occurd in SQL Queery", err);
                             return res.status(500).send('Database Error');
                         }
-                        return res.status(200).send("Data Added Successfully");
+                        const stockInData = Object.values(JSON.parse(JSON.stringify(data)));
+                        console.log(">>>", Object.values(JSON.parse(JSON.stringify(data))));
+                        const stockOutData = [
+                            { productId: req.body.productId, stockOutQuantity: req.body.productQty }
+                        ];
+
+                        // Desired quantity
+                        const desiredQuantity = stockOutData[0].stockOutQuantity;
+                        console.log("?????", desiredQuantity);
+
+                        // Calculate total stock out price
+                        let remainingQuantity = desiredQuantity;
+                        let totalStockOutPrice = 0;
+
+                        // Sort stock in data by stock in price in ascending order
+                        const sortedStockInData = stockInData
+                        // const sortedStockInData = stockInData.sort((a, b) => a.stockInPrice - b.stockInPrice);
+                        for (const stockOut of stockOutData) {
+                            let stockOutQuantity = stockOut.stockOutQuantity;
+
+                            for (const stockIn of sortedStockInData) {
+                                const { stockInQuantity, stockInPrice } = stockIn;
+
+                                if (stockInQuantity > 0) {
+                                    const quantityToUse = Math.min(stockOutQuantity, stockInQuantity, remainingQuantity);
+                                    const stockOutPrice = stockInPrice * quantityToUse;
+
+                                    totalStockOutPrice += stockOutPrice;
+                                    remainingQuantity -= quantityToUse;
+                                    stockOutQuantity -= quantityToUse;
+                                    stockIn.stockInQuantity -= quantityToUse;
+
+                                    if (remainingQuantity <= 0) {
+                                        break;
+                                    }
+                                }
+                            }
+
+                            if (remainingQuantity <= 0) {
+                                break;
+                            }
+                        }
+
+                        // Print updated stockInData
+                        console.log("Updated stockInData:", stockInData);
+
+                        console.log("Total Stock Out Price:", totalStockOutPrice);
+
+                        const sopq = stockInData.filter((obj) => {
+                            if (obj.stockInQuantity != obj.productQty) {
+                                return obj;
+                            }
+                        })
+
+                        function generateUpdateQuery(data) {
+                            let query = 'UPDATE inventory_stockIn_data\nSET remainingQty = CASE\n';
+
+                            data.forEach((item) => {
+                                const { stockInId, stockInQuantity } = item;
+                                query += `    WHEN stockInId = '${stockInId}' THEN ${stockInQuantity}\n`;
+                            });
+
+                            query += '    ELSE remainingQty\nEND\n';
+
+                            const stockInIds = data.map((item) => `'${item.stockInId}'`).join(', ');
+                            query += `WHERE stockInId IN (${stockInIds});`;
+
+                            return query;
+                        }
+
+                        console.log(generateUpdateQuery(sopq))
+                        const sql_qurey_updatedRemainQty = generateUpdateQuery(sopq);
+                        pool.query(sql_qurey_updatedRemainQty, (err, data) => {
+                            if (err) {
+                                console.error("An error occurd in SQL Queery", err);
+                                return res.status(500).send('Database Error');
+                            }
+                            const sql_querry_addStockOut = `INSERT INTO inventory_stockOut_data (stockOutId, userId, productId, productQty, productUnit, stockOutPrice, stockOutCategory, stockOutComment, stockOutDate)  
+                                                            VALUES ('${stockOutId}', '${userId}', '${productId}', ${productQty}, '${productUnit}', ${totalStockOutPrice}, '${stockOutCategory}', NULLIF('${stockOutComment}','null'), STR_TO_DATE('${stockOutDate}','%b %d %Y'))`;
+                            pool.query(sql_querry_addStockOut, (err, data) => {
+                                if (err) {
+                                    console.error("An error occurd in SQL Queery", err);
+                                    return res.status(500).send('Database Error');
+                                }
+                                const sowsiId = sopq.map((obj) => {
+                                    if (obj.stockInQuantity != obj.productQty) {
+                                        return obj.stockInId;
+                                    }
+                                })
+                                console.log(">?>?>?<<<<.,,,", sowsiId);
+                                const stockOutWiseStockInId = () => {
+
+                                    var string = ''
+                                    sowsiId.forEach((data, index) => {
+                                        if (index == 0)
+                                            string = "(" + "'" + stockOutId + "'" + "," + string + "'" + data + "'" + ")";
+                                        else
+                                            string = string + ",(" + "'" + stockOutId + "'" + "," + "'" + data + "'" + ")";
+                                    });
+                                    return string;
+
+                                }
+                                console.log(">?>?>/////", stockOutWiseStockInId())
+
+                                sql_querry_addsowsiId = `INSERT INTO inventory_stockOutwiseStockInId_data (stockOutId, stockInId) VALUES ${stockOutWiseStockInId()}`;
+                                pool.query(sql_querry_addsowsiId, (err, data) => {
+                                    if (err) {
+                                        console.error("An error occurd in SQL Queery", err);
+                                        return res.status(500).send('Database Error');
+                                    }
+                                    return res.status(200).send("Data Added Successfully");
+                                })
+                            })
+                        })
                     })
                 }
             })
@@ -394,13 +505,91 @@ const removeStockOutTransaction = async (req, res) => {
                 return res.status(500).send('Database Error');
             }
             if (row && row.length) {
-                const sql_querry_removedetails = `DELETE FROM inventory_stockOut_data WHERE stockOutId = '${stockOutId}'`;
-                pool.query(sql_querry_removedetails, (err, data) => {
+                sql_get_sowsoid = `SELECT stockInId, productId, productQty, productPrice AS stockInPrice, remainingQty AS remainingStock FROM inventory_stockIn_data WHERE stockInId IN (SELECT COALESCE(stockInId,null) FROM inventory_stockOutwiseStockInId_data WHERE stockOutId = '${stockOutId}') ORDER BY stockInCreationDate DESC`;
+                console.log(">>><<<", sql_get_sowsoid);
+                pool.query(sql_get_sowsoid, (err, data) => {
                     if (err) {
                         console.error("An error occurd in SQL Queery", err);
                         return res.status(500).send('Database Error');
                     }
-                    return res.status(200).send("Transaction Deleted Successfully");
+                    const prevoiusQuantity = data[0].productQty;
+                    console.log(">>>", Object.values(JSON.parse(JSON.stringify(data))));
+                    const StockInData = Object.values(JSON.parse(JSON.stringify(data)));
+                    console.log("::::::::", prevoiusQuantity - req.body.productQty);
+                    const stockOutData = [
+                        { productId: req.body.productId, stockOutQuantity: prevoiusQuantity }
+                    ];
+
+                    // const StockInData = [
+                    //     { productId: 1, remainingStock: 5, productQty: 5, stockInPrice: 70 },
+                    //     { productId: 1, remainingStock: 5, productQty: 5, stockInPrice: 60 },
+                    //     { productId: 1, remainingStock: 2, productQty: 5, stockInPrice: 50 },
+                    //     { productId: 1, remainingStock: 0, productQty: 5, stockInPrice: 40 },
+                    //     { productId: 1, remainingStock: 0, productQty: 5, stockInPrice: 30 },
+                    // ];
+
+                    let desiredQuantity = stockOutData[0].stockOutQuantity; // Desired quantity to be inserted into the buckets
+                    console.log("><?", desiredQuantity);
+                    let totalCost = 0; // Total cost of filling the buckets
+
+                    for (let i = 0; i < StockInData.length; i++) {
+                        const stockIn = StockInData[i];
+                        const availableSpace = stockIn.productQty - stockIn.remainingStock; // Calculate the available space for the product
+
+                        if (desiredQuantity <= availableSpace) {
+                            // If the desired quantity can fit completely in the current stock in entry
+                            stockIn.remainingStock += desiredQuantity;
+                            totalCost += desiredQuantity * stockIn.stockInPrice;
+                            break; // Exit the loop since the desired quantity has been inserted
+                        } else {
+                            // If the desired quantity cannot fit completely in the current stock in entry
+                            stockIn.remainingStock = stockIn.productQty;
+                            totalCost += availableSpace * stockIn.stockInPrice;
+                            desiredQuantity -= availableSpace;
+                        }
+                    }
+
+                    console.log("Updated StockInData:", StockInData);
+                    console.log("Total Cost of Filling: ", totalCost);
+
+                    const sopq = StockInData.filter((obj) => {
+                        if (obj.stockInQuantity != obj.productQty) {
+                            return obj;
+                        }
+                    })
+
+                    function generateUpdateQuery(data) {
+                        let query = 'UPDATE inventory_stockIn_data\nSET remainingQty = CASE\n';
+
+                        data.forEach((item) => {
+                            const { stockInId, remainingStock } = item;
+                            query += `    WHEN stockInId = '${stockInId}' THEN ${remainingStock}\n`;
+                        });
+
+                        query += '    ELSE remainingQty\nEND\n';
+
+                        const stockInIds = data.map((item) => `'${item.stockInId}'`).join(', ');
+                        query += `WHERE stockInId IN (${stockInIds});`;
+
+                        return query;
+                    }
+
+                    console.log(generateUpdateQuery(sopq))
+                    const sql_qurey_updatedRemainQty = generateUpdateQuery(sopq);
+                    pool.query(sql_qurey_updatedRemainQty, (err, data) => {
+                        if (err) {
+                            console.error("An error occurd in SQL Queery", err);
+                            return res.status(500).send('Database Error');
+                        }
+                        const sql_querry_removedetails = `DELETE FROM inventory_stockOut_data WHERE stockOutId = '${stockOutId}'`;
+                        pool.query(sql_querry_removedetails, (err, data) => {
+                            if (err) {
+                                console.error("An error occurd in SQL Queery", err);
+                                return res.status(500).send('Database Error');
+                            }
+                            return res.status(200).send("Transaction Deleted Successfully");
+                        })
+                    })
                 })
             } else {
                 return res.send('Transaction Not Found');
@@ -474,7 +663,6 @@ const fillStockOutTransaction = (req, res) => {
 
 const updateStockOutTransaction = async (req, res) => {
     try {
-
         let token;
         token = req.headers.authorization.split(" ")[1];
         if (token) {
@@ -527,7 +715,7 @@ const updateStockOutTransaction = async (req, res) => {
                 if (remainStock < productQty) {
                     return res.status(400).send(`Remaining Stock is ${remainStock} ${productUnit}. You Can Not Able To Out Stock`);
                 } else {
-                    const get_previous_data = `SELECT inventory_stockOut_data.productId, productQty, productUnit, inventory_stockOutCategory_data.stockOutCategoryName AS stockOutCategory, stockOutComment, DATE_FORMAT(stockOutDate,'%b %d %Y') AS stockOutDate, stockOutModificationDate FROM inventory_stockOut_data
+                    const get_previous_data = `SELECT inventory_stockOut_data.productId, productQty, productUnit, stockOutPrice, inventory_stockOutCategory_data.stockOutCategoryName AS stockOutCategory, stockOutComment, DATE_FORMAT(stockOutDate,'%b %d %Y') AS stockOutDate, stockOutModificationDate FROM inventory_stockOut_data
                                                 INNER JOIN inventory_stockOutCategory_data ON inventory_stockOutCategory_data.stockOutCategoryId = inventory_stockOut_data.stockOutCategory
                                                 WHERE stockOutId = '${stockOutId}';
                                                 SELECT inventory_stockOutCategory_data.stockOutCategoryName FROM inventory_stockOutCategory_data
@@ -537,6 +725,8 @@ const updateStockOutTransaction = async (req, res) => {
                             console.error("An error occurd in SQL Queery", err);
                             return res.status(500).send('Database Error');
                         }
+                        const previousStockOutPrice = data[0][0].stockOutPrice;
+                        const prevoiusQuantity = data[0][0].productQty;
                         const stockOutModificationDate = data[0][0].stockOutModificationDate ? new Date(data[0][0].stockOutModificationDate).toString().slice(4, 24) : new Date().toString().slice(4, 24);
                         const previousData = {
                             productQty: data[0][0].productQty,
@@ -568,18 +758,108 @@ const updateStockOutTransaction = async (req, res) => {
                         if (updatedField == null || updatedField == '') {
                             return res.status(500).send('No Change');
                         }
-                        const editFields = () => {
-                            var string = ''
-                            updatedField.forEach((data, index) => {
-                                if (index == 0)
-                                    string = "(" + "'" + stockOutId + "'" + "," + "'" + userId + "'" + "," + "'" + productId + "'" + "," + "'" + previousData[data] + "'" + "," + "'" + newData[data] + "'" + "," + "'" + reason + "'" + "," + "STR_TO_DATE('" + stockOutModificationDate + "','%b %d %Y %H:%i:%s')" + "," + "STR_TO_DATE('" + currentModifyDate + "','%b %d %Y %H:%i:%s')" + ")";
-                                else
-                                    string = string + ",(" + "'" + stockOutId + "'" + "," + "'" + userId + "'" + "," + "'" + productId + "'" + "," + "'" + previousData[data] + "'" + "," + "'" + newData[data] + "'" + "," + "'" + reason + "'" + "," + "STR_TO_DATE('" + stockOutModificationDate + "','%b %d %Y %H:%i:%s')" + "," + "STR_TO_DATE('" + currentModifyDate + "','%b %d %Y %H:%i:%s')" + ")";
-                            });
-                            return string;
-                        }
-                        console.log(">>>>>>>><<<<<<<<<", editFields());
-                        const sql_querry_addPreviousData = `INSERT INTO inventory_modified_history  (
+
+                        sql_querry_getStockIndetail = `SELECT stockInId, productId, productQty, productPrice AS stockInPrice, remainingQty AS stockInQuantity FROM inventory_stockIn_data WHERE productId = '${productId}' AND remainingQty != 0 ORDER BY stockInDate ASC`;
+                        pool.query(sql_querry_getStockIndetail, (err, data) => {
+                            if (err) {
+                                console.error("An error occurd in SQL Queery", err);
+                                return res.status(500).send('Database Error');
+                            }
+                            console.log(">>>???", prevoiusQuantity);
+                            console.log(">>>", req.body.productQty);
+                            if (prevoiusQuantity < req.body.productQty) {
+                                const stockInData = Object.values(JSON.parse(JSON.stringify(data)));
+                                console.log(">>>", Object.values(JSON.parse(JSON.stringify(data))));
+                                console.log("::::::::", req.body.productQty - prevoiusQuantity);
+                                const stockOutData = [
+                                    { productId: req.body.productId, stockOutQuantity: req.body.productQty - prevoiusQuantity }
+                                ];
+
+                                // Desired quantity
+                                const desiredQuantity = stockOutData[0].stockOutQuantity;
+                                console.log("?????", desiredQuantity);
+
+                                // Calculate total stock out price
+                                let remainingQuantity = desiredQuantity;
+                                let totalStockOutPrice = 0;
+
+                                // Sort stock in data by stock in price in ascending order
+                                const sortedStockInData = stockInData
+                                // const sortedStockInData = stockInData.sort((a, b) => a.stockInPrice - b.stockInPrice);
+                                for (const stockOut of stockOutData) {
+                                    let stockOutQuantity = stockOut.stockOutQuantity;
+
+                                    for (const stockIn of sortedStockInData) {
+                                        const { stockInQuantity, stockInPrice } = stockIn;
+
+                                        if (stockInQuantity > 0) {
+                                            const quantityToUse = Math.min(stockOutQuantity, stockInQuantity, remainingQuantity);
+                                            const stockOutPrice = stockInPrice * quantityToUse;
+
+                                            totalStockOutPrice += stockOutPrice;
+                                            remainingQuantity -= quantityToUse;
+                                            stockOutQuantity -= quantityToUse;
+                                            stockIn.stockInQuantity -= quantityToUse;
+
+                                            if (remainingQuantity <= 0) {
+                                                break;
+                                            }
+                                        }
+                                    }
+
+                                    if (remainingQuantity <= 0) {
+                                        break;
+                                    }
+                                }
+
+                                // Print updated stockInData
+                                console.log("Updated stockInData:", stockInData);
+
+                                console.log("Total Stock Out Price:", totalStockOutPrice);
+                                const totalofStockOutPrice = previousStockOutPrice + totalStockOutPrice;
+
+                                const sopq = stockInData.filter((obj) => {
+                                    if (obj.stockInQuantity != obj.productQty) {
+                                        return obj;
+                                    }
+                                })
+
+                                function generateUpdateQuery(data) {
+                                    let query = 'UPDATE inventory_stockIn_data\nSET remainingQty = CASE\n';
+
+                                    data.forEach((item) => {
+                                        const { stockInId, stockInQuantity } = item;
+                                        query += `    WHEN stockInId = '${stockInId}' THEN ${stockInQuantity}\n`;
+                                    });
+
+                                    query += '    ELSE remainingQty\nEND\n';
+
+                                    const stockInIds = data.map((item) => `'${item.stockInId}'`).join(', ');
+                                    query += `WHERE stockInId IN (${stockInIds});`;
+
+                                    return query;
+                                }
+
+                                console.log(generateUpdateQuery(sopq))
+                                const sql_qurey_updatedRemainQty = generateUpdateQuery(sopq);
+                                pool.query(sql_qurey_updatedRemainQty, (err, data) => {
+                                    if (err) {
+                                        console.error("An error occurd in SQL Queery", err);
+                                        return res.status(500).send('Database Error');
+                                    }
+                                    const editFields = () => {
+                                        var string = ''
+                                        updatedField.forEach((data, index) => {
+                                            if (index == 0)
+                                                string = "(" + "'" + stockOutId + "'" + "," + "'" + userId + "'" + "," + "'" + productId + "'" + "," + "'" + previousData[data] + "'" + "," + "'" + newData[data] + "'" + "," + "'" + reason + "'" + "," + "STR_TO_DATE('" + stockOutModificationDate + "','%b %d %Y %H:%i:%s')" + "," + "STR_TO_DATE('" + currentModifyDate + "','%b %d %Y %H:%i:%s')" + ")";
+                                            else
+                                                string = string + ",(" + "'" + stockOutId + "'" + "," + "'" + userId + "'" + "," + "'" + productId + "'" + "," + "'" + previousData[data] + "'" + "," + "'" + newData[data] + "'" + "," + "'" + reason + "'" + "," + "STR_TO_DATE('" + stockOutModificationDate + "','%b %d %Y %H:%i:%s')" + "," + "STR_TO_DATE('" + currentModifyDate + "','%b %d %Y %H:%i:%s')" + ")";
+                                        });
+                                        return string;
+                                    }
+
+                                    console.log(">>>>>>>><<<<<<<<<", editFields());
+                                    const sql_querry_addPreviousData = `INSERT INTO inventory_modified_history  (
                                                                                                 stockOutId,
                                                                                                 userId,
                                                                                                 ProductId,
@@ -590,13 +870,190 @@ const updateStockOutTransaction = async (req, res) => {
                                                                                                 updatedDateTime
                                                                                             )
                                                                                             VALUES ${editFields()}`;
-                        console.log(">>.....", sql_querry_addPreviousData);
-                        pool.query(sql_querry_addPreviousData, (err, data) => {
-                            if (err) {
-                                console.error("An error occurd in SQL Queery", err);
-                                return res.status(500).send('Database Error');
-                            }
-                            const sql_querry_updatedetails = `UPDATE inventory_stockOut_data SET userId = '${userId}',
+                                    console.log(">>.....", sql_querry_addPreviousData);
+                                    pool.query(sql_querry_addPreviousData, (err, data) => {
+                                        if (err) {
+                                            console.error("An error occurd in SQL Queery", err);
+                                            return res.status(500).send('Database Error');
+                                        }
+                                        console.log(">?>?>?>?,,,", stockOutCategory);
+                                        const sql_querry_updatedetails = `UPDATE inventory_stockOut_data SET userId = '${userId}',
+                                                                                         productId = '${productId}',
+                                                                                         productQty = ${productQty},
+                                                                                         productUnit = '${productUnit}',
+                                                                                         stockOutPrice = ${totalofStockOutPrice},
+                                                                                         stockOutCategory = '${stockOutCategory}',
+                                                                                         stockOutComment = NULLIF('${stockOutComment}','null'),
+                                                                                         stockOutDate = STR_TO_DATE('${stockOutDate}','%b %d %Y') 
+                                                                                   WHERE stockOutId = '${stockOutId}'`;
+                                        pool.query(sql_querry_updatedetails, (err, data) => {
+                                            if (err) {
+                                                console.error("An error occurd in SQL Queery", err);
+                                                return res.status(500).send('Database Error');
+                                            }
+                                            return res.status(200).send("Transaction Updated Successfully");
+                                        })
+                                    })
+                                })
+                            } else if (prevoiusQuantity > req.body.productQty) {
+                                sql_get_sowsoid = `SELECT stockInId, productId, productQty, productPrice AS stockInPrice, remainingQty AS remainingStock FROM inventory_stockIn_data WHERE stockInId IN (SELECT COALESCE(stockInId,null) FROM inventory_stockOutwiseStockInId_data WHERE stockOutId = '${stockOutId}') ORDER BY stockInCreationDate DESC`;
+                                console.log(">>><<<", sql_get_sowsoid);
+                                pool.query(sql_get_sowsoid, (err, data) => {
+                                    if (err) {
+                                        console.error("An error occurd in SQL Queery", err);
+                                        return res.status(500).send('Database Error');
+                                    }
+                                    console.log(">>>", Object.values(JSON.parse(JSON.stringify(data))));
+                                    const StockInData = Object.values(JSON.parse(JSON.stringify(data)));
+                                    console.log("::::::::", prevoiusQuantity - req.body.productQty);
+                                    const stockOutData = [
+                                        { productId: req.body.productId, stockOutQuantity: prevoiusQuantity - req.body.productQty }
+                                    ];
+
+                                    // const StockInData = [
+                                    //     { productId: 1, remainingStock: 5, productQty: 5, stockInPrice: 70 },
+                                    //     { productId: 1, remainingStock: 5, productQty: 5, stockInPrice: 60 },
+                                    //     { productId: 1, remainingStock: 2, productQty: 5, stockInPrice: 50 },
+                                    //     { productId: 1, remainingStock: 0, productQty: 5, stockInPrice: 40 },
+                                    //     { productId: 1, remainingStock: 0, productQty: 5, stockInPrice: 30 },
+                                    // ];
+
+                                    let desiredQuantity = stockOutData[0].stockOutQuantity; // Desired quantity to be inserted into the buckets
+                                    console.log("><?", desiredQuantity);
+                                    let totalCost = 0; // Total cost of filling the buckets
+
+                                    for (let i = 0; i < StockInData.length; i++) {
+                                        const stockIn = StockInData[i];
+                                        const availableSpace = stockIn.productQty - stockIn.remainingStock; // Calculate the available space for the product
+
+                                        if (desiredQuantity <= availableSpace) {
+                                            // If the desired quantity can fit completely in the current stock in entry
+                                            stockIn.remainingStock += desiredQuantity;
+                                            totalCost += desiredQuantity * stockIn.stockInPrice;
+                                            break; // Exit the loop since the desired quantity has been inserted
+                                        } else {
+                                            // If the desired quantity cannot fit completely in the current stock in entry
+                                            stockIn.remainingStock = stockIn.productQty;
+                                            totalCost += availableSpace * stockIn.stockInPrice;
+                                            desiredQuantity -= availableSpace;
+                                        }
+                                    }
+
+                                    console.log("Updated StockInData:", StockInData);
+                                    console.log("Total Cost of Filling: ", totalCost);
+
+                                    const totalofStockOutPrice = previousStockOutPrice - totalCost;
+
+                                    const sopq = StockInData.filter((obj) => {
+                                        if (obj.stockInQuantity != obj.productQty) {
+                                            return obj;
+                                        }
+                                    })
+
+                                    function generateUpdateQuery(data) {
+                                        let query = 'UPDATE inventory_stockIn_data\nSET remainingQty = CASE\n';
+
+                                        data.forEach((item) => {
+                                            const { stockInId, remainingStock } = item;
+                                            query += `    WHEN stockInId = '${stockInId}' THEN ${remainingStock}\n`;
+                                        });
+
+                                        query += '    ELSE remainingQty\nEND\n';
+
+                                        const stockInIds = data.map((item) => `'${item.stockInId}'`).join(', ');
+                                        query += `WHERE stockInId IN (${stockInIds});`;
+
+                                        return query;
+                                    }
+
+                                    console.log(generateUpdateQuery(sopq))
+                                    const sql_qurey_updatedRemainQty = generateUpdateQuery(sopq);
+                                    pool.query(sql_qurey_updatedRemainQty, (err, data) => {
+                                        if (err) {
+                                            console.error("An error occurd in SQL Queery", err);
+                                            return res.status(500).send('Database Error');
+                                        }
+                                        const editFields = () => {
+                                            var string = ''
+                                            updatedField.forEach((data, index) => {
+                                                if (index == 0)
+                                                    string = "(" + "'" + stockOutId + "'" + "," + "'" + userId + "'" + "," + "'" + productId + "'" + "," + "'" + previousData[data] + "'" + "," + "'" + newData[data] + "'" + "," + "'" + reason + "'" + "," + "STR_TO_DATE('" + stockOutModificationDate + "','%b %d %Y %H:%i:%s')" + "," + "STR_TO_DATE('" + currentModifyDate + "','%b %d %Y %H:%i:%s')" + ")";
+                                                else
+                                                    string = string + ",(" + "'" + stockOutId + "'" + "," + "'" + userId + "'" + "," + "'" + productId + "'" + "," + "'" + previousData[data] + "'" + "," + "'" + newData[data] + "'" + "," + "'" + reason + "'" + "," + "STR_TO_DATE('" + stockOutModificationDate + "','%b %d %Y %H:%i:%s')" + "," + "STR_TO_DATE('" + currentModifyDate + "','%b %d %Y %H:%i:%s')" + ")";
+                                            });
+                                            return string;
+                                        }
+
+                                        console.log(">>>>>>>><<<<<<<<<", editFields());
+                                        const sql_querry_addPreviousData = `INSERT INTO inventory_modified_history  (
+                                                                                                stockOutId,
+                                                                                                userId,
+                                                                                                ProductId,
+                                                                                                previous,
+                                                                                                updated,
+                                                                                                modifiedReason,
+                                                                                                previousDateTime,
+                                                                                                updatedDateTime
+                                                                                            )
+                                                                                            VALUES ${editFields()}`;
+                                        console.log(">>.....", sql_querry_addPreviousData);
+                                        pool.query(sql_querry_addPreviousData, (err, data) => {
+                                            if (err) {
+                                                console.error("An error occurd in SQL Queery", err);
+                                                return res.status(500).send('Database Error');
+                                            }
+                                            console.log(">?>?>?>?,,,", stockOutCategory);
+                                            const sql_querry_updatedetails = `UPDATE inventory_stockOut_data SET userId = '${userId}',
+                                                                                         productId = '${productId}',
+                                                                                         productQty = ${productQty},
+                                                                                         productUnit = '${productUnit}',
+                                                                                         stockOutPrice = ${totalofStockOutPrice},
+                                                                                         stockOutCategory = '${stockOutCategory}',
+                                                                                         stockOutComment = NULLIF('${stockOutComment}','null'),
+                                                                                         stockOutDate = STR_TO_DATE('${stockOutDate}','%b %d %Y') 
+                                                                                   WHERE stockOutId = '${stockOutId}'`;
+                                            pool.query(sql_querry_updatedetails, (err, data) => {
+                                                if (err) {
+                                                    console.error("An error occurd in SQL Queery", err);
+                                                    return res.status(500).send('Database Error');
+                                                }
+                                                return res.status(200).send("Transaction Updated Successfully");
+                                            })
+                                        })
+                                    })
+                                })
+                            } else {
+                                const editFields = () => {
+                                    var string = ''
+                                    updatedField.forEach((data, index) => {
+                                        if (index == 0)
+                                            string = "(" + "'" + stockOutId + "'" + "," + "'" + userId + "'" + "," + "'" + productId + "'" + "," + "'" + previousData[data] + "'" + "," + "'" + newData[data] + "'" + "," + "'" + reason + "'" + "," + "STR_TO_DATE('" + stockOutModificationDate + "','%b %d %Y %H:%i:%s')" + "," + "STR_TO_DATE('" + currentModifyDate + "','%b %d %Y %H:%i:%s')" + ")";
+                                        else
+                                            string = string + ",(" + "'" + stockOutId + "'" + "," + "'" + userId + "'" + "," + "'" + productId + "'" + "," + "'" + previousData[data] + "'" + "," + "'" + newData[data] + "'" + "," + "'" + reason + "'" + "," + "STR_TO_DATE('" + stockOutModificationDate + "','%b %d %Y %H:%i:%s')" + "," + "STR_TO_DATE('" + currentModifyDate + "','%b %d %Y %H:%i:%s')" + ")";
+                                    });
+                                    return string;
+                                }
+
+                                console.log(">>>>>>>><<<<<<<<<", editFields());
+                                const sql_querry_addPreviousData = `INSERT INTO inventory_modified_history  (
+                                                                                                stockOutId,
+                                                                                                userId,
+                                                                                                ProductId,
+                                                                                                previous,
+                                                                                                updated,
+                                                                                                modifiedReason,
+                                                                                                previousDateTime,
+                                                                                                updatedDateTime
+                                                                                            )
+                                                                                            VALUES ${editFields()}`;
+                                console.log(">>.....", sql_querry_addPreviousData);
+                                pool.query(sql_querry_addPreviousData, (err, data) => {
+                                    if (err) {
+                                        console.error("An error occurd in SQL Queery", err);
+                                        return res.status(500).send('Database Error');
+                                    }
+                                    console.log(">?>?>?>?,,,", stockOutCategory);
+                                    const sql_querry_updatedetails = `UPDATE inventory_stockOut_data SET userId = '${userId}',
                                                                                          productId = '${productId}',
                                                                                          productQty = ${productQty},
                                                                                          productUnit = '${productUnit}',
@@ -604,13 +1061,17 @@ const updateStockOutTransaction = async (req, res) => {
                                                                                          stockOutComment = NULLIF('${stockOutComment}','null'),
                                                                                          stockOutDate = STR_TO_DATE('${stockOutDate}','%b %d %Y') 
                                                                                    WHERE stockOutId = '${stockOutId}'`;
-                            pool.query(sql_querry_updatedetails, (err, data) => {
-                                if (err) {
-                                    console.error("An error occurd in SQL Queery", err);
-                                    return res.status(500).send('Database Error');
-                                }
-                                return res.status(200).send("Transaction Updated Successfully");
-                            })
+                                    pool.query(sql_querry_updatedetails, (err, data) => {
+                                        if (err) {
+                                            console.error("An error occurd in SQL Queery", err);
+                                            return res.status(500).send('Database Error');
+                                        }
+                                        return res.status(200).send("Transaction Updated Successfully");
+                                    })
+                                })
+
+                            }
+
                         })
                     })
                 }
@@ -653,9 +1114,6 @@ const getUpdateStockOutList = (req, res) => {
                         console.error("An error occurd in SQL Queery", err);
                         return res.status(500).send('Database Error');;
                     } else {
-                        console.log(rows);
-                        console.log(numRows);
-                        console.log("Total Page :-", numPages);
                         if (numRows === 0) {
                             const rows = [{
                                 'msg': 'No Data Found'
@@ -706,9 +1164,6 @@ const getUpdateStockOutListById = (req, res) => {
                         console.error("An error occurd in SQL Queery", err);
                         return res.status(500).send('Database Error');;
                     } else {
-                        console.log(rows);
-                        console.log(numRows);
-                        console.log("Total Page :-", numPages);
                         if (numRows === 0) {
                             const rows = [{
                                 'msg': 'No Data Found'
@@ -729,6 +1184,226 @@ const getUpdateStockOutListById = (req, res) => {
     }
 }
 
+const categoryWcisedUsed = (req, res) => {
+    sql_queries_getdetails = `SET @sql = NULL;
+                            SELECT
+                            GROUP_CONCAT(DISTINCT
+                                CONCAT(
+                                'COALESCE(MAX(CASE WHEN so.productId = ''',
+                                p.productId,
+                                ''' THEN so.usedQty END), 0) AS ',
+                                QUOTE(p.productName)
+                            )
+                            ) INTO @sql
+                            FROM inventory_product_data p;
+                                
+                            SET @sql = CONCAT(
+                                'SELECT c.stockOutCategoryId, c.stockOutCategoryName, ', @sql, '
+                               FROM inventory_stockOutCategory_data c
+                               LEFT JOIN(
+                                    SELECT so.stockOutCategory, so.productId, SUM(so.productQty) AS usedQty
+                                 FROM inventory_stockOut_data so
+                                 GROUP BY so.stockOutCategory, so.productId
+                                ) so ON c.stockOutCategoryId = so.stockOutCategory
+                               GROUP BY c.stockOutCategoryId, c.stockOutCategoryName'
+                            );
+                            
+                            PREPARE stmt FROM @sql;
+                            EXECUTE stmt;
+                            DEALLOCATE PREPARE stmt;`;
+    pool.query(sql_queries_getdetails, (err, data) => {
+        if (err) {
+            console.error("An error occurd in SQL Queery", err);
+            return res.status(500).send('Database Error');;
+        }
+        return res.status(200).send(data[4]);
+    })
+}
+
+const categoryWisedUsed = (req, res) => {
+
+    var date = new Date(), y = date.getFullYear(), m = (date.getMonth());
+    var firstDay = new Date(y, m, 1).toString().slice(4, 15);
+    var lastDay = new Date(y, m + 1, 0).toString().slice(4, 15);
+
+
+    const data = {
+        startDate: (req.query.startDate ? req.query.startDate : '').slice(4, 15),
+        endDate: (req.query.endDate ? req.query.endDate : '').slice(4, 15),
+        productId: req.query.productId
+    }
+
+    sql_queries_getdetails = `SET @sql = NULL;
+                            SELECT
+                            GROUP_CONCAT(DISTINCT
+                                CONCAT(
+                                'COALESCE(MAX(CASE WHEN so.productId = ''',
+                                p.productId,
+                                ''' THEN so.usedQty END), 0) AS ',
+                                QUOTE(CONCAT(p.productName,' (',p.minProductUnit,')'))
+                            )
+                            ) INTO @sql
+                            FROM inventory_product_data p;
+                                
+                            SET @sql = CONCAT(
+                                'SELECT c.stockOutCategoryName AS "stockout Category", ', @sql, '
+                               FROM inventory_stockOutCategory_data c
+                               LEFT JOIN(
+                                    SELECT so.stockOutCategory, so.productId, SUM(so.productQty) AS usedQty
+                                 FROM inventory_stockOut_data so
+                                 GROUP BY so.stockOutCategory, so.productId
+                                ) so ON c.stockOutCategoryId = so.stockOutCategory
+                               GROUP BY c.stockOutCategoryId, c.stockOutCategoryName'
+                            );
+                            
+                            PREPARE stmt FROM @sql;
+                            EXECUTE stmt;
+                            DEALLOCATE PREPARE stmt;`;
+
+    pool.query(sql_queries_getdetails, async (err, rows) => {
+        if (err) return res.status(404).send(err);
+        console.log("::::::::::;;;;;;;;;;;;", rows[1])
+        const workbook = new excelJS.Workbook();
+        const worksheet = workbook.addWorksheet('Stock Out Data');
+
+        const abs = rows[4];
+        const headerName = rows[4][0];
+        console.log("><><>", Object.keys(headerName).map(key => key.toUpperCase()));
+        const headersName = Object.keys(headerName).map(key => key.toUpperCase());
+        // Create the headers row
+        const headersRow = headersName;
+        console.log('headName', headersRow);
+        worksheet.addRow(headersRow);
+
+        // Populate the worksheet with data
+        abs.forEach((row) => {
+            const dataRow = [...Object.values(row)];
+            worksheet.addRow(dataRow);
+        });
+
+        // Calculate the total for each column
+        const totalRow = [];
+        worksheet.columns.forEach((column) => {
+            let columnTotal = 0;
+            column.eachCell({ includeEmpty: true }, (cell, rowNumber) => {
+                // Skip the header row
+                if (rowNumber !== 1) {
+                    const value = parseFloat(cell.value) || 0;
+                    columnTotal += value;
+                }
+            });
+            totalRow.push(columnTotal);
+        });
+        totalRow[0] = "Total";
+        // Add the total row to the worksheet
+        const totalRowCell = worksheet.addRow(totalRow);
+        totalRowCell.eachCell((cell) => {
+            cell.font = { bold: true, color: { theme: 12 } }; // Set the font of the total row cells to bold
+        });
+
+        totalRowCell.fill = {
+            type: 'pattern',
+            pattern: 'solid',
+            fgColor: { argb: 'FFC6EFCE' },
+        };
+
+        worksheet.getRow(1).eachCell((cell) => {
+            cell.font = { bold: true, size: 11 }
+            cell.alignment = { vertical: 'middle', horizontal: 'center', wrapText: true };
+            height = 300
+        });
+
+        // worksheet.views = [
+        //     {
+        //         state: 'frozen',
+        //         xSplit: 1, // Number of columns to freeze (in this case, the first column)
+        //         ySplit: 1, // Number of rows to freeze (0 means no rows are frozen)
+        //         topLeftCell: 'B1', // Cell reference indicating the top-left visible cell after freezing
+        //     },
+        // ];
+
+        worksheet.columns.forEach((column) => {
+            let maxLength = 0;
+            column.eachCell({ includeEmpty: true }, (cell) => {
+                const columnLength = cell.value ? String(cell.value).length : 0;
+                if (columnLength > maxLength) {
+                    maxLength = columnLength;
+                }
+            });
+            column.width = maxLength < 10 ? 12 : maxLength;
+        });
+
+        worksheet.getColumn(1).eachCell((cell) => {
+            cell.font = { bold: true };
+        });
+
+        worksheet.eachRow((row) => {
+            row.eachCell((cell) => {
+                cell.alignment = { horizontal: 'center', vertical: 'middle' };
+                row.height = 20
+                cell.border = {
+                    top: { style: 'thin' },
+                    left: { style: 'thin' },
+                    bottom: { style: 'thin' },
+                    right: { style: 'thin' },
+                };
+            });
+        });
+
+
+        // Create a new worksheet for transposed data
+        const transposedWorksheet = workbook.addWorksheet('Transposed Data');
+
+        // Transpose the data from the original worksheet to the transposed worksheet
+        for (let row = 1; row <= worksheet.rowCount; row++) {
+            for (let col = 1; col <= worksheet.columnCount; col++) {
+                const cell = worksheet.getCell(row, col);
+                const transposedCell = transposedWorksheet.getCell(col, row);
+                transposedCell.value = cell.value;
+                transposedCell.style = Object.assign({}, cell.style); // Copy cell styles
+            }
+        }
+
+        transposedWorksheet.columns.forEach((column) => {
+            let maxLength = 0;
+            column.eachCell({ includeEmpty: true }, (cell) => {
+                const columnLength = cell.value ? String(cell.value).length : 0;
+                if (columnLength > maxLength) {
+                    maxLength = columnLength;
+                }
+            });
+            column.width = maxLength < 10 ? 12 : maxLength;
+        });
+
+        transposedWorksheet.eachRow((row) => {
+            row.eachCell((cell) => {
+                cell.alignment = { horizontal: 'center', vertical: 'middle' };
+                row.height = 20
+            });
+        });
+
+        try {
+            const data = await workbook.xlsx.writeBuffer()
+            var fileName = new Date().toString().slice(4, 15) + ".xlsx";
+            console.log(">>>", fileName);
+            // res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+            // res.addHeader(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename="+ fileName)
+            res.contentType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+            res.type = 'blob';
+            res.send(data)
+            // res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+            // res.setHeader("Content-Disposition", "attachment; filename=" + "Report.xlsx");
+            // workbook.xlsx.write(res)
+            // .then((data)=>{
+            //     res.end();
+            //         console.log('File write done........');
+            //     });
+        } catch (err) {
+            throw new Error(err);
+        }
+    })
+};
+
 module.exports = {
     addStockOutDetails,
     removeStockOutTransaction,
@@ -738,5 +1413,63 @@ module.exports = {
     exportExcelSheetForStockout,
     getCategoryWiseUsedByProduct,
     getUpdateStockOutList,
-    getUpdateStockOutListById
+    getUpdateStockOutListById,
+    categoryWisedUsed
 }
+
+// SELECT
+// p.productId,
+//     p.productName,
+//     iscd.stockOutCategoryId,
+//     iscd.stockOutCategoryName,
+//     COALESCE(so.usedQty, 0) AS usedQty
+// FROM
+//     inventory_product_data AS p
+// LEFT JOIN(
+//     SELECT
+//         inventory_stockOut_data.productId,
+//     inventory_stockOut_data.stockOutCategory,
+//     SUM(inventory_stockOut_data.productQty) AS usedQty
+//     FROM
+//         inventory_stockOut_data
+//     GROUP BY
+//         inventory_stockOut_data.productId,
+//     inventory_stockOut_data.stockOutCategory
+// ) AS so
+// ON
+// p.productId = so.productId
+// LEFT JOIN inventory_stockOutCategory_data AS iscd
+// ON
+// iscd.stockOutCategoryId = so.stockOutCategory
+// ORDER BY
+// p.productId;
+
+// Finally Done
+
+// SET @sql = NULL;
+
+// SELECT
+// GROUP_CONCAT(DISTINCT
+//     CONCAT(
+//     'COALESCE(MAX(CASE WHEN so.productId = ''',
+//     p.productId,
+//     ''' THEN so.usedQty END), 0) AS ',
+//     QUOTE(p.productName)
+// )
+// ) INTO @sql
+// FROM inventory_product_data p;
+
+// SET @sql = CONCAT(
+//     'SELECT c.stockOutCategoryId, c.stockOutCategoryName, ', @sql, '
+//    FROM inventory_stockOutCategory_data c
+//    LEFT JOIN(
+//         SELECT so.stockOutCategory, so.productId, SUM(so.productQty) AS usedQty
+//      FROM inventory_stockOut_data so
+//      GROUP BY so.stockOutCategory, so.productId
+//     ) so ON c.stockOutCategoryId = so.stockOutCategory
+//    GROUP BY c.stockOutCategoryId, c.stockOutCategoryName'
+// );
+
+// PREPARE stmt FROM @sql;
+// EXECUTE stmt;
+// DEALLOCATE PREPARE stmt;

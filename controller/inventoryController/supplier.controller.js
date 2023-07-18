@@ -183,9 +183,9 @@ const getAllProductDetailsBySupplierId = async (req, res) => {
                                             pd.productName,
                                             COALESCE(si.total_quantity, 0) AS productQuantity,
                                             COALESCE(si.total_expense, 0) AS totalExpense,
-                                            COALESCE(silu.productQty, 0) AS lastStockIN,
-                                            COALESCE(silu.productPrice, 0) AS lastUpdatedPrice,
-                                            COALESCE(DATE_FORMAT(silu.stockInDate,'%d-%m-%Y'), 'No Update') AS lastStockdInAt,
+                                            COALESCE(siLu.productQty, 0) AS lastStockIN,
+                                            COALESCE(siLu.productPrice, 0) AS lastUpdatedPrice,
+                                            COALESCE(DATE_FORMAT(siLu.stockInDate,'%d-%m-%Y'), 'No Update') AS lastStockdInAt,
                                             pd.unit AS productUnit
                                         FROM
                                             inventory_supplierProducts_data AS sp
@@ -636,9 +636,9 @@ const exportExcelSheetForAllProductBySupplierId = (req, res) => {
                                 pd.productName,
                                 CONCAT(COALESCE(si.total_quantity, 0),' ',pd.unit) AS productQuantity,
                                 COALESCE(si.total_expense, 0) AS totalExpense,
-                                CONCAT(COALESCE(silu.productQty, 0),' ',pd.unit) AS lastStockIN,
-                                COALESCE(silu.productPrice, 0) AS lastUpdatedPrice,
-                                COALESCE(DATE_FORMAT(silu.stockInDate,'%d-%M-%Y'), 'No Update') AS lastStockedInAt
+                                CONCAT(COALESCE(siLu.productQty, 0),' ',pd.unit) AS lastStockIN,
+                                COALESCE(siLu.productPrice, 0) AS lastUpdatedPrice,
+                                COALESCE(DATE_FORMAT(siLu.stockInDate,'%d-%M-%Y'), 'No Update') AS lastStockedInAt
                             FROM
                                 inventory_supplierProducts_data AS sp
                             INNER JOIN(

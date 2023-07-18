@@ -121,7 +121,8 @@ const getSupplierByProductId = (req, res) => {
         if (req.query.startDate && req.query.endDate) {
             var sql_querry_getSupplierByProductId = `SELECT
                                                     inventory_supplier_data.supplierNickName,
-                                                    COALESCE(si.quantity,0) AS Quantity
+                                                    COALESCE(si.quantity,0) AS Quantity,
+                                                    COALESCE(si.expense,0) AS expense
                                                 FROM
                                                     inventory_supplierProducts_data AS ispd
                                                     INNER JOIN inventory_supplier_data ON inventory_supplier_data.supplierId = ispd.supplierId
@@ -131,7 +132,10 @@ const getSupplierByProductId = (req, res) => {
                                                             inventory_stockIn_data.supplierId,
                                                             SUM(
                                                                 inventory_stockIn_data.productQty
-                                                            ) AS quantity
+                                                            ) AS quantity,
+                                                            SUM(
+                                                                inventory_stockIn_data.totalPrice
+                                                            ) AS expense
                                                         FROM
                                                             inventory_stockIn_data
                                                         WHERE
@@ -145,7 +149,8 @@ const getSupplierByProductId = (req, res) => {
         } else {
             var sql_querry_getSupplierByProductId = `SELECT
                                                     inventory_supplier_data.supplierNickName,
-                                                    COALESCE(si.quantity,0) AS Quantity
+                                                    COALESCE(si.quantity,0) AS Quantity,
+                                                    COALESCE(si.expense,0) AS expense
                                                 FROM
                                                     inventory_supplierProducts_data AS ispd
                                                     INNER JOIN inventory_supplier_data ON inventory_supplier_data.supplierId = ispd.supplierId
@@ -155,7 +160,10 @@ const getSupplierByProductId = (req, res) => {
                                                             inventory_stockIn_data.supplierId,
                                                             SUM(
                                                                 inventory_stockIn_data.productQty
-                                                            ) AS quantity
+                                                            ) AS quantity,
+                                                            SUM(
+                                                                inventory_stockIn_data.totalPrice
+                                                            ) AS expense
                                                         FROM
                                                             inventory_stockIn_data
                                                         WHERE

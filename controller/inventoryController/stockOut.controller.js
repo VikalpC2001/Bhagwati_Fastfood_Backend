@@ -414,6 +414,7 @@ const addStockOutDetails = async (req, res) => {
                         console.log("Updated stockInData:", stockInData);
 
                         console.log("Total Stock Out Price:", totalStockOutPrice);
+                        const stocokOutPrice = Number(totalStockOutPrice).toFixed(2);
 
                         const sopq = stockInData.filter((obj) => {
                             if (obj.stockInQuantity != obj.productQty) {
@@ -445,7 +446,7 @@ const addStockOutDetails = async (req, res) => {
                                 return res.status(500).send('Database Error');
                             }
                             const sql_querry_addStockOut = `INSERT INTO inventory_stockOut_data (stockOutId, userId, productId, productQty, productUnit, stockOutPrice, stockOutCategory, stockOutComment, stockOutDate)  
-                                                            VALUES ('${stockOutId}', '${userId}', '${productId}', ${productQty}, '${productUnit}', ${totalStockOutPrice}, '${stockOutCategory}', NULLIF('${stockOutComment}','null'), STR_TO_DATE('${stockOutDate}','%b %d %Y'))`;
+                                                            VALUES ('${stockOutId}', '${userId}', '${productId}', ${productQty}, '${productUnit}', ${stocokOutPrice}, '${stockOutCategory}', NULLIF('${stockOutComment}','null'), STR_TO_DATE('${stockOutDate}','%b %d %Y'))`;
                             pool.query(sql_querry_addStockOut, (err, data) => {
                                 if (err) {
                                     console.error("An error occurd in SQL Queery", err);
@@ -817,6 +818,7 @@ const updateStockOutTransaction = async (req, res) => {
 
                                 console.log("Total Stock Out Price:", totalStockOutPrice);
                                 const totalofStockOutPrice = previousStockOutPrice + totalStockOutPrice;
+                                const stockOutPrice = Number(totalofStockOutPrice).toFixed(2);
 
                                 const sopq = stockInData.filter((obj) => {
                                     if (obj.stockInQuantity != obj.productQty) {
@@ -881,7 +883,7 @@ const updateStockOutTransaction = async (req, res) => {
                                                                                          productId = '${productId}',
                                                                                          productQty = ${productQty},
                                                                                          productUnit = '${productUnit}',
-                                                                                         stockOutPrice = ${totalofStockOutPrice},
+                                                                                         stockOutPrice = ${stockOutPrice},
                                                                                          stockOutCategory = '${stockOutCategory}',
                                                                                          stockOutComment = NULLIF('${stockOutComment}','null'),
                                                                                          stockOutDate = STR_TO_DATE('${stockOutDate}','%b %d %Y') 
@@ -943,6 +945,7 @@ const updateStockOutTransaction = async (req, res) => {
                                     console.log("Total Cost of Filling: ", totalCost);
 
                                     const totalofStockOutPrice = previousStockOutPrice - totalCost;
+                                    const stockOutPrice = Number(totalofStockOutPrice).toFixed(2);
 
                                     const sopq = StockInData.filter((obj) => {
                                         if (obj.stockInQuantity != obj.productQty) {
@@ -1007,7 +1010,7 @@ const updateStockOutTransaction = async (req, res) => {
                                                                                          productId = '${productId}',
                                                                                          productQty = ${productQty},
                                                                                          productUnit = '${productUnit}',
-                                                                                         stockOutPrice = ${totalofStockOutPrice},
+                                                                                         stockOutPrice = ${stockOutPrice},
                                                                                          stockOutCategory = '${stockOutCategory}',
                                                                                          stockOutComment = NULLIF('${stockOutComment}','null'),
                                                                                          stockOutDate = STR_TO_DATE('${stockOutDate}','%b %d %Y') 

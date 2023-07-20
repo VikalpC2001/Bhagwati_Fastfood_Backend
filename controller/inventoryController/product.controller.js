@@ -371,7 +371,7 @@ const addProduct = async (req, res) => {
         }
         console.log(">>?>?>?>", data.productName);
         if (!data.productName || !data.minProductQty || !data.minProductUnit) {
-            return res.status(400).send("Please Fill All The Fields")
+            return res.status(400).send("Please Fill All The Fields");
         } else {
             req.body.productName = pool.query(`SELECT productName FROM inventory_product_data WHERE productName = '${data.productName}'`, function (err, row) {
                 if (err) {

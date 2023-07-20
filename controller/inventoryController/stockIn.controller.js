@@ -304,13 +304,15 @@ const addStockInDetails = async (req, res) => {
             const uid1 = new Date();
             const stockInId = String("stockIn_" + uid1.getTime());
             console.log("...", stockInId);
-
+            const num = 330000.232;
+            const roundedNum = Number(num.toFixed(2));
+            console.log(roundedNum);
             const data = {
                 productId: req.body.productId,
                 productQty: req.body.productQty,
                 productUnit: req.body.productUnit.trim(),
-                productPrice: req.body.productPrice,
-                totalPrice: req.body.totalPrice,
+                productPrice: Number(req.body.productPrice).toFixed(2),
+                totalPrice: Number(req.body.totalPrice).toFixed(2),
                 billNumber: req.body.billNumber ? req.body.billNumber.trim() : null,
                 supplierId: req.body.supplierId,
                 stockInPaymentMethod: req.body.stockInPaymentMethod,
@@ -406,8 +408,8 @@ const updateStockInTransaction = async (req, res) => {
                 productId: req.body.productId,
                 productQty: req.body.productQty,
                 productUnit: req.body.productUnit.trim(),
-                productPrice: req.body.productPrice,
-                totalPrice: req.body.totalPrice,
+                productPrice: Number(req.body.productPrice).toFixed(2),
+                totalPrice: Number(req.body.totalPrice).toFixed(2),
                 billNumber: req.body.billNumber ? req.body.billNumber.trim() : null,
                 supplierId: req.body.supplierId,
                 stockInPaymentMethod: req.body.stockInPaymentMethod,

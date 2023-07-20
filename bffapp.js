@@ -9,6 +9,7 @@ const app = express()
 const port = process.env.PORT;
 const userrouter = require('./routs/userRouts/user.routs');
 const inventoryrouter = require('./routs/inventoryRouts/inventory.routs');
+const staffrouter = require('./routs/staffRouts/staff.routs');
 
 // app.use(cors({
 //   credentials: true,
@@ -33,6 +34,7 @@ app.use(bodyparser.json())
 
 app.use('/userrouter', userrouter);
 app.use('/inventoryrouter', inventoryrouter);
+app.use('/staffrouter', staffrouter);
 
 app.use(notFound);
 app.use(erroHandler);

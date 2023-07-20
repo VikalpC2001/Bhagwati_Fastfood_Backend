@@ -13,7 +13,7 @@ const isImage = (file) => {
 
 const customDestination = multer.diskStorage({
     destination: (req, file, cb) => {
-        const uploadDir = '/Users/vikalp/Bhagwati_Fastfood_Backend/asset/staffPhotos'; // Replace with your custom folder name
+        const uploadDir = process.env.EMPLOYEE_PHOTO_PATH; // Replace with your custom folder name
         cb(null, uploadDir);
     },
     filename: (req, file, cb) => {

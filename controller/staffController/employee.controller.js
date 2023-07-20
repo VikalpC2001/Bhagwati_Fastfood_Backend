@@ -6,7 +6,7 @@ const path = require('path');
 
 // Get Image Using API
 
-const imageFolderPath = path.join('/Users/vikalp/Bhagwati_Fastfood_Backend/asset/staffPhotos');
+const imageFolderPath = path.join(process.env.EMPLOYEE_PHOTO_PATH);
 
 // Define a route to handle image retrieval
 const getImagebyName = (req, res) => {

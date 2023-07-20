@@ -407,7 +407,7 @@ const getSupplierdata = (req, res) => {
 const getSupplierDetailsById = async (req, res) => {
     try {
         const supplierId = req.query.supplierId
-        sql_query_getDetailsById = `SELECT sd.supplierId, CONCAT(supplierFirstName,' ',supplierLastName) AS supplierName, supplierFirmName AS firmName, supplierFirmAddress AS firmAddress,  GROUP_CONCAT(inventory_product_data.productName SEPARATOR ', ') as products,supplierNickName AS nickName, supplierPhoneNumber AS phoneNumber, supplierEmailId AS emailId 
+        sql_query_getDetailsById = `SELECT sd.supplierId, supplierFirstName AS supplierName, supplierFirmName AS firmName, supplierFirmAddress AS firmAddress,  GROUP_CONCAT(inventory_product_data.productName SEPARATOR ', ') as products,supplierNickName AS nickName, supplierPhoneNumber AS phoneNumber, supplierEmailId AS emailId 
                                     FROM inventory_supplier_data AS sd
                                     INNER JOIN inventory_supplierProducts_data ON inventory_supplierProducts_data.supplierId = sd.supplierId
                                     INNER JOIN inventory_product_data ON inventory_product_data.productId = inventory_supplierProducts_data.productId

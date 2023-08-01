@@ -157,6 +157,7 @@ const getDebitTransactionList = async (req, res) => {
         } else {
             sql_querry_getCountdetails = `SELECT count(*) as numRows FROM inventory_supplierTransaction_data WHERE  inventory_supplierTransaction_data.transactionDate BETWEEN STR_TO_DATE('${firstDay}','%b %d %Y') AND STR_TO_DATE('${lastDay}','%b %d %Y')`;
         }
+        console.log('><>?//', sql_querry_getCountdetails);
         pool.query(sql_querry_getCountdetails, (err, rows, fields) => {
             if (err) {
                 console.error("An error occurd in SQL Queery", err);
@@ -166,15 +167,15 @@ const getDebitTransactionList = async (req, res) => {
                 const numPages = Math.ceil(numRows / numPerPage);
                 const sql_common_qurey = `SELECT supplierTransactionId,RIGHT(supplierTransactionId,9) AS invoiceNumber, CONCAT(user_details.userFirstName,' ',user_details.userLastName) AS paidBy, inventory_supplier_data.supplierNickName, receivedBy, pendingAmount, paidAmount, transactionNote, DATE_FORMAT(transactionDate,'%d-%M-%Y') AS transactionDate, DATE_FORMAT(supplierTransactionCreationDate,'%h:%i %p') AS transactionTime 
                                             FROM inventory_supplierTransaction_data
-                                            INNER JOIN user_details ON user_details.userId = inventory_supplierTransaction_data.UserId
-                                            INNER JOIN inventory_supplier_data ON inventory_supplier_data.supplierId = inventory_supplierTransaction_data.supplierId`;
+                                            LEFT JOIN user_details ON user_details.userId = inventory_supplierTransaction_data.UserId
+                                            LEFT JOIN inventory_supplier_data ON inventory_supplier_data.supplierId = inventory_supplierTransaction_data.supplierId`;
                 if (req.query.supplierId && req.query.startDate && req.query.endDate) {
                     sql_queries_getdetails = `${sql_common_qurey}
                                                 WHERE inventory_supplierTransaction_data.supplierId = '${data.supplierId}' AND inventory_supplierTransaction_data.transactionDate BETWEEN STR_TO_DATE('${data.startDate}','%b %d %Y') AND STR_TO_DATE('${data.endDate}','%b %d %Y') 
                                                 ORDER BY inventory_supplierTransaction_data.supplierTransactionCreationDate DESC LIMIT ${limit}`;
                 } else if (req.query.startDate && req.query.endDate) {
                     sql_queries_getdetails = `${sql_common_qurey}
-                                                WHERE  inventory_supplierTransaction_data.transactionDate BETWEEN STR_TO_DATE('${data.startDate}','%b %d %Y') AND STR_TO_DATE('${data.endDate}','%b %d %Y') 
+                                                WHERE inventory_supplierTransaction_data.transactionDate BETWEEN STR_TO_DATE('${data.startDate}','%b %d %Y') AND STR_TO_DATE('${data.endDate}','%b %d %Y') 
                                                 ORDER BY inventory_supplierTransaction_data.supplierTransactionCreationDate DESC LIMIT ${limit}`;
                 } else if (req.query.supplierId) {
                     sql_queries_getdetails = `${sql_common_qurey}

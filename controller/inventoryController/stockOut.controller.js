@@ -324,7 +324,7 @@ const addStockOutDetails = async (req, res) => {
             const productUnit = req.body.productUnit.trim();
             const stockOutCategory = req.body.stockOutCategory.trim();
             const stockOutComment = req.body.stockOutComment ? req.body.stockOutComment.trim() : null;
-            const stockOutDate = new Date(req.body.stockOutDate ? req.body.stockOutDate : "10/10/1001").toString().slice(4, 15)
+            const stockOutDate = new Date(req.body.stockOutDate ? req.body.stockOutDate : "10/10/1001").toString().slice(4, 15);
 
             if (!productId || !productQty || !productUnit || !stockOutCategory || !stockOutDate) {
                 return res.status(400).send("Please Fill all the feilds");
@@ -646,10 +646,10 @@ const fillStockOutTransaction = (req, res) => {
                     return res.status(500).send('Database Error');
                 }
                 const stockOutData = data[0][0];
-                const remainStock = data[1][0];
+                const remainStock = data[1][0].remainingStock + data[0][0].productQty;
                 const fillData = {
                     ...stockOutData,
-                    ...remainStock
+                    remainingStock: remainStock,
                 }
                 return res.status(200).send(fillData);
             })
@@ -705,15 +705,18 @@ const updateStockOutTransaction = async (req, res) => {
                                                 GROUP BY
                                                     inventory_stockOut_data.productId
                                             ) AS so ON p.productId = so.productId
-                                        WHERE p.productId = '${productId}'`;
+                                        WHERE p.productId = '${productId}';
+                                    SELECT productQty FROM inventory_stockOut_data WHERE stockOutId = '${stockOutId}'`;
             pool.query(get_remaining_stock, (err, remaindata) => {
                 if (err) {
                     console.error("An error occurd in SQL Queery", err);
                     return res.status(500).send('Database Error');
                 }
-                const remainStock = remaindata[0].remainingStock;
-                console.log("./././", remainStock);
-                if (remainStock < productQty) {
+                const remainStock = remaindata[0][0].remainingStock;
+                const previousQty = remaindata[1][0].productQty;
+                console.log("./././", remainStock + previousQty);
+                const remainIngUpdateStock = remainStock + previousQty;
+                if (remainIngUpdateStock < productQty) {
                     return res.status(400).send(`Remaining Stock is ${remainStock} ${productUnit}. You Can Not Able To Out Stock`);
                 } else {
                     const get_previous_data = `SELECT inventory_stockOut_data.productId, productQty, productUnit, stockOutPrice, inventory_stockOutCategory_data.stockOutCategoryName AS stockOutCategory, stockOutComment, DATE_FORMAT(stockOutDate,'%b %d %Y') AS stockOutDate, stockOutModificationDate FROM inventory_stockOut_data

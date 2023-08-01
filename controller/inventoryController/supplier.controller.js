@@ -318,7 +318,7 @@ const getSupplierdata = (req, res) => {
                 const numRows = rows[0].numRows;
                 const numPages = Math.ceil(numRows / numPerPage);
                 if (req.query.searchWord) {
-                    sql_querry_getSupplierData = `SELECT sd.supplierId, CONCAT(supplierFirstName, ' ', supplierLastName) AS supplierName, sd.supplierFirmName, sd.supplierNickName, sd.supplierPhoneNumber, GROUP_CONCAT(inventory_product_data.productName SEPARATOR ', ') as productList,
+                    sql_querry_getSupplierData = `SELECT sd.supplierId, supplierFirstName AS supplierName, sd.supplierFirmName, sd.supplierNickName, sd.supplierPhoneNumber, GROUP_CONCAT(inventory_product_data.productName SEPARATOR ', ') as productList,
                                                     COALESCE(sisd.total_price, 0) - COALESCE(sosd.total_paid, 0) AS remainingAmount FROM inventory_supplier_data AS sd
                                                     INNER JOIN inventory_supplierProducts_data ON inventory_supplierProducts_data.supplierId = sd.supplierId
                                                     INNER JOIN inventory_product_data ON inventory_product_data.productId = inventory_supplierProducts_data.productId
@@ -347,7 +347,7 @@ const getSupplierdata = (req, res) => {
                                                     GROUP BY inventory_supplierProducts_data.supplierId
                                                     ORDER BY sd.supplierFirmName LIMIT  ${limit}`;
                 } else {
-                    sql_querry_getSupplierData = `SELECT sd.supplierId, CONCAT(supplierFirstName, ' ', supplierLastName) AS supplierName, sd.supplierFirmName, sd.supplierNickName, sd.supplierPhoneNumber, GROUP_CONCAT(inventory_product_data.productName SEPARATOR ', ') as productList,
+                    sql_querry_getSupplierData = `SELECT sd.supplierId, supplierFirstName AS supplierName, sd.supplierFirmName, sd.supplierNickName, sd.supplierPhoneNumber, GROUP_CONCAT(inventory_product_data.productName SEPARATOR ', ') as productList,
                                                     COALESCE(sisd.total_price, 0) - COALESCE(sosd.total_paid, 0) AS remainingAmount FROM inventory_supplier_data AS sd
                                                     INNER JOIN inventory_supplierProducts_data ON inventory_supplierProducts_data.supplierId = sd.supplierId
                                                     INNER JOIN inventory_product_data ON inventory_product_data.productId = inventory_supplierProducts_data.productId

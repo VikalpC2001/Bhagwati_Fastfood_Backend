@@ -233,7 +233,7 @@ const exportExcelSheetForDebitTransactionList = (req, res) => {
         endDate: (req.query.endDate ? req.query.endDate : '').slice(4, 15),
         supplierId: req.query.supplierId
     }
-    const sql_common_qurey = `SELECT supplierTransactionId, CONCAT(user_details.userFirstName,' ',user_details.userLastName) AS paidBy, inventory_supplier_data.supplierNickName, receivedBy, pendingAmount, paidAmount, transactionNote, DATE_FORMAT(transactionDate,'%d-%M-%Y') AS transactionDate, DATE_FORMAT(supplierTransactionCreationDate,'%h:%m %p') AS transactionTime 
+    const sql_common_qurey = `SELECT supplierTransactionId, CONCAT(user_details.userFirstName,' ',user_details.userLastName) AS paidBy, inventory_supplier_data.supplierNickName, receivedBy, pendingAmount, paidAmount, transactionNote, DATE_FORMAT(transactionDate,'%d-%M-%Y') AS transactionDate, DATE_FORMAT(supplierTransactionCreationDate,'%h:%i %p') AS transactionTime 
                                     FROM inventory_supplierTransaction_data
                                     INNER JOIN user_details ON user_details.userId = inventory_supplierTransaction_data.UserId
                                     INNER JOIN inventory_supplier_data ON inventory_supplier_data.supplierId = inventory_supplierTransaction_data.supplierId`;

@@ -19,7 +19,7 @@ const getSupplierCounterDetailsById = (req, res) => {
                                                 (
                                                     SELECT
                                                         inventory_stockIn_data.supplierId,
-                                                        SUM(inventory_stockIn_data.totalPrice) AS total_price
+                                                        ROUND(SUM(inventory_stockIn_data.totalPrice)) AS total_price
                                                     FROM
                                                         inventory_stockIn_data
                                                     WHERE inventory_stockIn_data.stockInPaymentMethod = 'debit'
@@ -30,7 +30,7 @@ const getSupplierCounterDetailsById = (req, res) => {
                                                 (
                                                     SELECT
                                                         inventory_supplierTransaction_data.supplierId,
-                                                        SUM(inventory_supplierTransaction_data.paidAmount) AS total_paid
+                                                        ROUND(SUM(inventory_supplierTransaction_data.paidAmount)) AS total_paid
                                                     FROM
                                                         inventory_supplierTransaction_data
                                                     GROUP BY
@@ -38,17 +38,17 @@ const getSupplierCounterDetailsById = (req, res) => {
                                                 ) AS sosd ON sd.supplierId = sosd.supplierId
                                          WHERE sd.supplierId = '${data.supplierId}';`;
         if (req.query.startDate && req.query.endDate) {
-            sql_querry_getSupplierCount = `SELECT COALESCE(SUM(totalPrice),0) AS totalBusiness FROM inventory_stockIn_data WHERE supplierId = '${data.supplierId}' AND stockInDate BETWEEN STR_TO_DATE('${data.startDate}','%b %d %Y') AND STR_TO_DATE('${data.endDate}','%b %d %Y');
-                                            SELECT COALESCE(SUM(totalPrice),0) AS totalBusinessOfDebit FROM inventory_stockIn_data WHERE supplierId = '${data.supplierId}' AND stockInPaymentMethod = 'debit' AND stockInDate BETWEEN STR_TO_DATE('${data.startDate}','%b %d %Y') AND STR_TO_DATE('${data.endDate}','%b %d %Y');
-                                            SELECT COALESCE(SUM(totalPrice),0) AS totalBusinessOfCash FROM inventory_stockIn_data WHERE supplierId = '${data.supplierId}' AND stockInPaymentMethod = 'cash' AND stockInDate BETWEEN STR_TO_DATE('${data.startDate}','%b %d %Y') AND STR_TO_DATE('${data.endDate}','%b %d %Y');
-                                            SELECT COALESCE(SUM(paidAmount),0) AS totalPaidtoSupplier FROM inventory_supplierTransaction_data WHERE supplierId = '${data.supplierId}' AND transactionDate BETWEEN STR_TO_DATE('${data.startDate}','%b %d %Y') AND STR_TO_DATE('${data.endDate}','%b %d %Y');
+            sql_querry_getSupplierCount = `SELECT COALESCE(ROUND(SUM(totalPrice)),0) AS totalBusiness FROM inventory_stockIn_data WHERE supplierId = '${data.supplierId}' AND stockInDate BETWEEN STR_TO_DATE('${data.startDate}','%b %d %Y') AND STR_TO_DATE('${data.endDate}','%b %d %Y');
+                                            SELECT COALESCE(ROUND(SUM(totalPrice)),0) AS totalBusinessOfDebit FROM inventory_stockIn_data WHERE supplierId = '${data.supplierId}' AND stockInPaymentMethod = 'debit' AND stockInDate BETWEEN STR_TO_DATE('${data.startDate}','%b %d %Y') AND STR_TO_DATE('${data.endDate}','%b %d %Y');
+                                            SELECT COALESCE(ROUND(SUM(totalPrice)),0) AS totalBusinessOfCash FROM inventory_stockIn_data WHERE supplierId = '${data.supplierId}' AND stockInPaymentMethod = 'cash' AND stockInDate BETWEEN STR_TO_DATE('${data.startDate}','%b %d %Y') AND STR_TO_DATE('${data.endDate}','%b %d %Y');
+                                            SELECT COALESCE(ROUND(SUM(paidAmount)),0) AS totalPaidtoSupplier FROM inventory_supplierTransaction_data WHERE supplierId = '${data.supplierId}' AND transactionDate BETWEEN STR_TO_DATE('${data.startDate}','%b %d %Y') AND STR_TO_DATE('${data.endDate}','%b %d %Y');
                                             SELECT COUNT(productId) AS numbreOfProduct FROM inventory_supplierProducts_data WHERE supplierId = '${data.supplierId}';
                                             ${sql_querry_remainAmount}`;
         } else {
-            sql_querry_getSupplierCount = `SELECT COALESCE(SUM(totalPrice),0) AS totalBusiness FROM inventory_stockIn_data WHERE supplierId = '${data.supplierId}' AND stockInDate BETWEEN STR_TO_DATE('${firstDay}','%b %d %Y') AND STR_TO_DATE('${lastDay}','%b %d %Y');
-                                            SELECT COALESCE(SUM(totalPrice),0) AS totalBusinessOfDebit FROM inventory_stockIn_data WHERE supplierId = '${data.supplierId}' AND stockInPaymentMethod = 'debit' AND stockInDate BETWEEN STR_TO_DATE('${firstDay}','%b %d %Y') AND STR_TO_DATE('${lastDay}','%b %d %Y');
-                                            SELECT COALESCE(SUM(totalPrice),0) AS totalBusinessOfCash FROM inventory_stockIn_data WHERE supplierId = '${data.supplierId}' AND stockInPaymentMethod = 'cash' AND stockInDate BETWEEN STR_TO_DATE('${firstDay}','%b %d %Y') AND STR_TO_DATE('${lastDay}','%b %d %Y');
-                                            SELECT COALESCE(SUM(paidAmount),0) AS totalPaidtoSupplier FROM inventory_supplierTransaction_data WHERE supplierId = '${data.supplierId}' AND transactionDate BETWEEN STR_TO_DATE('${firstDay}','%b %d %Y') AND STR_TO_DATE('${lastDay}','%b %d %Y');
+            sql_querry_getSupplierCount = `SELECT COALESCE(ROUND(SUM(totalPrice)),0) AS totalBusiness FROM inventory_stockIn_data WHERE supplierId = '${data.supplierId}' AND stockInDate BETWEEN STR_TO_DATE('${firstDay}','%b %d %Y') AND STR_TO_DATE('${lastDay}','%b %d %Y');
+                                            SELECT COALESCE(ROUND(SUM(totalPrice)),0) AS totalBusinessOfDebit FROM inventory_stockIn_data WHERE supplierId = '${data.supplierId}' AND stockInPaymentMethod = 'debit' AND stockInDate BETWEEN STR_TO_DATE('${firstDay}','%b %d %Y') AND STR_TO_DATE('${lastDay}','%b %d %Y');
+                                            SELECT COALESCE(ROUND(SUM(totalPrice)),0) AS totalBusinessOfCash FROM inventory_stockIn_data WHERE supplierId = '${data.supplierId}' AND stockInPaymentMethod = 'cash' AND stockInDate BETWEEN STR_TO_DATE('${firstDay}','%b %d %Y') AND STR_TO_DATE('${lastDay}','%b %d %Y');
+                                            SELECT COALESCE(ROUND(SUM(paidAmount)),0) AS totalPaidtoSupplier FROM inventory_supplierTransaction_data WHERE supplierId = '${data.supplierId}' AND transactionDate BETWEEN STR_TO_DATE('${firstDay}','%b %d %Y') AND STR_TO_DATE('${lastDay}','%b %d %Y');
                                             SELECT COUNT(productId) AS numbreOfProduct FROM inventory_supplierProducts_data WHERE supplierId = '${data.supplierId}';
                                             ${sql_querry_remainAmount}`;
         }
@@ -103,7 +103,7 @@ const getProductDetailsBySupplierId = async (req, res) => {
                                                     (
                                                         SELECT
                                                             inventory_stockIn_data.productId,
-                                                            SUM(inventory_stockIn_data.productQty) AS total_quantity
+                                                            ROUND(SUM(inventory_stockIn_data.productQty),2) AS total_quantity
                                                         FROM
                                                             inventory_stockIn_data
                                                         WHERE inventory_stockIn_data.supplierId = '${data.supplierId}' AND inventory_stockIn_data.stockInDate BETWEEN STR_TO_DATE('${data.startDate}','%b %d %Y') AND STR_TO_DATE('${data.endDate}','%b %d %Y')
@@ -128,7 +128,7 @@ const getProductDetailsBySupplierId = async (req, res) => {
                                                     (
                                                         SELECT
                                                             inventory_stockIn_data.productId,
-                                                            SUM(inventory_stockIn_data.productQty) AS total_quantity
+                                                            ROUND(SUM(inventory_stockIn_data.productQty),2) AS total_quantity
                                                         FROM
                                                             inventory_stockIn_data
                                                         WHERE inventory_stockIn_data.supplierId = '${data.supplierId}' AND inventory_stockIn_data.stockInDate BETWEEN STR_TO_DATE('${firstDay}','%b %d %Y') AND STR_TO_DATE('${lastDay}','%b %d %Y')
@@ -227,12 +227,12 @@ const getAllProductDetailsBySupplierId = async (req, res) => {
                                                                 LEFT JOIN(
                                                                     SELECT
                                                                         inventory_stockIn_data.productId,
-                                                                    SUM(
+                                                                    ROUND(SUM(
                                                                         inventory_stockIn_data.productQty
-                                                                    ) AS total_quantity,
-                                                                    SUM(
+                                                                    ),2) AS total_quantity,
+                                                                    ROUND(SUM(
                                                                         inventory_stockIn_data.totalPrice
-                                                                    ) AS total_expense
+                                                                    )) AS total_expense
                                                                     FROM
                                                                         inventory_stockIn_data
                                                                     WHERE
@@ -250,12 +250,12 @@ const getAllProductDetailsBySupplierId = async (req, res) => {
                                                                 LEFT JOIN(
                                                                     SELECT
                                                                         inventory_stockIn_data.productId,
-                                                                    SUM(
+                                                                    ROUND(SUM(
                                                                         inventory_stockIn_data.productQty
-                                                                    ) AS total_quantity,
-                                                                    SUM(
+                                                                    ),2) AS total_quantity,
+                                                                    ROUND(SUM(
                                                                         inventory_stockIn_data.totalPrice
-                                                                    ) AS total_expense
+                                                                    )) AS total_expense
                                                                     FROM
                                                                         inventory_stockIn_data
                                                                     WHERE
@@ -326,7 +326,7 @@ const getSupplierdata = (req, res) => {
                                                                 (
                                                                     SELECT
                                                                         inventory_stockIn_data.supplierId,
-                                                                        SUM(inventory_stockIn_data.totalPrice) AS total_price
+                                                                        ROUND(SUM(inventory_stockIn_data.totalPrice)) AS total_price
                                                                     FROM
                                                                         inventory_stockIn_data
                                                                     WHERE inventory_stockIn_data.stockInPaymentMethod = 'debit'
@@ -337,7 +337,7 @@ const getSupplierdata = (req, res) => {
                                                                 (
                                                                     SELECT
                                                                         inventory_supplierTransaction_data.supplierId,
-                                                                        SUM(inventory_supplierTransaction_data.paidAmount) AS total_paid
+                                                                        ROUND(SUM(inventory_supplierTransaction_data.paidAmount)) AS total_paid
                                                                     FROM
                                                                         inventory_supplierTransaction_data
                                                                     GROUP BY
@@ -355,7 +355,7 @@ const getSupplierdata = (req, res) => {
                                                                 (
                                                                     SELECT
                                                                         inventory_stockIn_data.supplierId,
-                                                                        SUM(inventory_stockIn_data.totalPrice) AS total_price
+                                                                        ROUND(SUM(inventory_stockIn_data.totalPrice)) AS total_price
                                                                     FROM
                                                                         inventory_stockIn_data
                                                                     WHERE inventory_stockIn_data.stockInPaymentMethod = 'debit'
@@ -366,7 +366,7 @@ const getSupplierdata = (req, res) => {
                                                                 (
                                                                     SELECT
                                                                         inventory_supplierTransaction_data.supplierId,
-                                                                        SUM(inventory_supplierTransaction_data.paidAmount) AS total_paid
+                                                                        ROUND(SUM(inventory_supplierTransaction_data.paidAmount)) AS total_paid
                                                                     FROM
                                                                         inventory_supplierTransaction_data
                                                                     GROUP BY
@@ -679,12 +679,12 @@ const exportExcelSheetForAllProductBySupplierId = (req, res) => {
                                                 LEFT JOIN(
                                                     SELECT
                                                         inventory_stockIn_data.productId,
-                                                    SUM(
+                                                    ROUND(SUM(
                                                         inventory_stockIn_data.productQty
-                                                    ) AS total_quantity,
-                                                    SUM(
+                                                    ),2) AS total_quantity,
+                                                    ROUND(SUM(
                                                         inventory_stockIn_data.totalPrice
-                                                    ) AS total_expense
+                                                    )) AS total_expense
                                                     FROM
                                                         inventory_stockIn_data
                                                     WHERE
@@ -701,12 +701,12 @@ const exportExcelSheetForAllProductBySupplierId = (req, res) => {
                                                 LEFT JOIN(
                                                     SELECT
                                                         inventory_stockIn_data.productId,
-                                                    SUM(
+                                                    ROUND(SUM(
                                                         inventory_stockIn_data.productQty
-                                                    ) AS total_quantity,
-                                                    SUM(
+                                                    ),2) AS total_quantity,
+                                                    ROUND(SUM(
                                                         inventory_stockIn_data.totalPrice
-                                                    ) AS total_expense
+                                                    )) AS total_expense
                                                     FROM
                                                         inventory_stockIn_data
                                                     WHERE

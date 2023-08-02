@@ -23,9 +23,9 @@ const getProductCountDetailsById = (req, res) => {
                                            LEFT JOIN(
                                                SELECT
                                                    inventory_stockIn_data.productId,
-                                                   SUM(
+                                                   ROUND(SUM(
                                                        inventory_stockIn_data.productQty
-                                                   ) AS total_quantity
+                                                   ),2) AS total_quantity
                                                FROM
                                                    inventory_stockIn_data
                                                GROUP BY
@@ -36,9 +36,9 @@ const getProductCountDetailsById = (req, res) => {
                                            LEFT JOIN(
                                                SELECT
                                                    inventory_stockOut_data.productId,
-                                                   SUM(
+                                                   ROUND(SUM(
                                                        inventory_stockOut_data.productQty
-                                                   ) AS total_quantity
+                                                   ),2) AS total_quantity
                                                FROM
                                                    inventory_stockOut_data
                                                GROUP BY
@@ -69,12 +69,12 @@ const getProductCountDetailsById = (req, res) => {
                                                p.productId = siLu.productId
                                           WHERE p.productId = '${data.productId}'`;
         if (req.query.startDate && req.query.endDate) {
-            sql_querry_getProductCount = `SELECT COALESCE(SUM(productQty),0) AS purchase, COALESCE(SUM(totalPrice),0) AS totalRs FROM inventory_stockIn_data WHERE inventory_stockIn_data.productId = '${data.productId}' AND inventory_stockIn_data.stockInDate BETWEEN STR_TO_DATE('${data.startDate}','%b %d %Y') AND STR_TO_DATE('${data.endDate}','%b %d %Y');
-                                            SELECT COALESCE(SUM(productQty),0) AS used, COALESCE(SUM(stockOutPrice),0) AS totalUsedPrice FROM inventory_stockOut_data WHERE inventory_stockOut_data.productId = '${data.productId}' AND inventory_stockOut_data.stockOutDate BETWEEN STR_TO_DATE('${data.startDate}','%b %d %Y') AND STR_TO_DATE('${data.endDate}','%b %d %Y');
+            sql_querry_getProductCount = `SELECT COALESCE(ROUND(SUM(productQty),2),0) AS purchase, COALESCE(ROUND(SUM(totalPrice)),0) AS totalRs FROM inventory_stockIn_data WHERE inventory_stockIn_data.productId = '${data.productId}' AND inventory_stockIn_data.stockInDate BETWEEN STR_TO_DATE('${data.startDate}','%b %d %Y') AND STR_TO_DATE('${data.endDate}','%b %d %Y');
+                                            SELECT COALESCE(ROUND(SUM(productQty),2),0) AS used, COALESCE(ROUND(SUM(stockOutPrice)),0) AS totalUsedPrice FROM inventory_stockOut_data WHERE inventory_stockOut_data.productId = '${data.productId}' AND inventory_stockOut_data.stockOutDate BETWEEN STR_TO_DATE('${data.startDate}','%b %d %Y') AND STR_TO_DATE('${data.endDate}','%b %d %Y');
                                             ${sql_querry_StatickCCount}`;
         } else {
-            sql_querry_getProductCount = `SELECT COALESCE(SUM(productQty),0) AS purchase, COALESCE(SUM(totalPrice),0) AS totalRs FROM inventory_stockIn_data WHERE inventory_stockIn_data.productId = '${data.productId}' AND inventory_stockIn_data.stockInDate BETWEEN STR_TO_DATE('${firstDay}','%b %d %Y') AND STR_TO_DATE('${lastDay}','%b %d %Y');
-                                            SELECT COALESCE(SUM(productQty),0) AS used, COALESCE(SUM(stockOutPrice),0) AS totalUsedPrice FROM inventory_stockOut_data WHERE inventory_stockOut_data.productId = '${data.productId}' AND inventory_stockOut_data.stockOutDate BETWEEN STR_TO_DATE('${firstDay}','%b %d %Y') AND STR_TO_DATE('${lastDay}','%b %d %Y');
+            sql_querry_getProductCount = `SELECT COALESCE(ROUND(SUM(productQty),2),0) AS purchase, COALESCE(ROUND(SUM(totalPrice)),0) AS totalRs FROM inventory_stockIn_data WHERE inventory_stockIn_data.productId = '${data.productId}' AND inventory_stockIn_data.stockInDate BETWEEN STR_TO_DATE('${firstDay}','%b %d %Y') AND STR_TO_DATE('${lastDay}','%b %d %Y');
+                                            SELECT COALESCE(ROUND(SUM(productQty),2),0) AS used, COALESCE(ROUND(SUM(stockOutPrice)),0) AS totalUsedPrice FROM inventory_stockOut_data WHERE inventory_stockOut_data.productId = '${data.productId}' AND inventory_stockOut_data.stockOutDate BETWEEN STR_TO_DATE('${firstDay}','%b %d %Y') AND STR_TO_DATE('${lastDay}','%b %d %Y');
                                             ${sql_querry_StatickCCount}`;
         }
         pool.query(sql_querry_getProductCount, (err, data) => {
@@ -130,12 +130,12 @@ const getSupplierByProductId = (req, res) => {
                                                     (
                                                         SELECT
                                                             inventory_stockIn_data.supplierId,
-                                                            SUM(
+                                                            ROUND(SUM(
                                                                 inventory_stockIn_data.productQty
-                                                            ) AS quantity,
-                                                            SUM(
+                                                            ),2) AS quantity,
+                                                            ROUND(SUM(
                                                                 inventory_stockIn_data.totalPrice
-                                                            ) AS expense
+                                                            )) AS expense
                                                         FROM
                                                             inventory_stockIn_data
                                                         WHERE
@@ -158,12 +158,12 @@ const getSupplierByProductId = (req, res) => {
                                                     (
                                                         SELECT
                                                             inventory_stockIn_data.supplierId,
-                                                            SUM(
+                                                            ROUND(SUM(
                                                                 inventory_stockIn_data.productQty
-                                                            ) AS quantity,
-                                                            SUM(
+                                                            ),2) AS quantity,
+                                                            ROUND(SUM(
                                                                 inventory_stockIn_data.totalPrice
-                                                            ) AS expense
+                                                            )) AS expense
                                                         FROM
                                                             inventory_stockIn_data
                                                         WHERE
@@ -212,9 +212,9 @@ const getProductList = (req, res) => {
                                                          inventory_product_data AS p
                                                      LEFT JOIN(
                                                          SELECT inventory_stockIn_data.productId,
-                                                             SUM(
+                                                             ROUND(SUM(
                                                                  inventory_stockIn_data.productQty
-                                                             ) AS total_quantity
+                                                             ),2) AS total_quantity
                                                          FROM
                                                              inventory_stockIn_data
                                                          GROUP BY
@@ -224,9 +224,9 @@ const getProductList = (req, res) => {
                                                          p.productId = si.productId
                                                      LEFT JOIN(
                                                          SELECT inventory_stockOut_data.productId,
-                                                             SUM(
+                                                             ROUND(SUM(
                                                                  inventory_stockOut_data.productQty
-                                                             ) AS total_quantity
+                                                             ),2) AS total_quantity
                                                          FROM
                                                              inventory_stockOut_data
                                                          GROUP BY
@@ -295,7 +295,7 @@ const getProductListCounter = (req, res) => {
                                     (
                                         SELECT
                                             inventory_stockIn_data.productId,
-                                            SUM(inventory_stockIn_data.productQty) AS total_quantity
+                                            ROUND(SUM(inventory_stockIn_data.productQty),2) AS total_quantity
                                         FROM
                                             inventory_stockIn_data
                                         GROUP BY
@@ -305,7 +305,7 @@ const getProductListCounter = (req, res) => {
                                     (
                                         SELECT
                                             inventory_stockOut_data.productId,
-                                            SUM(inventory_stockOut_data.productQty) AS total_quantity
+                                            ROUND(SUM(inventory_stockOut_data.productQty),2) AS total_quantity
                                         FROM
                                             inventory_stockOut_data
                                         GROUP BY
@@ -438,9 +438,9 @@ const getProductDetailsTable = (req, res) => {
                                 LEFT JOIN(
                                     SELECT
                                         inventory_stockIn_data.productId,
-                                        SUM(
+                                        ROUND(SUM(
                                             inventory_stockIn_data.productQty
-                                        ) AS total_quantity
+                                        ),2) AS total_quantity
                                     FROM
                                         inventory_stockIn_data
                                     GROUP BY
@@ -451,9 +451,9 @@ const getProductDetailsTable = (req, res) => {
                                 LEFT JOIN(
                                     SELECT
                                         inventory_stockOut_data.productId,
-                                        SUM(
+                                        ROUND(SUM(
                                             inventory_stockOut_data.productQty
-                                        ) AS total_quantity
+                                        ),2) AS total_quantity
                                     FROM
                                         inventory_stockOut_data
                                     GROUP BY
@@ -506,9 +506,9 @@ const getProductDetailsTable = (req, res) => {
                                     LEFT JOIN(
                                         SELECT
                                             inventory_stockIn_data.productId,
-                                            SUM(
+                                            ROUND(SUM(
                                                 inventory_stockIn_data.productQty
-                                            ) AS total_quantity
+                                            ),2) AS total_quantity
                                         FROM
                                             inventory_stockIn_data
                                         GROUP BY
@@ -519,9 +519,9 @@ const getProductDetailsTable = (req, res) => {
                                     LEFT JOIN(
                                         SELECT
                                             inventory_stockOut_data.productId,
-                                            SUM(
+                                            ROUND(SUM(
                                                 inventory_stockOut_data.productQty
-                                            ) AS total_quantity
+                                            ),2) AS total_quantity
                                         FROM
                                             inventory_stockOut_data
                                         GROUP BY
@@ -554,7 +554,7 @@ const getProductDetailsTable = (req, res) => {
                                     (
                                         SELECT
                                                                 inventory_stockIn_data.productId,
-                                        SUM(inventory_stockIn_data.productQty) AS total_quantity
+                                        ROUND(SUM(inventory_stockIn_data.productQty),2) AS total_quantity
                                                             FROM
                                                                 inventory_stockIn_data
                                                             GROUP BY
@@ -564,7 +564,7 @@ const getProductDetailsTable = (req, res) => {
                                     (
                                         SELECT
                                                                 inventory_stockOut_data.productId,
-                                        SUM(inventory_stockOut_data.productQty) AS total_quantity
+                                        ROUND(SUM(inventory_stockOut_data.productQty),2) AS total_quantity
                                                             FROM
                                                                 inventory_stockOut_data
                                                             GROUP BY
@@ -596,12 +596,12 @@ const getProductDetailsTable = (req, res) => {
                                         LEFT JOIN(
                                             SELECT
                                                 inventory_stockIn_data.productId,
-                                                SUM(
+                                                ROUND(SUM(
                                                     inventory_stockIn_data.productQty
-                                                ) AS total_quantity,
-                                                SUM(
+                                                ),2) AS total_quantity,
+                                                ROUND(SUM(
                                                     inventory_stockIn_data.totalPrice
-                                                ) AS totalExpense
+                                                )) AS totalExpense
                                             FROM
                                                 inventory_stockIn_data
                                             WHERE
@@ -614,9 +614,9 @@ const getProductDetailsTable = (req, res) => {
                                         LEFT JOIN(
                                             SELECT
                                                 inventory_stockOut_data.productId,
-                                                SUM(
+                                                ROUND(SUM(
                                                     inventory_stockOut_data.productQty
-                                                ) AS total_quantity
+                                                ),2) AS total_quantity
                                             FROM
                                                 inventory_stockOut_data
                                             WHERE
@@ -635,12 +635,12 @@ const getProductDetailsTable = (req, res) => {
                                         LEFT JOIN(
                                             SELECT
                                                 inventory_stockIn_data.productId,
-                                                SUM(
+                                                ROUND(SUM(
                                                     inventory_stockIn_data.productQty
-                                                ) AS total_quantity,
-                                                SUM(
+                                                ),2) AS total_quantity,
+                                                ROUND(SUM(
                                                     inventory_stockIn_data.totalPrice
-                                                ) AS totalExpense
+                                                )) AS totalExpense
                                             FROM
                                                 inventory_stockIn_data
                                             WHERE
@@ -653,9 +653,9 @@ const getProductDetailsTable = (req, res) => {
                                         LEFT JOIN(
                                             SELECT
                                                 inventory_stockOut_data.productId,
-                                                SUM(
+                                                ROUND(SUM(
                                                     inventory_stockOut_data.productQty
-                                                ) AS total_quantity
+                                                ),2) AS total_quantity
                                             FROM
                                                 inventory_stockOut_data
                                             WHERE
@@ -673,12 +673,12 @@ const getProductDetailsTable = (req, res) => {
                                         LEFT JOIN(
                                             SELECT
                                                 inventory_stockIn_data.productId,
-                                                SUM(
+                                                ROUND(SUM(
                                                     inventory_stockIn_data.productQty
-                                                ) AS total_quantity,
-                                                SUM(
+                                                ),2) AS total_quantity,
+                                                ROUND(SUM(
                                                     inventory_stockIn_data.totalPrice
-                                                ) AS totalExpense
+                                                )) AS totalExpense
                                             FROM
                                                 inventory_stockIn_data
                                             WHERE
@@ -691,9 +691,9 @@ const getProductDetailsTable = (req, res) => {
                                         LEFT JOIN(
                                             SELECT
                                                 inventory_stockOut_data.productId,
-                                                SUM(
+                                                ROUND(SUM(
                                                     inventory_stockOut_data.productQty
-                                                ) AS total_quantity
+                                                ),2) AS total_quantity
                                             FROM
                                                 inventory_stockOut_data
                                             WHERE
@@ -712,12 +712,12 @@ const getProductDetailsTable = (req, res) => {
                                         LEFT JOIN(
                                             SELECT
                                                 inventory_stockIn_data.productId,
-                                                SUM(
+                                                ROUND(SUM(
                                                     inventory_stockIn_data.productQty
-                                                ) AS total_quantity,
-                                                SUM(
+                                                ),2) AS total_quantity,
+                                                ROUND(SUM(
                                                     inventory_stockIn_data.totalPrice
-                                                ) AS totalExpense
+                                                )) AS totalExpense
                                             FROM
                                                 inventory_stockIn_data
                                             WHERE
@@ -730,9 +730,9 @@ const getProductDetailsTable = (req, res) => {
                                         LEFT JOIN(
                                             SELECT
                                                 inventory_stockOut_data.productId,
-                                                SUM(
+                                                ROUND(SUM(
                                                     inventory_stockOut_data.productQty
-                                                ) AS total_quantity
+                                                ),2) AS total_quantity
                                             FROM
                                                 inventory_stockOut_data
                                             WHERE
@@ -768,12 +768,12 @@ const getProductDetailsTable = (req, res) => {
                                               LEFT JOIN(
                                                 SELECT
                                                     inventory_stockIn_data.productId,
-                                                    SUM(
+                                                    ROUND(SUM(
                                                         inventory_stockIn_data.productQty
-                                                    ) AS total_quantity,
-                                                    SUM(
+                                                    ),2) AS total_quantity,
+                                                    ROUND(SUM(
                                                         inventory_stockIn_data.totalPrice
-                                                    ) AS totalExpense
+                                                    )) AS totalExpense
                                                 FROM
                                                     inventory_stockIn_data
                                                 WHERE
@@ -786,12 +786,12 @@ const getProductDetailsTable = (req, res) => {
                                         LEFT JOIN(
                                             SELECT
                                                 inventory_stockOut_data.productId,
-                                                SUM(
+                                                ROUND(SUM(
                                                     inventory_stockOut_data.productQty
-                                                ) AS total_quantity,
-                                                SUM(
+                                                ),2) AS total_quantity,
+                                                ROUND(SUM(
                                                     inventory_stockOut_data.stockOutPrice
-                                                ) AS totalStockOutPrice
+                                                )) AS totalStockOutPrice
                                             FROM
                                                 inventory_stockOut_data
                                             WHERE
@@ -808,12 +808,12 @@ const getProductDetailsTable = (req, res) => {
                                               LEFT JOIN(
                                                 SELECT
                                                     inventory_stockIn_data.productId,
-                                                    SUM(
+                                                    ROUND(SUM(
                                                         inventory_stockIn_data.productQty
-                                                    ) AS total_quantity,
-                                                    SUM(
+                                                    ),2) AS total_quantity,
+                                                    ROUND(SUM(
                                                         inventory_stockIn_data.totalPrice
-                                                    ) AS totalExpense
+                                                    )) AS totalExpense
                                                 FROM
                                                     inventory_stockIn_data
                                                 WHERE
@@ -826,12 +826,12 @@ const getProductDetailsTable = (req, res) => {
                                         LEFT JOIN(
                                             SELECT
                                                 inventory_stockOut_data.productId,
-                                                SUM(
+                                                ROUND(SUM(
                                                     inventory_stockOut_data.productQty
-                                                ) AS total_quantity,
-                                                SUM(
+                                                ),2) AS total_quantity,
+                                                ROUND(SUM(
                                                         inventory_stockOut_data.stockOutPrice
-                                                ) AS totalStockOutPrice
+                                                )) AS totalStockOutPrice
                                             FROM
                                                 inventory_stockOut_data
                                             WHERE
@@ -847,12 +847,12 @@ const getProductDetailsTable = (req, res) => {
                                               LEFT JOIN(
                                                 SELECT
                                                     inventory_stockIn_data.productId,
-                                                    SUM(
+                                                    ROUND(SUM(
                                                         inventory_stockIn_data.productQty
-                                                    ) AS total_quantity,
-                                                    SUM(
+                                                    ),2) AS total_quantity,
+                                                    ROUND(SUM(
                                                         inventory_stockIn_data.totalPrice
-                                                    ) AS totalExpense
+                                                    )) AS totalExpense
                                                 FROM
                                                     inventory_stockIn_data
                                                 WHERE
@@ -865,12 +865,12 @@ const getProductDetailsTable = (req, res) => {
                                         LEFT JOIN(
                                             SELECT
                                                 inventory_stockOut_data.productId,
-                                                SUM(
+                                                ROUND(SUM(
                                                     inventory_stockOut_data.productQty
-                                                ) AS total_quantity,
-                                                SUM(
+                                                ),2) AS total_quantity,
+                                                ROUND(SUM(
                                                     inventory_stockOut_data.stockOutPrice
-                                                ) AS totalStockOutPrice
+                                                )) AS totalStockOutPrice
                                             FROM
                                                 inventory_stockOut_data
                                             WHERE
@@ -887,12 +887,12 @@ const getProductDetailsTable = (req, res) => {
                                               LEFT JOIN(
                                                 SELECT
                                                     inventory_stockIn_data.productId,
-                                                    SUM(
+                                                    ROUND(SUM(
                                                         inventory_stockIn_data.productQty
-                                                    ) AS total_quantity,
-                                                    SUM(
+                                                    ),2) AS total_quantity,
+                                                    ROUND(SUM(
                                                         inventory_stockIn_data.totalPrice
-                                                    ) AS totalExpense
+                                                    )) AS totalExpense
                                                 FROM
                                                     inventory_stockIn_data
                                                 WHERE
@@ -905,12 +905,12 @@ const getProductDetailsTable = (req, res) => {
                                         LEFT JOIN(
                                             SELECT
                                                 inventory_stockOut_data.productId,
-                                                SUM(
+                                                ROUND(SUM(
                                                     inventory_stockOut_data.productQty
-                                                ) AS total_quantity,
-                                                SUM(
+                                                ),2) AS total_quantity,
+                                                ROUND(SUM(
                                                     inventory_stockOut_data.stockOutPrice
-                                                ) AS totalStockOutPrice
+                                                )) AS totalStockOutPrice
                                             FROM
                                                 inventory_stockOut_data
                                             WHERE
@@ -1047,9 +1047,9 @@ const exportExcelSheetForProductTable = (req, res) => {
                         LEFT JOIN(
                             SELECT
                                 inventory_stockIn_data.productId,
-                                SUM(
+                                ROUND(SUM(
                                     inventory_stockIn_data.productQty
-                                ) AS total_quantity
+                                ),2) AS total_quantity
                             FROM
                                 inventory_stockIn_data
                             GROUP BY
@@ -1060,9 +1060,9 @@ const exportExcelSheetForProductTable = (req, res) => {
                         LEFT JOIN(
                             SELECT
                                 inventory_stockOut_data.productId,
-                                SUM(
+                                ROUND(SUM(
                                     inventory_stockOut_data.productQty
-                                ) AS total_quantity
+                                ),2) AS total_quantity
                             FROM
                                 inventory_stockOut_data
                             GROUP BY
@@ -1097,12 +1097,12 @@ const exportExcelSheetForProductTable = (req, res) => {
                                         LEFT JOIN(
                                                 SELECT
                                                     inventory_stockIn_data.productId,
-                                                    SUM(
+                                                    ROUND(SUM(
                                                         inventory_stockIn_data.productQty
-                                                    ) AS total_quantity,
-                                                    SUM(
+                                                    ),2) AS total_quantity,
+                                                    ROUND(SUM(
                                                         inventory_stockIn_data.totalPrice
-                                                    ) AS totalExpense
+                                                    )) AS totalExpense
                                                 FROM
                                                     inventory_stockIn_data
                                                 WHERE
@@ -1115,12 +1115,12 @@ const exportExcelSheetForProductTable = (req, res) => {
                                         LEFT JOIN(
                                             SELECT
                                                 inventory_stockOut_data.productId,
-                                                SUM(
+                                                ROUND(SUM(
                                                     inventory_stockOut_data.productQty
-                                                ) AS total_quantity,
-                                                SUM(
+                                                ),2) AS total_quantity,
+                                                ROUND(SUM(
                                                     inventory_stockOut_data.stockOutPrice
-                                                ) AS total_usedPrice
+                                                )) AS total_usedPrice
                                             FROM
                                                 inventory_stockOut_data
                                             WHERE
@@ -1135,12 +1135,12 @@ const exportExcelSheetForProductTable = (req, res) => {
                                         LEFT JOIN(
                                                 SELECT
                                                     inventory_stockIn_data.productId,
-                                                    SUM(
+                                                    ROUND(SUM(
                                                         inventory_stockIn_data.productQty
-                                                    ) AS total_quantity,
-                                                    SUM(
+                                                    ),2) AS total_quantity,
+                                                    ROUND(SUM(
                                                         inventory_stockIn_data.totalPrice
-                                                    ) AS totalExpense
+                                                    )) AS totalExpense
                                                 FROM
                                                     inventory_stockIn_data
                                                 WHERE
@@ -1153,12 +1153,12 @@ const exportExcelSheetForProductTable = (req, res) => {
                                         LEFT JOIN(
                                             SELECT
                                                 inventory_stockOut_data.productId,
-                                                SUM(
+                                                ROUND(SUM(
                                                     inventory_stockOut_data.productQty
-                                                ) AS total_quantity,
-                                                SUM(
+                                                ),2) AS total_quantity,
+                                                ROUND(SUM(
                                                     inventory_stockOut_data.stockOutPrice
-                                                ) AS total_usedPrice
+                                                )) AS total_usedPrice
                                             FROM
                                                 inventory_stockOut_data
                                             WHERE
@@ -1174,12 +1174,12 @@ const exportExcelSheetForProductTable = (req, res) => {
                                         LEFT JOIN(
                                                 SELECT
                                                     inventory_stockIn_data.productId,
-                                                    SUM(
+                                                    ROUND(SUM(
                                                         inventory_stockIn_data.productQty
-                                                    ) AS total_quantity,
-                                                    SUM(
+                                                    ),2) AS total_quantity,
+                                                    ROUND(SUM(
                                                         inventory_stockIn_data.totalPrice
-                                                    ) AS totalExpense
+                                                    )) AS totalExpense
                                                 FROM
                                                     inventory_stockIn_data
                                                 WHERE
@@ -1192,12 +1192,12 @@ const exportExcelSheetForProductTable = (req, res) => {
                                         LEFT JOIN(
                                             SELECT
                                                 inventory_stockOut_data.productId,
-                                                SUM(
+                                                ROUND(SUM(
                                                     inventory_stockOut_data.productQty
-                                                ) AS total_quantity,
-                                                SUM(
+                                                ),2) AS total_quantity,
+                                                ROUND(SUM(
                                                     inventory_stockOut_data.stockOutPrice
-                                                ) AS total_usedPrice
+                                                )) AS total_usedPrice
                                             FROM
                                                 inventory_stockOut_data
                                             WHERE
@@ -1213,12 +1213,12 @@ const exportExcelSheetForProductTable = (req, res) => {
                                         LEFT JOIN(
                                                 SELECT
                                                     inventory_stockIn_data.productId,
-                                                    SUM(
+                                                    ROUND(SUM(
                                                         inventory_stockIn_data.productQty
-                                                    ) AS total_quantity,
-                                                    SUM(
+                                                    ),2) AS total_quantity,
+                                                    ROUND(SUM(
                                                         inventory_stockIn_data.totalPrice
-                                                    ) AS totalExpense
+                                                    )) AS totalExpense
                                                 FROM
                                                     inventory_stockIn_data
                                                 WHERE
@@ -1231,12 +1231,12 @@ const exportExcelSheetForProductTable = (req, res) => {
                                         LEFT JOIN(
                                             SELECT
                                                 inventory_stockOut_data.productId,
-                                                SUM(
+                                                ROUND(SUM(
                                                     inventory_stockOut_data.productQty
-                                                ) AS total_quantity,
-                                                SUM(
+                                                ),2) AS total_quantity,
+                                                ROUND(SUM(
                                                     inventory_stockOut_data.stockOutPrice
-                                                ) AS total_usedPrice
+                                                )) AS total_usedPrice
                                             FROM
                                                 inventory_stockOut_data
                                             WHERE
@@ -1253,12 +1253,12 @@ const exportExcelSheetForProductTable = (req, res) => {
                                         LEFT JOIN(
                                                 SELECT
                                                     inventory_stockIn_data.productId,
-                                                    SUM(
+                                                    ROUND(SUM(
                                                         inventory_stockIn_data.productQty
-                                                    ) AS total_quantity,
-                                                    SUM(
+                                                    ),2) AS total_quantity,
+                                                    ROUND(SUM(
                                                         inventory_stockIn_data.totalPrice
-                                                    ) AS totalExpense
+                                                    )) AS totalExpense
                                                 FROM
                                                     inventory_stockIn_data
                                                 WHERE
@@ -1271,12 +1271,12 @@ const exportExcelSheetForProductTable = (req, res) => {
                                         LEFT JOIN(
                                             SELECT
                                                 inventory_stockOut_data.productId,
-                                                SUM(
+                                                ROUND(SUM(
                                                     inventory_stockOut_data.productQty
-                                                ) AS total_quantity,
-                                                SUM(
+                                                ),2) AS total_quantity,
+                                                ROUND(SUM(
                                                     inventory_stockOut_data.stockOutPrice
-                                                ) AS total_usedPrice
+                                                )) AS total_usedPrice
                                             FROM
                                                 inventory_stockOut_data
                                             WHERE
@@ -1291,12 +1291,12 @@ const exportExcelSheetForProductTable = (req, res) => {
                                         LEFT JOIN(
                                                 SELECT
                                                     inventory_stockIn_data.productId,
-                                                    SUM(
+                                                    ROUND(SUM(
                                                         inventory_stockIn_data.productQty
-                                                    ) AS total_quantity,
-                                                    SUM(
+                                                    ),2) AS total_quantity,
+                                                    ROUND(SUM(
                                                         inventory_stockIn_data.totalPrice
-                                                    ) AS totalExpense
+                                                    )) AS totalExpense
                                                 FROM
                                                     inventory_stockIn_data
                                                 WHERE
@@ -1309,12 +1309,12 @@ const exportExcelSheetForProductTable = (req, res) => {
                                         LEFT JOIN(
                                             SELECT
                                                 inventory_stockOut_data.productId,
-                                                SUM(
+                                                ROUND(SUM(
                                                     inventory_stockOut_data.productQty
-                                                ) AS total_quantity,
-                                                SUM(
+                                                ),2) AS total_quantity,
+                                                ROUND(SUM(
                                                     inventory_stockOut_data.stockOutPrice
-                                                ) AS total_usedPrice
+                                                )) AS total_usedPrice
                                             FROM
                                                 inventory_stockOut_data
                                             WHERE
@@ -1330,12 +1330,12 @@ const exportExcelSheetForProductTable = (req, res) => {
                                         LEFT JOIN(
                                                 SELECT
                                                     inventory_stockIn_data.productId,
-                                                    SUM(
+                                                    ROUND(SUM(
                                                         inventory_stockIn_data.productQty
-                                                    ) AS total_quantity,
-                                                    SUM(
+                                                    ),2) AS total_quantity,
+                                                    ROUND(SUM(
                                                         inventory_stockIn_data.totalPrice
-                                                    ) AS totalExpense
+                                                    )) AS totalExpense
                                                 FROM
                                                     inventory_stockIn_data
                                                 WHERE
@@ -1348,12 +1348,12 @@ const exportExcelSheetForProductTable = (req, res) => {
                                         LEFT JOIN(
                                             SELECT
                                                 inventory_stockOut_data.productId,
-                                                SUM(
+                                                ROUND(SUM(
                                                     inventory_stockOut_data.productQty
-                                                ) AS total_quantity,
-                                                SUM(
+                                                ),2) AS total_quantity,
+                                                ROUND(SUM(
                                                     inventory_stockOut_data.stockOutPrice
-                                                ) AS total_usedPrice
+                                                )) AS total_usedPrice
                                             FROM
                                                 inventory_stockOut_data
                                             WHERE
@@ -1369,12 +1369,12 @@ const exportExcelSheetForProductTable = (req, res) => {
                                         LEFT JOIN(
                                                 SELECT
                                                     inventory_stockIn_data.productId,
-                                                    SUM(
+                                                    ROUND(SUM(
                                                         inventory_stockIn_data.productQty
-                                                    ) AS total_quantity,
-                                                    SUM(
+                                                    ),2) AS total_quantity,
+                                                    ROUND(SUM(
                                                         inventory_stockIn_data.totalPrice
-                                                    ) AS totalExpense
+                                                    )) AS totalExpense
                                                 FROM
                                                     inventory_stockIn_data
                                                 WHERE
@@ -1387,12 +1387,12 @@ const exportExcelSheetForProductTable = (req, res) => {
                                         LEFT JOIN(
                                             SELECT
                                                 inventory_stockOut_data.productId,
-                                                SUM(
+                                                ROUND(SUM(
                                                     inventory_stockOut_data.productQty
-                                                ) AS total_quantity,
-                                                SUM(
+                                                ),2) AS total_quantity,
+                                                ROUND(SUM(
                                                     inventory_stockOut_data.stockOutPrice
-                                                ) AS total_usedPrice
+                                                )) AS total_usedPrice
                                             FROM
                                                 inventory_stockOut_data
                                             WHERE

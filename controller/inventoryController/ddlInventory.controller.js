@@ -12,7 +12,7 @@ const ddlProduct = (req, res) => {
                                                     (
                                                         SELECT
                                                             inventory_stockIn_data.productId,
-                                                            SUM(inventory_stockIn_data.productQty) AS total_quantity
+                                                            ROUND(SUM(inventory_stockIn_data.productQty),2) AS total_quantity
                                                         FROM
                                                             inventory_stockIn_data
                                                         GROUP BY
@@ -22,7 +22,7 @@ const ddlProduct = (req, res) => {
                                                     (
                                                         SELECT
                                                             inventory_stockOut_data.productId,
-                                                            SUM(inventory_stockOut_data.productQty) AS total_quantity
+                                                            ROUND(SUM(inventory_stockOut_data.productQty),2) AS total_quantity
                                                         FROM
                                                             inventory_stockOut_data
                                                         GROUP BY

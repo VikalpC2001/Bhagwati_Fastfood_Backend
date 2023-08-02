@@ -109,12 +109,12 @@ const getCategoryWiseUsedByProduct = (req, res) => {
                                             LEFT JOIN(
                                                 SELECT
                                                     inventory_stockOut_data.stockOutCategory,
-                                                    SUM(
+                                                    ROUND(SUM(
                                                         inventory_stockOut_data.productQty
-                                                    ) AS usedQty,
-                                                    SUM(
+                                                    ),2) AS usedQty,
+                                                    ROUND(SUM(
                                                         inventory_stockOut_data.stockOutPrice
-                                                    ) AS usedPrice
+                                                    )) AS usedPrice
                                                 FROM
                                                     inventory_stockOut_data
                                                 WHERE
@@ -135,12 +135,12 @@ const getCategoryWiseUsedByProduct = (req, res) => {
                                             LEFT JOIN(
                                                 SELECT
                                                     inventory_stockOut_data.stockOutCategory,
-                                                    SUM(
+                                                    ROUND(SUM(
                                                         inventory_stockOut_data.productQty
-                                                    ) AS usedQty,
-                                                    SUM(
+                                                    ),2) AS usedQty,
+                                                    ROUND(SUM(
                                                         inventory_stockOut_data.stockOutPrice
-                                                    ) AS usedPrice
+                                                    )) AS usedPrice
                                                 FROM
                                                     inventory_stockOut_data
                                                 WHERE
@@ -334,7 +334,7 @@ const addStockOutDetails = async (req, res) => {
                                             (
                                                 SELECT
                                                     inventory_stockIn_data.productId,
-                                                    SUM(inventory_stockIn_data.productQty) AS total_quantity
+                                                    ROUND(SUM(inventory_stockIn_data.productQty),2) AS total_quantity
                                                 FROM
                                                     inventory_stockIn_data
                                                 GROUP BY
@@ -344,7 +344,7 @@ const addStockOutDetails = async (req, res) => {
                                             (
                                                 SELECT
                                                     inventory_stockOut_data.productId,
-                                                    SUM(inventory_stockOut_data.productQty) AS total_quantity
+                                                    ROUND(SUM(inventory_stockOut_data.productQty),2) AS total_quantity
                                                 FROM
                                                     inventory_stockOut_data
                                                 GROUP BY
@@ -623,7 +623,7 @@ const fillStockOutTransaction = (req, res) => {
                                                                     (
                                                                         SELECT
                                                                             inventory_stockIn_data.productId,
-                                                                            SUM(inventory_stockIn_data.productQty) AS total_quantity
+                                                                            ROUND(SUM(inventory_stockIn_data.productQty),2) AS total_quantity
                                                                         FROM
                                                                             inventory_stockIn_data
                                                                         GROUP BY
@@ -633,7 +633,7 @@ const fillStockOutTransaction = (req, res) => {
                                                                     (
                                                                         SELECT
                                                                             inventory_stockOut_data.productId,
-                                                                            SUM(inventory_stockOut_data.productQty) AS total_quantity
+                                                                            ROUND(SUM(inventory_stockOut_data.productQty),2) AS total_quantity
                                                                         FROM
                                                                             inventory_stockOut_data
                                                                         GROUP BY
@@ -689,7 +689,7 @@ const updateStockOutTransaction = async (req, res) => {
                                             (
                                                 SELECT
                                                     inventory_stockIn_data.productId,
-                                                    SUM(inventory_stockIn_data.productQty) AS total_quantity
+                                                    ROUND(SUM(inventory_stockIn_data.productQty),2) AS total_quantity
                                                 FROM
                                                     inventory_stockIn_data
                                                 GROUP BY
@@ -699,7 +699,7 @@ const updateStockOutTransaction = async (req, res) => {
                                             (
                                                 SELECT
                                                     inventory_stockOut_data.productId,
-                                                    SUM(inventory_stockOut_data.productQty) AS total_quantity
+                                                    ROUND(SUM(inventory_stockOut_data.productQty),2) AS total_quantity
                                                 FROM
                                                     inventory_stockOut_data
                                                 GROUP BY

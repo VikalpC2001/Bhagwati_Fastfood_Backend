@@ -22,11 +22,11 @@ const getCashTransactionCounter = (req, res) => {
             endDate: (req.query.endDate ? req.query.endDate : '').slice(4, 15),
         }
         if (req.query.startDate && req.query.endDate) {
-            sql_querry_getCashCount = `SELECT COALESCE(SUM(totalPrice),0) AS totalExpense FROM inventory_stockIn_data WHERE stockInDate BETWEEN STR_TO_DATE('${data.startDate}','%b %d %Y') AND STR_TO_DATE('${data.endDate}','%b %d %Y');
-                                       SELECT COALESCE(SUM(totalPrice),0) AS totalExpenseOfCash FROM inventory_stockIn_data WHERE stockInPaymentMethod = 'cash' AND stockInDate BETWEEN STR_TO_DATE('${data.startDate}','%b %d %Y') AND STR_TO_DATE('${data.endDate}','%b %d %Y')`;
+            sql_querry_getCashCount = `SELECT COALESCE(ROUND(SUM(totalPrice)),0) AS totalExpense FROM inventory_stockIn_data WHERE stockInDate BETWEEN STR_TO_DATE('${data.startDate}','%b %d %Y') AND STR_TO_DATE('${data.endDate}','%b %d %Y');
+                                       SELECT COALESCE(ROUND(SUM(totalPrice)),0) AS totalExpenseOfCash FROM inventory_stockIn_data WHERE stockInPaymentMethod = 'cash' AND stockInDate BETWEEN STR_TO_DATE('${data.startDate}','%b %d %Y') AND STR_TO_DATE('${data.endDate}','%b %d %Y')`;
         } else {
-            sql_querry_getCashCount = `SELECT COALESCE(SUM(totalPrice),0) AS totalExpense FROM inventory_stockIn_data WHERE stockInDate BETWEEN STR_TO_DATE('${firstDay}','%b %d %Y') AND STR_TO_DATE('${lastDay}','%b %d %Y');
-                                       SELECT COALESCE(SUM(totalPrice),0) AS totalExpenseOfCash FROM inventory_stockIn_data WHERE stockInPaymentMethod = 'cash' AND stockInDate BETWEEN STR_TO_DATE('${firstDay}','%b %d %Y') AND STR_TO_DATE('${lastDay}','%b %d %Y')`;
+            sql_querry_getCashCount = `SELECT COALESCE(ROUND(SUM(totalPrice)),0) AS totalExpense FROM inventory_stockIn_data WHERE stockInDate BETWEEN STR_TO_DATE('${firstDay}','%b %d %Y') AND STR_TO_DATE('${lastDay}','%b %d %Y');
+                                       SELECT COALESCE(ROUND(SUM(totalPrice)),0) AS totalExpenseOfCash FROM inventory_stockIn_data WHERE stockInPaymentMethod = 'cash' AND stockInDate BETWEEN STR_TO_DATE('${firstDay}','%b %d %Y') AND STR_TO_DATE('${lastDay}','%b %d %Y')`;
         }
         pool.query(sql_querry_getCashCount, (err, data) => {
             if (err) {
@@ -72,7 +72,7 @@ const getDebitTransactionCounter = (req, res) => {
                                         (
                                             SELECT
                                                 inventory_stockIn_data.supplierId,
-                                                SUM(inventory_stockIn_data.totalPrice) AS total_price
+                                                ROUND(SUM(inventory_stockIn_data.totalPrice)) AS total_price
                                             FROM
                                                 inventory_stockIn_data
                                             WHERE inventory_stockIn_data.stockInPaymentMethod = 'debit'
@@ -83,21 +83,21 @@ const getDebitTransactionCounter = (req, res) => {
                                         (
                                             SELECT
                                                 inventory_supplierTransaction_data.supplierId,
-                                                SUM(inventory_supplierTransaction_data.paidAmount) AS total_paid
+                                                ROUND(SUM(inventory_supplierTransaction_data.paidAmount)) AS total_paid
                                             FROM
                                                 inventory_supplierTransaction_data
                                             GROUP BY
                                                 inventory_supplierTransaction_data.supplierId
                                         ) AS sosd ON sd.supplierId = sosd.supplierId;`
         if (req.query.startDate && req.query.endDate) {
-            sql_querry_getDebitCount = `SELECT COALESCE(SUM(totalPrice),0) AS totalExpense FROM inventory_stockIn_data WHERE stockInDate BETWEEN STR_TO_DATE('${data.startDate}','%b %d %Y') AND STR_TO_DATE('${data.endDate}','%b %d %Y');
-                                        SELECT COALESCE(SUM(totalPrice),0) AS totalExpenseOfDebit FROM inventory_stockIn_data WHERE stockInPaymentMethod = 'debit' AND stockInDate BETWEEN STR_TO_DATE('${data.startDate}','%b %d %Y') AND STR_TO_DATE('${data.endDate}','%b %d %Y');
-                                        SELECT COALESCE(SUM(paidAmount),0) AS totalPaid FROM inventory_supplierTransaction_data WHERE transactionDate BETWEEN STR_TO_DATE('${data.startDate}','%b %d %Y') AND STR_TO_DATE('${data.endDate}','%b %d %Y');
+            sql_querry_getDebitCount = `SELECT COALESCE(ROUND(SUM(totalPrice)),0) AS totalExpense FROM inventory_stockIn_data WHERE stockInDate BETWEEN STR_TO_DATE('${data.startDate}','%b %d %Y') AND STR_TO_DATE('${data.endDate}','%b %d %Y');
+                                        SELECT COALESCE(ROUND(SUM(totalPrice)),0) AS totalExpenseOfDebit FROM inventory_stockIn_data WHERE stockInPaymentMethod = 'debit' AND stockInDate BETWEEN STR_TO_DATE('${data.startDate}','%b %d %Y') AND STR_TO_DATE('${data.endDate}','%b %d %Y');
+                                        SELECT COALESCE(ROUND(SUM(paidAmount)),0) AS totalPaid FROM inventory_supplierTransaction_data WHERE transactionDate BETWEEN STR_TO_DATE('${data.startDate}','%b %d %Y') AND STR_TO_DATE('${data.endDate}','%b %d %Y');
                                         ${sql_querry_remailAmount}`;
         } else {
-            sql_querry_getDebitCount = `SELECT COALESCE(SUM(totalPrice),0) AS totalExpense FROM inventory_stockIn_data WHERE stockInDate BETWEEN STR_TO_DATE('${firstDay}','%b %d %Y') AND STR_TO_DATE('${lastDay}','%b %d %Y');
-                                        SELECT COALESCE(SUM(totalPrice),0) AS totalExpenseOfDebit FROM inventory_stockIn_data WHERE stockInPaymentMethod = 'debit' AND stockInDate BETWEEN STR_TO_DATE('${firstDay}','%b %d %Y') AND STR_TO_DATE('${lastDay}','%b %d %Y');
-                                        SELECT COALESCE(SUM(paidAmount),0) AS totalPaid FROM inventory_supplierTransaction_data WHERE transactionDate BETWEEN STR_TO_DATE('${firstDay}','%b %d %Y') AND STR_TO_DATE('${lastDay}','%b %d %Y');
+            sql_querry_getDebitCount = `SELECT COALESCE(ROUND(SUM(totalPrice)),0)) AS totalExpense FROM inventory_stockIn_data WHERE stockInDate BETWEEN STR_TO_DATE('${firstDay}','%b %d %Y') AND STR_TO_DATE('${lastDay}','%b %d %Y');
+                                        SELECT COALESCE(ROUND(SUM(totalPrice)),0) AS totalExpenseOfDebit FROM inventory_stockIn_data WHERE stockInPaymentMethod = 'debit' AND stockInDate BETWEEN STR_TO_DATE('${firstDay}','%b %d %Y') AND STR_TO_DATE('${lastDay}','%b %d %Y');
+                                        SELECT COALESCE(ROUND(SUM(paidAmount)),0) AS totalPaid FROM inventory_supplierTransaction_data WHERE transactionDate BETWEEN STR_TO_DATE('${firstDay}','%b %d %Y') AND STR_TO_DATE('${lastDay}','%b %d %Y');
                                         ${sql_querry_remailAmount}`;
         }
         pool.query(sql_querry_getDebitCount, (err, data) => {
@@ -370,14 +370,14 @@ const getCashTransactionList = async (req, res) => {
                 const numRows = rows[0].numRows;
                 const numPages = Math.ceil(numRows / numPerPage);
                 if (req.query.startDate && req.query.endDate) {
-                    sql_queries_getdetails = `SELECT CONCAT(user_details.userFirstName,' ',user_details.userLastName) AS paidBy, inventory_supplier_data.supplierNickName AS receviedBy, totalPrice AS paidAmount,  DATE_FORMAT(stockInDate,'%d-%M-%Y') AS transactionDate, DATE_FORMAT(stockInCreationDate,'%h:%m %p') AS transactionTime 
+                    sql_queries_getdetails = `SELECT CONCAT(user_details.userFirstName,' ',user_details.userLastName) AS paidBy, inventory_supplier_data.supplierNickName AS receviedBy, totalPrice AS paidAmount,  DATE_FORMAT(stockInDate,'%d-%M-%Y') AS transactionDate, DATE_FORMAT(stockInCreationDate,'%h:%i %p') AS transactionTime 
                                                 FROM inventory_stockIn_data
                                                 INNER JOIN user_details ON user_details.userId = inventory_stockIn_data.userId
                                                 INNER JOIN inventory_supplier_data ON inventory_supplier_data.supplierId = inventory_stockIn_data.supplierId
                                                 WHERE inventory_stockIn_data.stockInPaymentMethod = 'cash' AND inventory_stockIn_data.stockInDate BETWEEN STR_TO_DATE('${data.startDate}','%b %d %Y') AND STR_TO_DATE('${data.endDate}','%b %d %Y')
                                                 ORDER BY inventory_stockIn_data.stockInCreationDate DESC LIMIT ${limit}`;
                 } else {
-                    sql_queries_getdetails = `SELECT CONCAT(user_details.userFirstName,' ',user_details.userLastName) AS paidBy, inventory_supplier_data.supplierNickName AS receviedBy, totalPrice AS paidAmount,  DATE_FORMAT(stockInDate,'%d-%M-%Y') AS transactionDate, DATE_FORMAT(stockInCreationDate,'%h:%m %p') AS transactionTime 
+                    sql_queries_getdetails = `SELECT CONCAT(user_details.userFirstName,' ',user_details.userLastName) AS paidBy, inventory_supplier_data.supplierNickName AS receviedBy, totalPrice AS paidAmount,  DATE_FORMAT(stockInDate,'%d-%M-%Y') AS transactionDate, DATE_FORMAT(stockInCreationDate,'%h:%i %p') AS transactionTime 
                                                 FROM inventory_stockIn_data
                                                 INNER JOIN user_details ON user_details.userId = inventory_stockIn_data.userId
                                                 INNER JOIN inventory_supplier_data ON inventory_supplier_data.supplierId = inventory_stockIn_data.supplierId
@@ -427,7 +427,7 @@ const exportExcelSheetForCashTransactionList = (req, res) => {
         endDate: (req.query.endDate ? req.query.endDate : '').slice(4, 15),
     }
     if (req.query.startDate && req.query.endDate) {
-        sql_queries_getdetails = `SELECT CONCAT(user_details.userFirstName,' ',user_details.userLastName) AS paidBy, inventory_supplier_data.supplierNickName AS receviedBy, totalPrice AS paidAmount,  DATE_FORMAT(stockInDate,'%d-%M-%Y') AS transactionDate, DATE_FORMAT(stockInCreationDate,'%h:%m %p') AS transactionTime 
+        sql_queries_getdetails = `SELECT CONCAT(user_details.userFirstName,' ',user_details.userLastName) AS paidBy, inventory_supplier_data.supplierNickName AS receviedBy, totalPrice AS paidAmount,  DATE_FORMAT(stockInDate,'%d-%M-%Y') AS transactionDate, DATE_FORMAT(stockInCreationDate,'%h:%i %p') AS transactionTime 
                                   FROM inventory_stockIn_data
                                   INNER JOIN user_details ON user_details.userId = inventory_stockIn_data.userId
                                   INNER JOIN inventory_supplier_data ON inventory_supplier_data.supplierId = inventory_stockIn_data.supplierId
@@ -553,7 +553,7 @@ const addSupplierTransactionDetails = async (req, res) => {
                                                      (
                                                          SELECT
                                                              inventory_stockIn_data.supplierId,
-                                                             SUM(inventory_stockIn_data.totalPrice) AS total_price
+                                                             ROUND(SUM(inventory_stockIn_data.totalPrice)) AS total_price
                                                          FROM
                                                              inventory_stockIn_data
                                                          WHERE inventory_stockIn_data.stockInPaymentMethod = 'debit'
@@ -564,7 +564,7 @@ const addSupplierTransactionDetails = async (req, res) => {
                                                      (
                                                          SELECT
                                                              inventory_supplierTransaction_data.supplierId,
-                                                             SUM(inventory_supplierTransaction_data.paidAmount) AS total_paid
+                                                             ROUND(SUM(inventory_supplierTransaction_data.paidAmount)) AS total_paid
                                                          FROM
                                                              inventory_supplierTransaction_data
                                                          GROUP BY

@@ -80,6 +80,22 @@ const addAmountOfSFA = (req, res) => {
                                         }
                                         // Print updated fineData
                                         console.log("Updated fineData:", fineData);
+                                        const swFId = fineData.map((obj) => {
+                                            return obj.fineId;
+                                        })
+                                        const sallaryWiseFineId = () => {
+
+                                            var string = ''
+                                            swFId.forEach((data, index) => {
+                                                if (index == 0)
+                                                    string = "(" + "'" + cutFine + "'" + "," + string + "'" + data + "'" + ")";
+                                                else
+                                                    string = string + ",(" + "'" + cutFine + "'" + "," + "'" + data + "'" + ")";
+                                            });
+                                            return string;
+
+                                        }
+                                        console.log(">?>?>/////", sallaryWiseFineId())
                                         let sumOfRemainFine = 0;
                                         fineData.forEach((item) => {
                                             sumOfRemainFine += item.remainFine;
@@ -110,7 +126,8 @@ const addAmountOfSFA = (req, res) => {
                                                                     'Fine Cut',
                                                                     NULLIF('${data.comment}','null'),
                                                                     STR_TO_DATE('${data.amountDate}','%b %d %Y')
-                                                                )`
+                                                                );
+                                                                INSERT INTO salary_salaryWiseFineId_data (salaryId, fineId) VALUES ${sallaryWiseFineId()}`;
                                             pool.query(sql_query_addDetail, (err, add) => {
                                                 if (err) {
                                                     console.error("An error occurd in SQL Queery", err);
@@ -142,24 +159,48 @@ const addAmountOfSFA = (req, res) => {
                                         }
                                     })
                                 } else {
-                                    sql_query_allZeroRemainFine = `UPDATE
-                                                                staff_fine_data
-                                                            SET
-                                                                remainFineAmount = 0
-                                                            WHERE
-                                                                fineId IN(
-                                                                    SELECT
+                                    sql_query_allZeroRemainFine = `SELECT
                                                                         COALESCE(fineId, NULL)
                                                                     FROM
                                                                         staff_fine_data
                                                                     WHERE
-                                                                        employeeId = '${data.employeeId}' AND remainFineAmount != 0
-                                                                )`;
+                                                                        employeeId = '${data.employeeId}' AND remainFineAmount != 0;
+                                                                  UPDATE
+                                                                        staff_fine_data
+                                                                    SET
+                                                                        remainFineAmount = 0
+                                                                    WHERE
+                                                                        fineId IN(
+                                                                            SELECT
+                                                                                COALESCE(fineId, NULL)
+                                                                            FROM
+                                                                                staff_fine_data
+                                                                            WHERE
+                                                                                employeeId = '${data.employeeId}' AND remainFineAmount != 0
+                                                                        )`;
                                     pool.query(sql_query_allZeroRemainFine, (err, result) => {
                                         if (err) {
                                             console.error("An error occurd in SQL Queery", err);
                                             return res.status(500).send('Database Error');
                                         }
+                                        console.log(result[0])
+                                        const allFineId = result[0];
+                                        const swFId = allFineId.map((obj) => {
+                                            return obj.fineId;
+                                        })
+                                        const sallaryWiseAllFineId = () => {
+
+                                            var string = ''
+                                            swFId.forEach((data, index) => {
+                                                if (index == 0)
+                                                    string = "(" + "'" + cutFine + "'" + "," + string + "'" + data + "'" + ")";
+                                                else
+                                                    string = string + ",(" + "'" + cutFine + "'" + "," + "'" + data + "'" + ")";
+                                            });
+                                            return string;
+
+                                        }
+                                        console.log('><><><', sallaryWiseAllFineId());
                                         sql_query_addDetail = `INSERT INTO staff_salary_data(
                                                                     salaryId,
                                                                     userId,
@@ -177,7 +218,8 @@ const addAmountOfSFA = (req, res) => {
                                                                     'Fine Cut',
                                                                     NULLIF('${data.comment}','null'),
                                                                     STR_TO_DATE('${data.amountDate}','%b %d %Y')
-                                                                )`
+                                                                );
+                                                                INSERT INTO salary_salaryWiseFineId_data (salaryId, fineId) VALUES ${sallaryWiseAllFineId()}`
                                         pool.query(sql_query_addDetail, (err, add) => {
                                             if (err) {
                                                 console.error("An error occurd in SQL Queery", err);
@@ -282,20 +324,13 @@ const addAmountOfSFA = (req, res) => {
                                                                     'Advance Cut',
                                                                     NULLIF('${data.comment}','null'),
                                                                     STR_TO_DATE('${data.amountDate}','%b %d %Y')
-                                                                )`
+                                                                );
+                                                                INSERT INTO salary_salaryWiseAdvanceId_data (salaryId, advanceId) VALUES ${sallaryWiseAdvanceId()}`
                                             pool.query(sql_query_addDetail, (err, add) => {
                                                 if (err) {
                                                     console.error("An error occurd in SQL Queery", err);
                                                     return res.status(500).send('Database Error');
                                                 }
-                                                sql_querry_addsowsiId = `INSERT INTO salary_salaryWiseAdvanceId_data (salaryId, advanceId) VALUES ${sallaryWiseAdvanceId()}`;
-                                                pool.query(sql_querry_addsowsiId, (err, data) => {
-                                                    if (err) {
-                                                        console.error("An error occurd in SQL Queery", err);
-                                                        return res.status(500).send('Database Error');
-                                                    }
-                                                    return res.status(200).send("Data Added Successfully");
-                                                })
                                                 console.log('Advance CutOff');
                                             })
                                         });
@@ -317,11 +352,17 @@ const addAmountOfSFA = (req, res) => {
                                         }
                                     })
                                 } else {
-                                    sql_query_allZeroRemainFine = `UPDATE
-                                                                staff_advance_data
-                                                            SET
-                                                                remainAdvanceAmount = 0
-                                                            WHERE
+                                    sql_query_allZeroRemainFine = `SELECT
+                                                                        advanceId
+                                                                    FROM
+                                                                        staff_advance_data
+                                                                    WHERE
+                                                                        employeeId = '${data.employeeId}' AND remainAdvanceAmount != 0;
+                                                                UPDATE
+                                                                    staff_advance_data
+                                                                SET
+                                                                    remainAdvanceAmount = 0
+                                                                WHERE
                                                                 advanceId IN(
                                                                     SELECT
                                                                         COALESCE(advanceId, NULL)
@@ -329,12 +370,30 @@ const addAmountOfSFA = (req, res) => {
                                                                         staff_advance_data
                                                                     WHERE
                                                                         employeeId = '${data.employeeId}' AND remainAdvanceAmount != 0
-                                                                )`;
+                                                                    )`;
                                     pool.query(sql_query_allZeroRemainFine, (err, result) => {
                                         if (err) {
                                             console.error("An error occurd in SQL Queery", err);
                                             return res.status(500).send('Database Error');
                                         }
+                                        console.log(result[0])
+                                        const allAdvanceId = result[0];
+                                        const swAId = allAdvanceId.map((obj) => {
+                                            return obj.advanceId;
+                                        })
+                                        const sallaryWiseAllAdvanceId = () => {
+
+                                            var string = ''
+                                            swAId.forEach((data, index) => {
+                                                if (index == 0)
+                                                    string = "(" + "'" + cutAdvance + "'" + "," + string + "'" + data + "'" + ")";
+                                                else
+                                                    string = string + ",(" + "'" + cutAdvance + "'" + "," + "'" + data + "'" + ")";
+                                            });
+                                            return string;
+
+                                        }
+                                        console.log('><><><', sallaryWiseAllAdvanceId());
                                         sql_query_addDetail = `INSERT INTO staff_salary_data(
                                                                     salaryId,
                                                                     userId,
@@ -352,7 +411,8 @@ const addAmountOfSFA = (req, res) => {
                                                                     'Advance Pay',
                                                                     NULLIF('${data.comment}','null'),
                                                                     STR_TO_DATE('${data.amountDate}','%b %d %Y')
-                                                                )`
+                                                                );
+                                                                INSERT INTO salary_salaryWiseAdvanceId_data (salaryId, advanceId) VALUES ${sallaryWiseAllAdvanceId()}`;
                                         pool.query(sql_query_addDetail, (err, add) => {
                                             if (err) {
                                                 console.error("An error occurd in SQL Queery", err);

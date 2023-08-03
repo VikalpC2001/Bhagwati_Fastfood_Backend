@@ -1527,6 +1527,7 @@ const getEmployeeData = (req, res) => {
                             ) AS employeeName,
                             sed.employeeNickName AS nickName,
                             sed.employeeStatus AS employeeStatus,
+                            sed.salary AS salary,
                             sed.imageLink AS imageLink,
                             CONCAT(
                                 scd.staffCategoryName,
@@ -1535,9 +1536,10 @@ const getEmployeeData = (req, res) => {
                                 ')'
                             ) AS category,
                             COALESCE(smsd.remainSalary, 0) AS totalSalary,
-                            COALESCE(sad.advaceAmount, 0) AS advaceAmount,
+                            COALESCE(sad.advaceAmount, 0) AS advanceAmount,
                             COALESCE(sfd.fineAmount, 0) AS fineAmount,
-                            COALESCE(esd.totalPaidSalary, 0) AS totalPaidSalary
+                            COALESCE(esd.totalPaidSalary, 0) AS totalPaidSalary,
+                            COALESCE(smsd.remainSalary, 0) - COALESCE(sad.advaceAmount, 0) - COALESCE(sfd.fineAmount, 0) - COALESCE(esd.totalPaidSalary, 0) AS paymentDue
                         FROM
                             staff_employee_data AS sed
                         INNER JOIN staff_category_data AS scd
@@ -1607,10 +1609,10 @@ const getEmployeeData = (req, res) => {
                                 staff_monthlySalary_data.remainSalary != 0
                             GROUP BY
                                 staff_monthlySalary_data.employeeId
-                        ) AS smsd ON sed.employeeId = smsd.employeeId;`
+                        ) AS smsd ON sed.employeeId = smsd.employeeId`;
         if (req.query.categoryId) {
             sql_query_getEmployee = `${sql_common_query}
-                                     WHERE staff_employee_data.category = '${categoryId}'`;
+                                     WHERE sed.category = '${categoryId}'`;
         } else {
             sql_query_getEmployee = `${sql_common_query}`;
         }
@@ -1747,3 +1749,98 @@ module.exports = {
     calculateDueSalary,
     updateEmployeeStatus
 }
+
+// SELECT
+// sed.employeeId,
+//     CONCAT(
+//         sed.employeeFirstName,
+//         ' ',
+//         sed.employeeLastName
+//     ) AS employeeName,
+//         sed.employeeNickName AS nickName,
+//             sed.employeeStatus AS employeeStatus,
+//                 sed.salary AS salary,
+//                     sed.imageLink AS imageLink,
+//                         CONCAT(
+//                             scd.staffCategoryName,
+//                             ' (',
+//                             sed.designation,
+//                             ')'
+//                         ) AS category,
+//                             COALESCE(smsd.remainSalary, 0) AS totalSalary,
+//                                 COALESCE(sad.advaceAmount, 0) AS advanceAmount,
+//                                     COALESCE(sfd.fineAmount, 0) AS fineAmount,
+//                                         COALESCE(esd.totalPaidSalary, 0) AS totalPaidSalary,
+//                                             COALESCE(smsd.remainSalary, 0) - COALESCE(sad.advaceAmount, 0) - COALESCE(sfd.fineAmount, 0) - COALESCE(esd.totalPaidSalary, 0) AS paymentDue
+// FROM
+//     staff_employee_data AS sed
+// INNER JOIN staff_category_data AS scd
+// ON
+// scd.staffCategoryId = sed.category
+// LEFT JOIN(
+//     SELECT
+//         staff_advance_data.employeeId,
+//     SUM(
+//         staff_advance_data.remainAdvanceAmount
+//     ) AS advaceAmount
+//     FROM
+//         staff_advance_data
+//     WHERE
+//         staff_advance_data.remainAdvanceAmount != 0
+//     GROUP BY
+//         staff_advance_data.employeeId
+// ) AS sad
+// ON
+// sed.employeeId = sad.employeeId
+// LEFT JOIN(
+//     SELECT
+//         staff_fine_data.employeeId,
+//     SUM(
+//         staff_fine_data.remainFineAmount
+//     ) AS fineAmount
+//     FROM
+//         staff_fine_data
+//     WHERE
+//         staff_fine_data.remainFineAmount != 0
+//     GROUP BY
+//         staff_fine_data.employeeId
+// ) AS sfd
+// ON
+// sed.employeeId = sfd.employeeId
+// LEFT JOIN(
+//     SELECT
+//         staff_salary_data.employeeId,
+//     SUM(staff_salary_data.salaryAmount) totalPaidSalary
+//     FROM
+//         staff_salary_data
+//     WHERE
+//         staff_salary_data.salaryDate BETWEEN(
+//         SELECT
+//             DATE_ADD(
+//             DATE_FORMAT(employeeJoiningDate, '%Y-%m-01'),
+//             INTERVAL 1 MONTH
+//         )
+//         FROM
+//             staff_employee_data sed
+//         WHERE
+//             sed.employeeId = staff_salary_data.employeeId
+//     ) AND CURDATE()
+// GROUP BY
+//     staff_salary_data.employeeId) AS esd
+// ON
+// sed.employeeId = esd.employeeId
+// LEFT JOIN(
+//     SELECT
+//         staff_monthlySalary_data.employeeId,
+//     SUM(
+//         staff_monthlySalary_data.remainSalary
+//     ) AS remainSalary
+//     FROM
+//         staff_monthlySalary_data
+//     WHERE
+//         staff_monthlySalary_data.remainSalary != 0
+//     GROUP BY
+//         staff_monthlySalary_data.employeeId
+// ) AS smsd
+// ON
+// sed.employeeId = smsd.employeeId;

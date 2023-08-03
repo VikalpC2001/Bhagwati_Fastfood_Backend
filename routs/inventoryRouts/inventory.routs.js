@@ -81,6 +81,7 @@ router.get('/exportExcelSheetForCashTransactionList', protect, supplierTransacti
 router.get('/getCashTransactionCounter', protect, supplierTransactionController.getCashTransactionCounter);
 router.get('/getDebitTransactionCounter', protect, supplierTransactionController.getDebitTransactionCounter);
 router.get('/exportTransactionInvoice', supplierTransactionController.exportTransactionInvoice);
+router.get('/exportExcelSheetForDeditTransaction', supplierTransactionController.exportExcelSheetForDeditTransaction);
 
 // Inventory Dropdown List Routs
 

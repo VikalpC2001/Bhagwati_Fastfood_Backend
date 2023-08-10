@@ -498,7 +498,7 @@ const getProductDetailsTable = (req, res) => {
                                         COALESCE(somw.total_quantity, 0) AS totalUsed,
                                         COALESCE(simw.totalExpense,0) AS totalExpense,
                                         COALESCE(somw.totalStockOutPrice,0) AS totalStockOutPrice,
-                                        COALESCE(si.total_siPrice, 0) - COALESCE(so.total_soPrice, 0),
+                                        COALESCE(si.total_siPrice, 0) - COALESCE(so.total_soPrice, 0) AS remainPrice,
                                         COALESCE(si.total_quantity, 0) - COALESCE(so.total_quantity, 0) AS remainingStock,
                                         COALESCE(siLu.productPrice, 0) AS lastPrice,
                                         COALESCE(siLu.productQty, 0) AS lastUpdatedQty,

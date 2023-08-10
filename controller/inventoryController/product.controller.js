@@ -17,7 +17,8 @@ const getProductCountDetailsById = (req, res) => {
         const sql_querry_StatickCCount = `SELECT
                                                p.minProductQty,
                                                COALESCE(si.total_quantity, 0) - COALESCE(so.total_quantity, 0) AS remainingStock,
-                                               COALESCE(siLu.productPrice, 0) AS lastPrice
+                                               COALESCE(siLu.productPrice, 0) AS lastPrice,
+                                               COALESCE(isrp.remainQtyPrice) AS remainPrice
                                            FROM
                                                inventory_product_data AS p
                                            LEFT JOIN(
@@ -67,6 +68,18 @@ const getProductCountDetailsById = (req, res) => {
                                            ) AS siLu
                                            ON
                                                p.productId = siLu.productId
+                                            LEFT JOIN(
+                                                SELECT inventory_stockIn_data.productId,
+                                                    ROUND(
+                                                        SUM(
+                                                            inventory_stockIn_data.remainingQty * inventory_stockIn_data.productPrice
+                                                        )
+                                                    ) AS remainQtyPrice
+                                                FROM
+                                                    inventory_stockIn_data
+                                                GROUP BY
+                                                    inventory_stockIn_data.productId
+                                            ) as isrp ON p.productId = isrp.productId
                                           WHERE p.productId = '${data.productId}'`;
         if (req.query.startDate && req.query.endDate) {
             sql_querry_getProductCount = `SELECT COALESCE(ROUND(SUM(productQty),2),0) AS purchase, COALESCE(ROUND(SUM(totalPrice)),0) AS totalRs FROM inventory_stockIn_data WHERE inventory_stockIn_data.productId = '${data.productId}' AND inventory_stockIn_data.stockInDate BETWEEN STR_TO_DATE('${data.startDate}','%b %d %Y') AND STR_TO_DATE('${data.endDate}','%b %d %Y');
@@ -89,10 +102,11 @@ const getProductCountDetailsById = (req, res) => {
                     totalUsed: data[1][0].used,
                     totalUsedPrice: data[1][0].totalUsedPrice,
                     remainingStock: data[2][0].remainingStock,
-                    remainUsedPrice: data[0][0].totalRs - data[1][0].totalUsedPrice,
+                    remainUsedPrice: data[2][0].remainPrice,
                     lastPrice: data[2][0].lastPrice,
                     minProductQty: data[2][0].minProductQty
                 }
+                console.log('////', count);
                 return res.status(200).send(count);
             }
         })
@@ -491,7 +505,7 @@ const getProductDetailsTable = (req, res) => {
                                         COALESCE(somw.total_quantity, 0) AS totalUsed,
                                         COALESCE(simw.totalExpense,0) AS totalExpense,
                                         COALESCE(somw.totalStockOutPrice,0) AS totalStockOutPrice,
-                                        isrp.remainQtyPrice AS remainPrice,
+                                        COALESCE(isrp.remainQtyPrice,0) AS remainPrice,
                                         COALESCE(si.total_quantity, 0) - COALESCE(so.total_quantity, 0) AS remainingStock,
                                         COALESCE(siLu.productPrice, 0) AS lastPrice,
                                         COALESCE(siLu.productQty, 0) AS lastUpdatedQty,
@@ -1045,7 +1059,7 @@ const exportExcelSheetForProductTable = (req, res) => {
                             COALESCE(simw.totalExpense,0) AS totalExpense,
                             COALESCE(somw.total_usedPrice,0) AS totalUsedPrice,
                             CONCAT(COALESCE(si.total_quantity, 0) - COALESCE(so.total_quantity, 0),' ',p.minProductUnit) AS remainingStock,
-                            isrp.remainQtyPrice AS remainPrice,
+                            COALESCE(isrp.remainQtyPrice,0) AS remainPrice,
                             COALESCE(siLu.productPrice, 0) AS lastPrice,
                             CONCAT(COALESCE(siLu.productQty, 0),' ',p.minProductUnit) AS lastUpdatedQty,
                             COALESCE(

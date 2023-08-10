@@ -18,7 +18,7 @@ const getProductCountDetailsById = (req, res) => {
                                                p.minProductQty,
                                                COALESCE(si.total_quantity, 0) - COALESCE(so.total_quantity, 0) AS remainingStock,
                                                COALESCE(siLu.productPrice, 0) AS lastPrice,
-                                               COALESCE(isrp.remainQtyPrice) AS remainPrice
+                                               COALESCE(si.total_siPrice, 0) - COALESCE(so.total_soPrice, 0) AS remainPrice
                                            FROM
                                                inventory_product_data AS p
                                            LEFT JOIN(
@@ -26,7 +26,10 @@ const getProductCountDetailsById = (req, res) => {
                                                    inventory_stockIn_data.productId,
                                                    ROUND(SUM(
                                                        inventory_stockIn_data.productQty
-                                                   ),2) AS total_quantity
+                                                   ),2) AS total_quantity,
+                                                   ROUND(SUM(
+                                                    inventory_stockIn_data.totalPrice
+                                                   )) AS total_siPrice
                                                FROM
                                                    inventory_stockIn_data
                                                GROUP BY
@@ -39,7 +42,10 @@ const getProductCountDetailsById = (req, res) => {
                                                    inventory_stockOut_data.productId,
                                                    ROUND(SUM(
                                                        inventory_stockOut_data.productQty
-                                                   ),2) AS total_quantity
+                                                   ),2) AS total_quantity,
+                                                   ROUND(SUM(
+                                                       inventory_stockOut_data.stockOutPrice
+                                                   )) AS total_soPrice
                                                FROM
                                                    inventory_stockOut_data
                                                GROUP BY
@@ -68,18 +74,6 @@ const getProductCountDetailsById = (req, res) => {
                                            ) AS siLu
                                            ON
                                                p.productId = siLu.productId
-                                            LEFT JOIN(
-                                                SELECT inventory_stockIn_data.productId,
-                                                    ROUND(
-                                                        SUM(
-                                                            inventory_stockIn_data.remainingQty * inventory_stockIn_data.productPrice
-                                                        )
-                                                    ) AS remainQtyPrice
-                                                FROM
-                                                    inventory_stockIn_data
-                                                GROUP BY
-                                                    inventory_stockIn_data.productId
-                                            ) as isrp ON p.productId = isrp.productId
                                           WHERE p.productId = '${data.productId}'`;
         if (req.query.startDate && req.query.endDate) {
             sql_querry_getProductCount = `SELECT COALESCE(ROUND(SUM(productQty),2),0) AS purchase, COALESCE(ROUND(SUM(totalPrice)),0) AS totalRs FROM inventory_stockIn_data WHERE inventory_stockIn_data.productId = '${data.productId}' AND inventory_stockIn_data.stockInDate BETWEEN STR_TO_DATE('${data.startDate}','%b %d %Y') AND STR_TO_DATE('${data.endDate}','%b %d %Y');
@@ -504,7 +498,7 @@ const getProductDetailsTable = (req, res) => {
                                         COALESCE(somw.total_quantity, 0) AS totalUsed,
                                         COALESCE(simw.totalExpense,0) AS totalExpense,
                                         COALESCE(somw.totalStockOutPrice,0) AS totalStockOutPrice,
-                                        COALESCE(isrp.remainQtyPrice,0) AS remainPrice,
+                                        COALESCE(si.total_siPrice, 0) - COALESCE(so.total_soPrice, 0),
                                         COALESCE(si.total_quantity, 0) - COALESCE(so.total_quantity, 0) AS remainingStock,
                                         COALESCE(siLu.productPrice, 0) AS lastPrice,
                                         COALESCE(siLu.productQty, 0) AS lastUpdatedQty,
@@ -521,7 +515,10 @@ const getProductDetailsTable = (req, res) => {
                                             inventory_stockIn_data.productId,
                                             ROUND(SUM(
                                                 inventory_stockIn_data.productQty
-                                            ),2) AS total_quantity
+                                            ),2) AS total_quantity,
+                                            ROUND(SUM(
+                                                inventory_stockIn_data.totalPrice
+                                            )) AS total_siPrice
                                         FROM
                                             inventory_stockIn_data
                                         GROUP BY
@@ -534,7 +531,10 @@ const getProductDetailsTable = (req, res) => {
                                             inventory_stockOut_data.productId,
                                             ROUND(SUM(
                                                 inventory_stockOut_data.productQty
-                                            ),2) AS total_quantity
+                                            ),2) AS total_quantity,
+                                            ROUND(SUM(
+                                                inventory_stockOut_data.stockOutPrice
+                                            )) AS total_soPrice
                                         FROM
                                             inventory_stockOut_data
                                         GROUP BY
@@ -562,19 +562,7 @@ const getProductDetailsTable = (req, res) => {
                                         )
                                     ) AS siLu
                                     ON
-                                        p.productId = siLu.productId
-                                    LEFT JOIN(
-                                        SELECT inventory_stockIn_data.productId,
-                                            ROUND(
-                                                SUM(
-                                                    inventory_stockIn_data.remainingQty * inventory_stockIn_data.productPrice
-                                                )
-                                            ) AS remainQtyPrice
-                                        FROM
-                                            inventory_stockIn_data
-                                        GROUP BY
-                                            inventory_stockIn_data.productId
-                                    ) as isrp ON p.productId = isrp.productId`;
+                                        p.productId = siLu.productId`;
         const sql_querry_joins = `LEFT JOIN
                                     (
                                         SELECT
@@ -1058,7 +1046,7 @@ const exportExcelSheetForProductTable = (req, res) => {
                             COALESCE(simw.totalExpense,0) AS totalExpense,
                             COALESCE(somw.total_usedPrice,0) AS totalUsedPrice,
                             CONCAT(COALESCE(si.total_quantity, 0) - COALESCE(so.total_quantity, 0),' ',p.minProductUnit) AS remainingStock,
-                            COALESCE(isrp.remainQtyPrice,0) AS remainPrice,
+                            COALESCE(si.total_siPrice, 0) - COALESCE(so.total_soPrice, 0) AS remainPrice,
                             COALESCE(siLu.productPrice, 0) AS lastPrice,
                             CONCAT(COALESCE(siLu.productQty, 0),' ',p.minProductUnit) AS lastUpdatedQty,
                             COALESCE(
@@ -1074,7 +1062,10 @@ const exportExcelSheetForProductTable = (req, res) => {
                                 inventory_stockIn_data.productId,
                                 ROUND(SUM(
                                     inventory_stockIn_data.productQty
-                                ),2) AS total_quantity
+                                ),2) AS total_quantity,
+                                ROUND(SUM(
+                                    inventory_stockIn_data.totalPrice
+                                )) AS total_siPrice
                             FROM
                                 inventory_stockIn_data
                             GROUP BY
@@ -1087,7 +1078,10 @@ const exportExcelSheetForProductTable = (req, res) => {
                                 inventory_stockOut_data.productId,
                                 ROUND(SUM(
                                     inventory_stockOut_data.productQty
-                                ),2) AS total_quantity
+                                ),2) AS total_quantity,
+                                ROUND(SUM(
+                                    inventory_stockOut_data.stockOutPrice
+                                )) AS total_soPrice
                             FROM
                                 inventory_stockOut_data
                             GROUP BY
@@ -1115,19 +1109,7 @@ const exportExcelSheetForProductTable = (req, res) => {
                             )
                         ) AS siLu
                         ON
-                            p.productId = siLu.productId
-                        LEFT JOIN(
-                                    SELECT inventory_stockIn_data.productId,
-                                        ROUND(
-                                            SUM(
-                                                inventory_stockIn_data.remainingQty * inventory_stockIn_data.productPrice
-                                            )
-                                        ) AS remainQtyPrice
-                                    FROM
-                                        inventory_stockIn_data
-                                    GROUP BY
-                                        inventory_stockIn_data.productId
-                                ) as isrp ON p.productId = isrp.productId`;
+                            p.productId = siLu.productId`;
     if (req.query.startDate && req.query.endDate) {
         sql_queries_getdetails = `${commanQuarry}
                                         LEFT JOIN(

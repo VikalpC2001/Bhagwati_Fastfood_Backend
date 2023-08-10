@@ -55,10 +55,10 @@ const getProductCountDetailsById = (req, res) => {
                                                FROM
                                                    inventory_stockIn_data
                                                WHERE
-                                                   (productId, stockInCreationDate) IN(
+                                                   (productId, stockInDate) IN(
                                                    SELECT
                                                        productId,
-                                                       MAX(stockInCreationDate)
+                                                       MAX(stockInDate)
                                                    FROM
                                                        inventory_stockIn_data
                                                    GROUP BY
@@ -242,10 +242,10 @@ const getProductList = (req, res) => {
                                                          FROM
                                                              inventory_stockIn_data
                                                          WHERE
-                                                             (productId, stockInCreationDate) IN(
+                                                             (productId, stockInDate) IN(
                                                              SELECT
                                                                  productId,
-                                                                 MAX(stockInCreationDate)
+                                                                 MAX(stockInDate)
                                                              FROM
                                                                  inventory_stockIn_data
                                                              GROUP BY
@@ -470,10 +470,10 @@ const getProductDetailsTable = (req, res) => {
                                     FROM
                                         inventory_stockIn_data
                                     WHERE
-                                        (productId, stockInCreationDate) IN(
+                                        (productId, stockInDate) IN(
                                         SELECT
                                             productId,
-                                            MAX(stockInCreationDate)
+                                            MAX(stockInDate)
                                         FROM
                                             inventory_stockIn_data
                                         GROUP BY
@@ -491,7 +491,7 @@ const getProductDetailsTable = (req, res) => {
                                         COALESCE(somw.total_quantity, 0) AS totalUsed,
                                         COALESCE(simw.totalExpense,0) AS totalExpense,
                                         COALESCE(somw.totalStockOutPrice,0) AS totalStockOutPrice,
-                                        (COALESCE(simw.totalExpense,0) - COALESCE(somw.totalStockOutPrice,0)) AS remainPrice,
+                                        isrp.remainQtyPrice AS remainPrice,
                                         COALESCE(si.total_quantity, 0) - COALESCE(so.total_quantity, 0) AS remainingStock,
                                         COALESCE(siLu.productPrice, 0) AS lastPrice,
                                         COALESCE(siLu.productQty, 0) AS lastUpdatedQty,
@@ -538,10 +538,10 @@ const getProductDetailsTable = (req, res) => {
                                         FROM
                                             inventory_stockIn_data
                                         WHERE
-                                            (productId, stockInCreationDate) IN(
+                                            (productId, stockInDate) IN(
                                             SELECT
                                                 productId,
-                                                MAX(stockInCreationDate)
+                                                MAX(stockInDate)
                                             FROM
                                                 inventory_stockIn_data
                                             GROUP BY
@@ -549,7 +549,19 @@ const getProductDetailsTable = (req, res) => {
                                         )
                                     ) AS siLu
                                     ON
-                                        p.productId = siLu.productId`;
+                                        p.productId = siLu.productId
+                                    LEFT JOIN(
+                                        SELECT inventory_stockIn_data.productId,
+                                            ROUND(
+                                                SUM(
+                                                    inventory_stockIn_data.remainingQty * inventory_stockIn_data.productPrice
+                                                )
+                                            ) AS remainQtyPrice
+                                        FROM
+                                            inventory_stockIn_data
+                                        GROUP BY
+                                            inventory_stockIn_data.productId
+                                    ) as isrp ON p.productId = isrp.productId`;
         const sql_querry_joins = `LEFT JOIN
                                     (
                                         SELECT
@@ -605,7 +617,7 @@ const getProductDetailsTable = (req, res) => {
                                             FROM
                                                 inventory_stockIn_data
                                             WHERE
-                                                inventory_stockIn_data.stockInCreationDate BETWEEN STR_TO_DATE('${data.startDate}','%b %d %Y') AND STR_TO_DATE('${data.endDate}','%b %d %Y')
+                                                inventory_stockIn_data.stockInDate BETWEEN STR_TO_DATE('${data.startDate}','%b %d %Y') AND STR_TO_DATE('${data.endDate}','%b %d %Y')
                                             GROUP BY
                                                 inventory_stockIn_data.productId
                                         ) AS simw
@@ -620,7 +632,7 @@ const getProductDetailsTable = (req, res) => {
                                             FROM
                                                 inventory_stockOut_data
                                             WHERE
-                                                inventory_stockOut_data.stockOutCreationDate BETWEEN STR_TO_DATE('${data.startDate}','%b %d %Y') AND STR_TO_DATE('${data.endDate}','%b %d %Y')
+                                                inventory_stockOut_data.stockOutDate BETWEEN STR_TO_DATE('${data.startDate}','%b %d %Y') AND STR_TO_DATE('${data.endDate}','%b %d %Y')
                                             GROUP BY
                                                 inventory_stockOut_data.productId
                                         ) AS somw
@@ -644,7 +656,7 @@ const getProductDetailsTable = (req, res) => {
                                             FROM
                                                 inventory_stockIn_data
                                             WHERE
-                                                inventory_stockIn_data.stockInCreationDate BETWEEN STR_TO_DATE('${data.startDate}','%b %d %Y') AND STR_TO_DATE('${data.endDate}','%b %d %Y')
+                                                inventory_stockIn_data.stockInDate BETWEEN STR_TO_DATE('${data.startDate}','%b %d %Y') AND STR_TO_DATE('${data.endDate}','%b %d %Y')
                                             GROUP BY
                                                 inventory_stockIn_data.productId
                                         ) AS simw
@@ -659,7 +671,7 @@ const getProductDetailsTable = (req, res) => {
                                             FROM
                                                 inventory_stockOut_data
                                             WHERE
-                                                inventory_stockOut_data.stockOutCreationDate BETWEEN STR_TO_DATE('${data.startDate}','%b %d %Y') AND STR_TO_DATE('${data.endDate}','%b %d %Y')
+                                                inventory_stockOut_data.stockOutDate BETWEEN STR_TO_DATE('${data.startDate}','%b %d %Y') AND STR_TO_DATE('${data.endDate}','%b %d %Y')
                                             GROUP BY
                                                 inventory_stockOut_data.productId
                                         ) AS somw
@@ -682,7 +694,7 @@ const getProductDetailsTable = (req, res) => {
                                             FROM
                                                 inventory_stockIn_data
                                             WHERE
-                                                inventory_stockIn_data.stockInCreationDate BETWEEN STR_TO_DATE('${firstDay}','%b %d %Y') AND STR_TO_DATE('${lastDay}','%b %d %Y')
+                                                inventory_stockIn_data.stockInDate BETWEEN STR_TO_DATE('${firstDay}','%b %d %Y') AND STR_TO_DATE('${lastDay}','%b %d %Y')
                                             GROUP BY
                                                 inventory_stockIn_data.productId
                                         ) AS simw
@@ -697,7 +709,7 @@ const getProductDetailsTable = (req, res) => {
                                             FROM
                                                 inventory_stockOut_data
                                             WHERE
-                                                inventory_stockOut_data.stockOutCreationDate BETWEEN STR_TO_DATE('${firstDay}','%b %d %Y') AND STR_TO_DATE('${lastDay}','%b %d %Y')
+                                                inventory_stockOut_data.stockOutDate BETWEEN STR_TO_DATE('${firstDay}','%b %d %Y') AND STR_TO_DATE('${lastDay}','%b %d %Y')
                                             GROUP BY
                                                 inventory_stockOut_data.productId
                                         ) AS somw
@@ -721,7 +733,7 @@ const getProductDetailsTable = (req, res) => {
                                             FROM
                                                 inventory_stockIn_data
                                             WHERE
-                                                inventory_stockIn_data.stockInCreationDate BETWEEN STR_TO_DATE('${firstDay}','%b %d %Y') AND STR_TO_DATE('${lastDay}','%b %d %Y')
+                                                inventory_stockIn_data.stockInDate BETWEEN STR_TO_DATE('${firstDay}','%b %d %Y') AND STR_TO_DATE('${lastDay}','%b %d %Y')
                                             GROUP BY
                                                 inventory_stockIn_data.productId
                                         ) AS simw
@@ -736,7 +748,7 @@ const getProductDetailsTable = (req, res) => {
                                             FROM
                                                 inventory_stockOut_data
                                             WHERE
-                                                inventory_stockOut_data.stockOutCreationDate BETWEEN STR_TO_DATE('${firstDay}','%b %d %Y') AND STR_TO_DATE('${lastDay}','%b %d %Y')
+                                                inventory_stockOut_data.stockOutDate BETWEEN STR_TO_DATE('${firstDay}','%b %d %Y') AND STR_TO_DATE('${lastDay}','%b %d %Y')
                                             GROUP BY
                                                 inventory_stockOut_data.productId
                                         ) AS somw
@@ -777,7 +789,7 @@ const getProductDetailsTable = (req, res) => {
                                                 FROM
                                                     inventory_stockIn_data
                                                 WHERE
-                                                    inventory_stockIn_data.stockInCreationDate BETWEEN STR_TO_DATE('${data.startDate}','%b %d %Y') AND STR_TO_DATE('${data.endDate}','%b %d %Y')
+                                                    inventory_stockIn_data.stockInDate BETWEEN STR_TO_DATE('${data.startDate}','%b %d %Y') AND STR_TO_DATE('${data.endDate}','%b %d %Y')
                                                 GROUP BY
                                                     inventory_stockIn_data.productId
                                             ) AS simw
@@ -795,7 +807,7 @@ const getProductDetailsTable = (req, res) => {
                                             FROM
                                                 inventory_stockOut_data
                                             WHERE
-                                                inventory_stockOut_data.stockOutCreationDate BETWEEN STR_TO_DATE('${data.startDate}','%b %d %Y') AND STR_TO_DATE('${data.endDate}','%b %d %Y')
+                                                inventory_stockOut_data.stockOutDate BETWEEN STR_TO_DATE('${data.startDate}','%b %d %Y') AND STR_TO_DATE('${data.endDate}','%b %d %Y')
                                             GROUP BY
                                                 inventory_stockOut_data.productId
                                         ) AS somw
@@ -817,7 +829,7 @@ const getProductDetailsTable = (req, res) => {
                                                 FROM
                                                     inventory_stockIn_data
                                                 WHERE
-                                                    inventory_stockIn_data.stockInCreationDate BETWEEN STR_TO_DATE('${data.startDate}','%b %d %Y') AND STR_TO_DATE('${data.endDate}','%b %d %Y')
+                                                    inventory_stockIn_data.stockInDate BETWEEN STR_TO_DATE('${data.startDate}','%b %d %Y') AND STR_TO_DATE('${data.endDate}','%b %d %Y')
                                                 GROUP BY
                                                     inventory_stockIn_data.productId
                                             ) AS simw
@@ -835,7 +847,7 @@ const getProductDetailsTable = (req, res) => {
                                             FROM
                                                 inventory_stockOut_data
                                             WHERE
-                                                inventory_stockOut_data.stockOutCreationDate BETWEEN STR_TO_DATE('${data.startDate}','%b %d %Y') AND STR_TO_DATE('${data.endDate}','%b %d %Y')
+                                                inventory_stockOut_data.stockOutDate BETWEEN STR_TO_DATE('${data.startDate}','%b %d %Y') AND STR_TO_DATE('${data.endDate}','%b %d %Y')
                                             GROUP BY
                                                 inventory_stockOut_data.productId
                                         ) AS somw
@@ -856,7 +868,7 @@ const getProductDetailsTable = (req, res) => {
                                                 FROM
                                                     inventory_stockIn_data
                                                 WHERE
-                                                    inventory_stockIn_data.stockInCreationDate BETWEEN STR_TO_DATE('${firstDay}','%b %d %Y') AND STR_TO_DATE('${lastDay}','%b %d %Y')
+                                                    inventory_stockIn_data.stockInDate BETWEEN STR_TO_DATE('${firstDay}','%b %d %Y') AND STR_TO_DATE('${lastDay}','%b %d %Y')
                                                 GROUP BY
                                                     inventory_stockIn_data.productId
                                             ) AS simw
@@ -874,7 +886,7 @@ const getProductDetailsTable = (req, res) => {
                                             FROM
                                                 inventory_stockOut_data
                                             WHERE
-                                                inventory_stockOut_data.stockOutCreationDate BETWEEN STR_TO_DATE('${firstDay}','%b %d %Y') AND STR_TO_DATE('${lastDay}','%b %d %Y')
+                                                inventory_stockOut_data.stockOutDate BETWEEN STR_TO_DATE('${firstDay}','%b %d %Y') AND STR_TO_DATE('${lastDay}','%b %d %Y')
                                             GROUP BY
                                                 inventory_stockOut_data.productId
                                         ) AS somw
@@ -896,7 +908,7 @@ const getProductDetailsTable = (req, res) => {
                                                 FROM
                                                     inventory_stockIn_data
                                                 WHERE
-                                                    inventory_stockIn_data.stockInCreationDate BETWEEN STR_TO_DATE('${firstDay}','%b %d %Y') AND STR_TO_DATE('${lastDay}','%b %d %Y')
+                                                    inventory_stockIn_data.stockInDate BETWEEN STR_TO_DATE('${firstDay}','%b %d %Y') AND STR_TO_DATE('${lastDay}','%b %d %Y')
                                                 GROUP BY
                                                     inventory_stockIn_data.productId
                                             ) AS simw
@@ -914,7 +926,7 @@ const getProductDetailsTable = (req, res) => {
                                             FROM
                                                 inventory_stockOut_data
                                             WHERE
-                                                inventory_stockOut_data.stockOutCreationDate BETWEEN STR_TO_DATE('${firstDay}','%b %d %Y') AND STR_TO_DATE('${lastDay}','%b %d %Y')
+                                                inventory_stockOut_data.stockOutDate BETWEEN STR_TO_DATE('${firstDay}','%b %d %Y') AND STR_TO_DATE('${lastDay}','%b %d %Y')
                                             GROUP BY
                                                 inventory_stockOut_data.productId
                                         ) AS somw
@@ -1033,7 +1045,7 @@ const exportExcelSheetForProductTable = (req, res) => {
                             COALESCE(simw.totalExpense,0) AS totalExpense,
                             COALESCE(somw.total_usedPrice,0) AS totalUsedPrice,
                             CONCAT(COALESCE(si.total_quantity, 0) - COALESCE(so.total_quantity, 0),' ',p.minProductUnit) AS remainingStock,
-                            (COALESCE(simw.totalExpense,0) - COALESCE(somw.total_usedPrice,0)) AS remainPrice,
+                            isrp.remainQtyPrice AS remainPrice,
                             COALESCE(siLu.productPrice, 0) AS lastPrice,
                             CONCAT(COALESCE(siLu.productQty, 0),' ',p.minProductUnit) AS lastUpdatedQty,
                             COALESCE(
@@ -1079,10 +1091,10 @@ const exportExcelSheetForProductTable = (req, res) => {
                             FROM
                                 inventory_stockIn_data
                             WHERE
-                                (productId, stockInCreationDate) IN(
+                                (productId, stockInDate) IN(
                                 SELECT
                                     productId,
-                                    MAX(stockInCreationDate)
+                                    MAX(stockInDate)
                                 FROM
                                     inventory_stockIn_data
                                 GROUP BY
@@ -1090,8 +1102,19 @@ const exportExcelSheetForProductTable = (req, res) => {
                             )
                         ) AS siLu
                         ON
-                            p.productId = siLu.productId`;
-
+                            p.productId = siLu.productId
+                        LEFT JOIN(
+                                    SELECT inventory_stockIn_data.productId,
+                                        ROUND(
+                                            SUM(
+                                                inventory_stockIn_data.remainingQty * inventory_stockIn_data.productPrice
+                                            )
+                                        ) AS remainQtyPrice
+                                    FROM
+                                        inventory_stockIn_data
+                                    GROUP BY
+                                        inventory_stockIn_data.productId
+                                ) as isrp ON p.productId = isrp.productId`;
     if (req.query.startDate && req.query.endDate) {
         sql_queries_getdetails = `${commanQuarry}
                                         LEFT JOIN(
@@ -1106,7 +1129,7 @@ const exportExcelSheetForProductTable = (req, res) => {
                                                 FROM
                                                     inventory_stockIn_data
                                                 WHERE
-                                                    inventory_stockIn_data.stockInCreationDate BETWEEN STR_TO_DATE('${data.startDate}','%b %d %Y') AND STR_TO_DATE('${data.endDate}','%b %d %Y')
+                                                    inventory_stockIn_data.stockInDate BETWEEN STR_TO_DATE('${data.startDate}','%b %d %Y') AND STR_TO_DATE('${data.endDate}','%b %d %Y')
                                                 GROUP BY
                                                     inventory_stockIn_data.productId
                                             ) AS simw
@@ -1124,7 +1147,7 @@ const exportExcelSheetForProductTable = (req, res) => {
                                             FROM
                                                 inventory_stockOut_data
                                             WHERE
-                                                inventory_stockOut_data.stockOutCreationDate BETWEEN STR_TO_DATE('${data.startDate}','%b %d %Y') AND STR_TO_DATE('${data.endDate}','%b %d %Y')
+                                                inventory_stockOut_data.stockOutDate BETWEEN STR_TO_DATE('${data.startDate}','%b %d %Y') AND STR_TO_DATE('${data.endDate}','%b %d %Y')
                                             GROUP BY
                                                 inventory_stockOut_data.productId
                                         ) AS somw
@@ -1144,7 +1167,7 @@ const exportExcelSheetForProductTable = (req, res) => {
                                                 FROM
                                                     inventory_stockIn_data
                                                 WHERE
-                                                    inventory_stockIn_data.stockInCreationDate BETWEEN STR_TO_DATE('${data.startDate}','%b %d %Y') AND STR_TO_DATE('${data.endDate}','%b %d %Y')
+                                                    inventory_stockIn_data.stockInDate BETWEEN STR_TO_DATE('${data.startDate}','%b %d %Y') AND STR_TO_DATE('${data.endDate}','%b %d %Y')
                                                 GROUP BY
                                                     inventory_stockIn_data.productId
                                             ) AS simw
@@ -1162,7 +1185,7 @@ const exportExcelSheetForProductTable = (req, res) => {
                                             FROM
                                                 inventory_stockOut_data
                                             WHERE
-                                                inventory_stockOut_data.stockOutCreationDate BETWEEN STR_TO_DATE('${data.startDate}','%b %d %Y') AND STR_TO_DATE('${data.endDate}','%b %d %Y')
+                                                inventory_stockOut_data.stockOutDate BETWEEN STR_TO_DATE('${data.startDate}','%b %d %Y') AND STR_TO_DATE('${data.endDate}','%b %d %Y')
                                             GROUP BY
                                                 inventory_stockOut_data.productId
                                         ) AS somw
@@ -1183,7 +1206,7 @@ const exportExcelSheetForProductTable = (req, res) => {
                                                 FROM
                                                     inventory_stockIn_data
                                                 WHERE
-                                                    inventory_stockIn_data.stockInCreationDate BETWEEN STR_TO_DATE('${data.startDate}','%b %d %Y') AND STR_TO_DATE('${data.endDate}','%b %d %Y')
+                                                    inventory_stockIn_data.stockInDate BETWEEN STR_TO_DATE('${data.startDate}','%b %d %Y') AND STR_TO_DATE('${data.endDate}','%b %d %Y')
                                                 GROUP BY
                                                     inventory_stockIn_data.productId
                                             ) AS simw
@@ -1201,7 +1224,7 @@ const exportExcelSheetForProductTable = (req, res) => {
                                             FROM
                                                 inventory_stockOut_data
                                             WHERE
-                                                inventory_stockOut_data.stockOutCreationDate BETWEEN STR_TO_DATE('${data.startDate}','%b %d %Y') AND STR_TO_DATE('${data.endDate}','%b %d %Y')
+                                                inventory_stockOut_data.stockOutDate BETWEEN STR_TO_DATE('${data.startDate}','%b %d %Y') AND STR_TO_DATE('${data.endDate}','%b %d %Y')
                                             GROUP BY
                                                 inventory_stockOut_data.productId
                                         ) AS somw
@@ -1222,7 +1245,7 @@ const exportExcelSheetForProductTable = (req, res) => {
                                                 FROM
                                                     inventory_stockIn_data
                                                 WHERE
-                                                    inventory_stockIn_data.stockInCreationDate BETWEEN STR_TO_DATE('${data.startDate}','%b %d %Y') AND STR_TO_DATE('${data.endDate}','%b %d %Y')
+                                                    inventory_stockIn_data.stockInDate BETWEEN STR_TO_DATE('${data.startDate}','%b %d %Y') AND STR_TO_DATE('${data.endDate}','%b %d %Y')
                                                 GROUP BY
                                                     inventory_stockIn_data.productId
                                             ) AS simw
@@ -1240,7 +1263,7 @@ const exportExcelSheetForProductTable = (req, res) => {
                                             FROM
                                                 inventory_stockOut_data
                                             WHERE
-                                                inventory_stockOut_data.stockOutCreationDate BETWEEN STR_TO_DATE('${data.startDate}','%b %d %Y') AND STR_TO_DATE('${data.endDate}','%b %d %Y')
+                                                inventory_stockOut_data.stockOutDate BETWEEN STR_TO_DATE('${data.startDate}','%b %d %Y') AND STR_TO_DATE('${data.endDate}','%b %d %Y')
                                             GROUP BY
                                                 inventory_stockOut_data.productId
                                         ) AS somw
@@ -1262,7 +1285,7 @@ const exportExcelSheetForProductTable = (req, res) => {
                                                 FROM
                                                     inventory_stockIn_data
                                                 WHERE
-                                                    inventory_stockIn_data.stockInCreationDate BETWEEN STR_TO_DATE('${firstDay}','%b %d %Y') AND STR_TO_DATE('${lastDay}','%b %d %Y')
+                                                    inventory_stockIn_data.stockInDate BETWEEN STR_TO_DATE('${firstDay}','%b %d %Y') AND STR_TO_DATE('${lastDay}','%b %d %Y')
                                                 GROUP BY
                                                     inventory_stockIn_data.productId
                                             ) AS simw
@@ -1280,7 +1303,7 @@ const exportExcelSheetForProductTable = (req, res) => {
                                             FROM
                                                 inventory_stockOut_data
                                             WHERE
-                                                inventory_stockOut_data.stockOutCreationDate BETWEEN STR_TO_DATE('${firstDay}','%b %d %Y') AND STR_TO_DATE('${lastDay}','%b %d %Y')
+                                                inventory_stockOut_data.stockOutDate BETWEEN STR_TO_DATE('${firstDay}','%b %d %Y') AND STR_TO_DATE('${lastDay}','%b %d %Y')
                                             GROUP BY
                                                 inventory_stockOut_data.productId
                                         ) AS somw
@@ -1300,7 +1323,7 @@ const exportExcelSheetForProductTable = (req, res) => {
                                                 FROM
                                                     inventory_stockIn_data
                                                 WHERE
-                                                    inventory_stockIn_data.stockInCreationDate BETWEEN STR_TO_DATE('${firstDay}','%b %d %Y') AND STR_TO_DATE('${lastDay}','%b %d %Y')
+                                                    inventory_stockIn_data.stockInDate BETWEEN STR_TO_DATE('${firstDay}','%b %d %Y') AND STR_TO_DATE('${lastDay}','%b %d %Y')
                                                 GROUP BY
                                                     inventory_stockIn_data.productId
                                             ) AS simw
@@ -1318,7 +1341,7 @@ const exportExcelSheetForProductTable = (req, res) => {
                                             FROM
                                                 inventory_stockOut_data
                                             WHERE
-                                                inventory_stockOut_data.stockOutCreationDate BETWEEN STR_TO_DATE('${firstDay}','%b %d %Y') AND STR_TO_DATE('${lastDay}','%b %d %Y')
+                                                inventory_stockOut_data.stockOutDate BETWEEN STR_TO_DATE('${firstDay}','%b %d %Y') AND STR_TO_DATE('${lastDay}','%b %d %Y')
                                             GROUP BY
                                                 inventory_stockOut_data.productId
                                         ) AS somw
@@ -1339,7 +1362,7 @@ const exportExcelSheetForProductTable = (req, res) => {
                                                 FROM
                                                     inventory_stockIn_data
                                                 WHERE
-                                                    inventory_stockIn_data.stockInCreationDate BETWEEN STR_TO_DATE('${firstDay}','%b %d %Y') AND STR_TO_DATE('${lastDay}','%b %d %Y')
+                                                    inventory_stockIn_data.stockInDate BETWEEN STR_TO_DATE('${firstDay}','%b %d %Y') AND STR_TO_DATE('${lastDay}','%b %d %Y')
                                                 GROUP BY
                                                     inventory_stockIn_data.productId
                                             ) AS simw
@@ -1357,7 +1380,7 @@ const exportExcelSheetForProductTable = (req, res) => {
                                             FROM
                                                 inventory_stockOut_data
                                             WHERE
-                                                inventory_stockOut_data.stockOutCreationDate BETWEEN STR_TO_DATE('${firstDay}','%b %d %Y') AND STR_TO_DATE('${lastDay}','%b %d %Y')
+                                                inventory_stockOut_data.stockOutDate BETWEEN STR_TO_DATE('${firstDay}','%b %d %Y') AND STR_TO_DATE('${lastDay}','%b %d %Y')
                                             GROUP BY
                                                 inventory_stockOut_data.productId
                                         ) AS somw
@@ -1378,7 +1401,7 @@ const exportExcelSheetForProductTable = (req, res) => {
                                                 FROM
                                                     inventory_stockIn_data
                                                 WHERE
-                                                    inventory_stockIn_data.stockInCreationDate BETWEEN STR_TO_DATE('${firstDay}','%b %d %Y') AND STR_TO_DATE('${lastDay}','%b %d %Y')
+                                                    inventory_stockIn_data.stockInDate BETWEEN STR_TO_DATE('${firstDay}','%b %d %Y') AND STR_TO_DATE('${lastDay}','%b %d %Y')
                                                 GROUP BY
                                                     inventory_stockIn_data.productId
                                             ) AS simw
@@ -1396,7 +1419,7 @@ const exportExcelSheetForProductTable = (req, res) => {
                                             FROM
                                                 inventory_stockOut_data
                                             WHERE
-                                                inventory_stockOut_data.stockOutCreationDate BETWEEN STR_TO_DATE('${firstDay}','%b %d %Y') AND STR_TO_DATE('${lastDay}','%b %d %Y')
+                                                inventory_stockOut_data.stockOutDate BETWEEN STR_TO_DATE('${firstDay}','%b %d %Y') AND STR_TO_DATE('${lastDay}','%b %d %Y')
                                             GROUP BY
                                                 inventory_stockOut_data.productId
                                         ) AS somw

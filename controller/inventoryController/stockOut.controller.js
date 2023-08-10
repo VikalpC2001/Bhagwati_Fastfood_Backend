@@ -500,20 +500,20 @@ const removeStockOutTransaction = async (req, res) => {
 
     try {
         const stockOutId = req.query.stockOutId
-        req.query.stockOutId = pool.query(`SELECT stockOutId FROM inventory_stockOut_data WHERE stockOutId = '${stockOutId}'`, (err, row) => {
+        req.query.stockOutId = pool.query(`SELECT stockOutId, productQty FROM inventory_stockOut_data WHERE stockOutId = '${stockOutId}'`, (err, row) => {
             if (err) {
                 console.error("An error occurd in SQL Queery", err);
                 return res.status(500).send('Database Error');
             }
+            const prevoiusQuantity = row[0].productQty;
             if (row && row.length) {
-                sql_get_sowsoid = `SELECT stockInId, productId, productQty, productPrice AS stockInPrice, remainingQty AS remainingStock FROM inventory_stockIn_data WHERE stockInId IN (SELECT COALESCE(stockInId,null) FROM inventory_stockOutwiseStockInId_data WHERE stockOutId = '${stockOutId}') ORDER BY stockInCreationDate DESC`;
+                sql_get_sowsoid = `SELECT stockInId, productId, productQty, productPrice AS stockInPrice, remainingQty AS remainingStock FROM inventory_stockIn_data WHERE stockInId IN (SELECT COALESCE(stockInId,null) FROM inventory_stockOutwiseStockInId_data WHERE stockOutId = '${stockOutId}') ORDER BY stockInCreationDate ASC`;
                 console.log(">>><<<", sql_get_sowsoid);
                 pool.query(sql_get_sowsoid, (err, data) => {
                     if (err) {
                         console.error("An error occurd in SQL Queery", err);
                         return res.status(500).send('Database Error');
                     }
-                    const prevoiusQuantity = data[0].productQty;
                     console.log(">>>", Object.values(JSON.parse(JSON.stringify(data))));
                     const StockInData = Object.values(JSON.parse(JSON.stringify(data)));
                     console.log("::::::::", prevoiusQuantity - req.body.productQty);
@@ -901,7 +901,7 @@ const updateStockOutTransaction = async (req, res) => {
                                     })
                                 })
                             } else if (prevoiusQuantity > req.body.productQty) {
-                                sql_get_sowsoid = `SELECT stockInId, productId, productQty, productPrice AS stockInPrice, remainingQty AS remainingStock FROM inventory_stockIn_data WHERE stockInId IN (SELECT COALESCE(stockInId,null) FROM inventory_stockOutwiseStockInId_data WHERE stockOutId = '${stockOutId}') ORDER BY stockInCreationDate DESC`;
+                                sql_get_sowsoid = `SELECT stockInId, productId, productQty, productPrice AS stockInPrice, remainingQty AS remainingStock FROM inventory_stockIn_data WHERE stockInId IN (SELECT COALESCE(stockInId,null) FROM inventory_stockOutwiseStockInId_data WHERE stockOutId = '${stockOutId}') ORDER BY stockInCreationDate ASC`;
                                 console.log(">>><<<", sql_get_sowsoid);
                                 pool.query(sql_get_sowsoid, (err, data) => {
                                     if (err) {

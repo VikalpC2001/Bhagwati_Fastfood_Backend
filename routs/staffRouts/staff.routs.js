@@ -12,7 +12,7 @@ router.delete('/removeEmployeeDetails', protect, employeeController.removeEmploy
 router.post('/updateEmployeeDetails', protect, employeeController.updateEmployeeDetails);
 router.get('/fillEmployeeDetails', protect, employeeController.fillEmployeeDetails);
 router.get('/getEmployeeData', employeeController.getEmployeeData);
-router.get('/updateEmployeeStatus', employeeController.updateEmployeeStatus);
+router.get('/getMidMonthInActiveSalaryOfEmployee', employeeController.getMidMonthInActiveSalaryOfEmployee);
 
 // Staff Category Routs
 
@@ -30,13 +30,16 @@ router.get('/getStaffCategoryWithEmployeeNumber', staffCategoryController.getSta
 const sallaryController = require("../../controller/staffController/salary.controller.js");
 
 router.post('/addAmountOfSFA', protect, sallaryController.addAmountOfSFA);
-router.post('/addEmployeeLeave', sallaryController.addEmployeeLeave);
+router.delete('/removeSalaryHistory', sallaryController.removeSalaryHistory);
+router.delete('/removeCreditTransaction', sallaryController.removeCreditTransaction);
+router.post('/updateEmployeeStatus', sallaryController.updateEmployeeStatus, sallaryController.addAmountOfSFA);
 
-// leave
+// Leave Routs
 
-const leaveCon = require('../../controller/staffController/leaveFunction.controller.js')
+const leaveController = require('../../controller/staffController/leave.controller.js')
 
-// router.get('/calculateDueSalary', leaveCon.calculateDueSalary);
+router.post('/addEmployeeLeave', leaveController.addEmployeeLeave);
+router.post('/addLeaveForAllEployee', leaveController.addLeaveForAllEployee);
 
 module.exports = router;
 

@@ -1365,6 +1365,52 @@ const getMidMonthInActiveSalaryOfEmployee = (req, res) => {
     }
 }
 
+const getEmployeeDetailsById = (req, res) => {
+    try {
+        const employeeId = req.query.employeeId
+        sql_querry_getEmployeeById = `SELECT
+                                        employeeId,
+                                        CONCAT(employeeFirstName,' ',employeeLastName) AS employeeName,
+                                        employeeGender,
+                                        employeeNickName,
+                                        CONCAT('+91 ',employeeMobileNumber) AS employeeMobileNumber,
+                                        employeeOtherMobileNumber,
+                                        presentAddress,
+                                        homeAddress,
+                                        adharCardNum,
+                                        CONCAT(staff_category_data.staffCategoryName,' (',designation,')')AS category,
+                                        salary,
+                                        maxLeave,
+                                        DATE_FORMAT(employeeJoiningDate,'%d-%b-%Y') AS employeeJoiningDate,
+                                        DATE_FORMAT(employeeLastPaymentDate,'%d-%b-%Y') AS employeeLastPaymentDate,
+                                        accountHolderName,
+                                        accountNumber,
+                                        ifscCode,
+                                        bankName,
+                                        branchName,
+                                        CASE
+                                            WHEN employeeStatus = 0 THEN 'IN-ACTIVE'
+                                            WHEN employeeStatus = 1 THEN 'ACTIVE'
+                                        END AS employeeStatus,
+                                        imageLink
+                                    FROM
+                                        staff_employee_data
+                                    LEFT JOIN staff_category_data ON staff_category_data.staffCategoryId = staff_employee_data.category
+                                    WHERE employeeId = '${employeeId}'`;
+        pool.query(sql_querry_getEmployeeById, (err, data) => {
+            if (err) {
+                console.error("An error occurd in SQL Queery", err);
+                return res.status(500).send('Database Error');
+            }
+            return res.status(200).send(data);
+        })
+    }
+    catch (error) {
+        console.error('An error occurd', error);
+        res.status(500).send('Internal Server Error');
+    }
+}
+
 module.exports = {
     addEmployeedetails,
     getImagebyName,
@@ -1373,6 +1419,7 @@ module.exports = {
     fillEmployeeDetails,
     getEmployeeData,
     calculateDueSalary,
-    getMidMonthInActiveSalaryOfEmployee
+    getMidMonthInActiveSalaryOfEmployee,
+    getEmployeeDetailsById
 }
 

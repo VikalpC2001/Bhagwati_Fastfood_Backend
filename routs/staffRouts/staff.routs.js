@@ -11,8 +11,9 @@ router.get('/getImagebyName', employeeController.getImagebyName);
 router.delete('/removeEmployeeDetails', protect, employeeController.removeEmployeeDetails);
 router.post('/updateEmployeeDetails', protect, employeeController.updateEmployeeDetails);
 router.get('/fillEmployeeDetails', protect, employeeController.fillEmployeeDetails);
-router.get('/getEmployeeData', employeeController.getEmployeeData);
-router.get('/getMidMonthInActiveSalaryOfEmployee', employeeController.getMidMonthInActiveSalaryOfEmployee);
+router.get('/getEmployeeData', protect, employeeController.getEmployeeData);
+router.get('/getMidMonthInActiveSalaryOfEmployee', protect, employeeController.getMidMonthInActiveSalaryOfEmployee);
+router.get('/getEmployeeDetailsById', protect, employeeController.getEmployeeDetailsById);
 
 // Staff Category Routs
 

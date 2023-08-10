@@ -56,10 +56,10 @@ const getProductCountDetailsById = (req, res) => {
                                                FROM
                                                    inventory_stockIn_data
                                                WHERE
-                                                   (productId, stockInDate) IN(
+                                                   (productId, stockInCreationDate) IN(
                                                    SELECT
                                                        productId,
-                                                       MAX(stockInDate)
+                                                       MAX(stockInCreationDate)
                                                    FROM
                                                        inventory_stockIn_data
                                                    GROUP BY
@@ -106,7 +106,6 @@ const getProductCountDetailsById = (req, res) => {
                     lastPrice: data[2][0].lastPrice,
                     minProductQty: data[2][0].minProductQty
                 }
-                console.log('////', count);
                 return res.status(200).send(count);
             }
         })
@@ -256,10 +255,10 @@ const getProductList = (req, res) => {
                                                          FROM
                                                              inventory_stockIn_data
                                                          WHERE
-                                                             (productId, stockInDate) IN(
+                                                             (productId, stockInCreationDate) IN(
                                                              SELECT
                                                                  productId,
-                                                                 MAX(stockInDate)
+                                                                 MAX(stockInCreationDate)
                                                              FROM
                                                                  inventory_stockIn_data
                                                              GROUP BY
@@ -484,10 +483,10 @@ const getProductDetailsTable = (req, res) => {
                                     FROM
                                         inventory_stockIn_data
                                     WHERE
-                                        (productId, stockInDate) IN(
+                                        (productId, stockInCreationDate) IN(
                                         SELECT
                                             productId,
-                                            MAX(stockInDate)
+                                            MAX(stockInCreationDate)
                                         FROM
                                             inventory_stockIn_data
                                         GROUP BY
@@ -552,10 +551,10 @@ const getProductDetailsTable = (req, res) => {
                                         FROM
                                             inventory_stockIn_data
                                         WHERE
-                                            (productId, stockInDate) IN(
+                                            (productId, stockInCreationDate) IN(
                                             SELECT
                                                 productId,
-                                                MAX(stockInDate)
+                                                MAX(stockInCreationDate) As lastDate
                                             FROM
                                                 inventory_stockIn_data
                                             GROUP BY
@@ -1105,10 +1104,10 @@ const exportExcelSheetForProductTable = (req, res) => {
                             FROM
                                 inventory_stockIn_data
                             WHERE
-                                (productId, stockInDate) IN(
+                                (productId, stockInCreationDate) IN(
                                 SELECT
                                     productId,
-                                    MAX(stockInDate)
+                                    MAX(stockInCreationDate)
                                 FROM
                                     inventory_stockIn_data
                                 GROUP BY

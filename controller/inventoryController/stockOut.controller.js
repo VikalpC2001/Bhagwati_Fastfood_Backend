@@ -32,7 +32,7 @@ const getStockOutList = async (req, res) => {
             } else {
                 const numRows = rows[0].numRows;
                 const numPages = Math.ceil(numRows / numPerPage);
-                const commonQuery = `SELECT stockOutId, user_details.userName AS outBy, CONCAT(user_details.userFirstName,' ',user_details.userLastName) AS userName,inventory_product_data.productName AS productName, CONCAT(productQty,' ',productUnit) AS Quantity, stockOutPrice, inventory_stockOutCategory_data.stockOutCategoryName AS stockOutCategoryName, stockOutComment, DATE_FORMAT(stockOutDate,'%d-%m-%Y') AS stockOutDate 
+                const commonQuery = `SELECT stockOutId, user_details.userName AS outBy, CONCAT(user_details.userFirstName,' ',user_details.userLastName) AS userName,inventory_product_data.productName AS productName, CONCAT(productQty,' ',productUnit) AS Quantity, ROUND(stockOutPrice) AS stockOutPrice, inventory_stockOutCategory_data.stockOutCategoryName AS stockOutCategoryName, stockOutComment, DATE_FORMAT(stockOutDate,'%d-%m-%Y') AS stockOutDate 
                                                 FROM inventory_stockOut_data
                                                 INNER JOIN user_details ON user_details.userId = inventory_stockOut_data.userId
                                                 INNER JOIN inventory_product_data ON inventory_product_data.productId = inventory_stockOut_data.productId
@@ -190,6 +190,7 @@ const exportExcelSheetForStockout = (req, res) => {
                                   UPPER(inventory_product_data.productName) AS productName,
                                   productQty,
                                   productUnit,
+                                  ROUND(stockOutPrice) AS stockOutPrice,
                                   inventory_stockOutCategory_data.stockOutCategoryName AS stockOutCategoryName,
                                   stockOutComment,
                                   DATE_FORMAT(stockOutDate, '%d-%m-%Y') AS stockOutDate
@@ -236,7 +237,7 @@ const exportExcelSheetForStockout = (req, res) => {
         }
 
         /*Column headers*/
-        worksheet.getRow(2).values = ['S no.', 'Out By', 'Product', 'Quantity', 'Unit', 'Category', 'Comment', 'Date'];
+        worksheet.getRow(2).values = ['S no.', 'Out By', 'Product', 'Quantity', 'Unit', 'StockOut Price', 'Category', 'Comment', 'Date'];
 
         // Column for data in excel. key must match data key
         worksheet.columns = [
@@ -245,6 +246,7 @@ const exportExcelSheetForStockout = (req, res) => {
             { key: "productName", width: 30 },
             { key: "productQty", width: 10 },
             { key: "productUnit", width: 10 },
+            { key: "stockOutPrice", width: 20 },
             { key: "stockOutCategoryName", width: 20 },
             { key: "stockOutComment", width: 30 },
             { key: "stockOutDate", width: 20 },
@@ -271,7 +273,13 @@ const exportExcelSheetForStockout = (req, res) => {
         worksheet.getRow(1).height = 30;
         worksheet.getRow(2).height = 20;
         if (req.query.productId || req.query.productId && req.query.startDate && req.query.endDate) {
-            worksheet.getRow(arr.length + 3).values = ['Total:', '', '', { formula: `SUM(D3:D${arr.length + 2})` }];
+            worksheet.getRow(arr.length + 3).values = ['Total:', '', '', { formula: `SUM(D3:D${arr.length + 2})` }, '', { formula: `SUM(F3:F${arr.length + 2})` }];
+            worksheet.getRow(arr.length + 3).eachCell((cell) => {
+                cell.font = { bold: true, size: 14 }
+                cell.alignment = { vertical: 'middle', horizontal: 'center', wrapText: true };
+            })
+        } else {
+            worksheet.getRow(arr.length + 3).values = ['Total:', '', '', '', '', { formula: `SUM(F3:F${arr.length + 2})` }];
             worksheet.getRow(arr.length + 3).eachCell((cell) => {
                 cell.font = { bold: true, size: 14 }
                 cell.alignment = { vertical: 'middle', horizontal: 'center', wrapText: true };

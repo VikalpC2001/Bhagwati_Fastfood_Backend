@@ -265,8 +265,8 @@ const calculateDueSalary = (employeeId) => {
 
 
                                     const takeLeave = getSumOfLeaveForDates(employeeId, dateArray);
-                                    const array1 = result;
-                                    const array2 = leaveArray;
+                                    const array1 = leaveArray;
+                                    const array2 = result;
                                     function subtractArrays(arr1, arr2) {
                                         if (arr1.length !== arr2.length) {
                                             throw new Error('Arrays must have the same length for subtraction.');
@@ -279,11 +279,13 @@ const calculateDueSalary = (employeeId) => {
                                     console.log('take leave array', result);
                                     console.log('leave array', totalLeaveArray); // Output: [5, 12]
                                     const modifiedArray = totalLeaveArray.map(value => (value <= 0 ? 0 : value));
+                                    const modifiedArraylose = totalLeaveArray.map(value => (value >= 0 ? 0 : value));
 
                                     console.log('modified array', modifiedArray);
+                                    console.log('modifiedArraylose', modifiedArraylose)
 
                                     // console.log(perDaysalaryOfEmployee);
-                                    const multiplayArray = modifiedArray.map((value, index) => value * perDaysalaryOfEmployee[index])
+                                    const multiplayArray = modifiedArraylose.map((value, index) => value * perDaysalaryOfEmployee[index])
                                     console.log('bonus', multiplayArray);
                                     // const array1 = [10000, 10000, 10000];
                                     // const array2 = [999, 999, 999];
@@ -292,14 +294,14 @@ const calculateDueSalary = (employeeId) => {
                                         throw new Error("Arrays must have the same length for element-wise addition.");
                                     }
 
-                                    const totalSalary = salaryArray.map((value, index) => value - multiplayArray[index]);
+                                    const totalSalary = salaryArray.map((value, index) => value + multiplayArray[index]);
 
                                     console.log(totalSalary); // Output: [ 10999, 10999, 10999 ]
 
-                                    const values = monthsArray.map((date, index) => `('${employeeId}',${totalSalary[index]},${totalSalary[index]},STR_TO_DATE('${date}','%d-%m-%Y'),LAST_DAY(STR_TO_DATE('${date}','%d-%m-%Y')))`).join(', ');
+                                    const values = monthsArray.map((date, index) => `('${employeeId}',${totalSalary[index]},${totalSalary[index]},0,0,STR_TO_DATE('${date}','%d-%m-%Y'),LAST_DAY(STR_TO_DATE('${date}','%d-%m-%Y')))`).join(', ');
                                     console.log('><><><><', values);
 
-                                    sql_query_addMonthlySalaryData = `INSERT INTO staff_monthlySalary_data (employeeId, totalSalary, remainSalary, msStartDate, msEndDate) VALUES ${values}`
+                                    sql_query_addMonthlySalaryData = `INSERT INTO staff_monthlySalary_data (employeeId, totalSalary, remainSalary, maxLeave, remainLeave, msStartDate, msEndDate) VALUES ${values}`
                                     pool.query(sql_query_addMonthlySalaryData, (err, data) => {
                                         if (err) {
                                             console.error("An error occurd in SQL Queery", err);
@@ -1296,18 +1298,6 @@ const getEmployeeData = (req, res) => {
                         return res.status(200).send(data);
                     })
                 }
-                // calculateTotalSalary(employeeId)
-                // Promise.all(
-                //     employeeIdsArray.map(employeeId => calculateTotalSalary(employeeId))
-                // )
-                //     .then((totalSalary) => {
-                //         console.log("Total Salary:", totalSalary);
-                //         // Handle the totalSalary as needed
-                //     })
-                //     .catch((error) => {
-                //         console.error("Error:", error);
-                //         // Handle errors appropriately
-                //     });
             })
         } else {
             pool.query(sql_query_getEmployee, (err, data) => {
@@ -1369,40 +1359,148 @@ const getEmployeeDetailsById = (req, res) => {
     try {
         const employeeId = req.query.employeeId
         sql_querry_getEmployeeById = `SELECT
-                                        employeeId,
-                                        CONCAT(employeeFirstName,' ',employeeLastName) AS employeeName,
+                                        sed.employeeId,
+                                        CONCAT(
+                                            employeeFirstName,
+                                            ' ',
+                                            employeeLastName
+                                        ) AS employeeName,
                                         employeeGender,
                                         employeeNickName,
-                                        CONCAT('+91 ',employeeMobileNumber) AS employeeMobileNumber,
+                                        CONCAT('+91 ', employeeMobileNumber) AS employeeMobileNumber,
                                         employeeOtherMobileNumber,
                                         presentAddress,
                                         homeAddress,
                                         adharCardNum,
-                                        CONCAT(staff_category_data.staffCategoryName,' (',designation,')')AS category,
+                                        CONCAT(
+                                            staff_category_data.staffCategoryName,
+                                            ' (',
+                                            designation,
+                                            ')'
+                                        ) AS category,
                                         salary,
                                         maxLeave,
-                                        DATE_FORMAT(employeeJoiningDate,'%d-%b-%Y') AS employeeJoiningDate,
-                                        DATE_FORMAT(employeeLastPaymentDate,'%d-%b-%Y') AS employeeLastPaymentDate,
+                                        DATE_FORMAT(employeeJoiningDate, '%d-%b-%Y') AS employeeJoiningDate,
+                                        DATE_FORMAT(
+                                            employeeLastPaymentDate,
+                                            '%d-%b-%Y'
+                                        ) AS employeeLastPaymentDate,
                                         accountHolderName,
                                         accountNumber,
                                         ifscCode,
                                         bankName,
                                         branchName,
-                                        CASE
-                                            WHEN employeeStatus = 0 THEN 'IN-ACTIVE'
-                                            WHEN employeeStatus = 1 THEN 'ACTIVE'
-                                        END AS employeeStatus,
-                                        imageLink
+                                        imageLink,
+                                        COALESCE(
+                                            CONCAT(
+                                                DATE_FORMAT(smsddate.startDate, '%d-%b-%Y'),
+                                                ' - ',
+                                                DATE_FORMAT(smsddate.endDate, '%d-%b-%Y')
+                                            ),
+                                            'No Payment Remaining'
+                                        ) AS dateOfPayment,
+                                        IF(employeeStatus = 1, TRUE, FALSE) AS employeeStatus,
+                                        COALESCE(smsd.remainSalary, 0) AS totalSalary,
+                                        COALESCE(sad.advaceAmount, 0) AS advanceAmount,
+                                        COALESCE(sfd.fineAmount, 0) AS fineAmount,
+                                        COALESCE(esd.totalPaidSalary, 0) AS totalPaidSalary,
+                                        COALESCE(smsd.remainSalary, 0) - COALESCE(sad.advaceAmount, 0) - COALESCE(sfd.fineAmount, 0) AS paymentDue
                                     FROM
-                                        staff_employee_data
-                                    LEFT JOIN staff_category_data ON staff_category_data.staffCategoryId = staff_employee_data.category
-                                    WHERE employeeId = '${employeeId}'`;
+                                        staff_employee_data AS sed
+                                    LEFT JOIN staff_category_data ON staff_category_data.staffCategoryId = sed.category
+                                    LEFT JOIN(
+                                        SELECT
+                                            staff_advance_data.employeeId,
+                                            SUM(
+                                                staff_advance_data.remainAdvanceAmount
+                                            ) AS advaceAmount
+                                        FROM
+                                            staff_advance_data
+                                        WHERE
+                                            staff_advance_data.remainAdvanceAmount != 0
+                                        GROUP BY
+                                            staff_advance_data.employeeId
+                                    ) AS sad
+                                    ON
+                                        sed.employeeId = sad.employeeId
+                                    LEFT JOIN(
+                                        SELECT
+                                            staff_fine_data.employeeId,
+                                            SUM(
+                                                staff_fine_data.remainFineAmount
+                                            ) AS fineAmount
+                                        FROM
+                                            staff_fine_data
+                                        WHERE
+                                            staff_fine_data.remainFineAmount != 0
+                                        GROUP BY
+                                            staff_fine_data.employeeId
+                                    ) AS sfd
+                                    ON
+                                        sed.employeeId = sfd.employeeId
+                                    LEFT JOIN(
+                                        SELECT
+                                            staff_salary_data.employeeId,
+                                            SUM(staff_salary_data.salaryAmount) totalPaidSalary
+                                        FROM
+                                            staff_salary_data
+                                        WHERE
+                                            staff_salary_data.salaryDate BETWEEN(
+                                            SELECT
+                                                DATE_ADD(
+                                                    DATE_FORMAT(employeeJoiningDate, '%Y-%m-01'),
+                                                    INTERVAL 1 MONTH
+                                                )
+                                            FROM
+                                                staff_employee_data sed
+                                            WHERE
+                                                sed.employeeId = staff_salary_data.employeeId
+                                        ) AND CURDATE()
+                                    GROUP BY
+                                        staff_salary_data.employeeId) AS esd
+                                    ON
+                                        sed.employeeId = esd.employeeId
+                                    LEFT JOIN(
+                                        SELECT
+                                            staff_monthlySalary_data.employeeId,
+                                            SUM(
+                                                staff_monthlySalary_data.remainSalary
+                                            ) AS remainSalary
+                                        FROM
+                                            staff_monthlySalary_data
+                                        WHERE
+                                            staff_monthlySalary_data.remainSalary != 0
+                                        GROUP BY
+                                            staff_monthlySalary_data.employeeId
+                                    ) AS smsd
+                                    ON
+                                        sed.employeeId = smsd.employeeId
+                                    LEFT JOIN(
+                                        SELECT
+                                            staff_monthlySalary_data.employeeId,
+                                            MIN(
+                                                staff_monthlySalary_data.msStartDate
+                                            ) AS startDate,
+                                            MAX(
+                                                staff_monthlySalary_data.msEndDate
+                                            ) AS endDate
+                                        FROM
+                                            staff_monthlySalary_data
+                                        WHERE
+                                            staff_monthlySalary_data.remainSalary != 0
+                                        GROUP BY
+                                            staff_monthlySalary_data.employeeId
+                                    ) AS smsddate
+                                    ON
+                                        sed.employeeId = smsddate.employeeId
+                                    WHERE
+                                        sed.employeeId = '${employeeId}'`;
         pool.query(sql_querry_getEmployeeById, (err, data) => {
             if (err) {
                 console.error("An error occurd in SQL Queery", err);
                 return res.status(500).send('Database Error');
             }
-            return res.status(200).send(data);
+            return res.status(200).send(data[0]);
         })
     }
     catch (error) {

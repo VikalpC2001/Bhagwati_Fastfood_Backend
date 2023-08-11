@@ -1431,10 +1431,10 @@ const exportExcelSheetForProductTable = (req, res) => {
         const worksheet = workbook.addWorksheet("All Products"); // New Worksheet
 
         if (req.query.startDate && req.query.endDate) {
-            worksheet.mergeCells('A1', 'K1');
+            worksheet.mergeCells('A1', 'M1');
             worksheet.getCell('A1').value = `Product List From ${data.startDate} To ${data.endDate}`;
         } else {
-            worksheet.mergeCells('A1', 'K1');
+            worksheet.mergeCells('A1', 'M1');
             worksheet.getCell('A1').value = `Product List From ${firstDay} To ${lastDay}`;
         }
 
@@ -1524,10 +1524,10 @@ const exportExcelSheetForProductTable = (req, res) => {
         const worksheetInStock = workbook.addWorksheet("In Stock"); // New Worksheet
 
         if (req.query.startDate && req.query.endDate) {
-            worksheetInStock.mergeCells('A1', 'K1');
+            worksheetInStock.mergeCells('A1', 'M1');
             worksheetInStock.getCell('A1').value = `In-Stock Product List From ${data.startDate} To ${data.endDate}`;
         } else {
-            worksheetInStock.mergeCells('A1', 'K1');
+            worksheetInStock.mergeCells('A1', 'M1');
             worksheetInStock.getCell('A1').value = `In-Stock Product List From ${firstDay} To ${lastDay}`;
         }
 
@@ -1601,9 +1601,9 @@ const exportExcelSheetForProductTable = (req, res) => {
         });
         worksheetInStock.getRow(1).height = 30;
         worksheetInStock.getRow(2).height = 20;
-        worksheetInStock.getRow(arr.length + 3).values = ['Total:', '', '', { formula: `SUM(D3:D${arr.length + 2})` }, '', { formula: `SUM(F3:F${arr.length + 2})` }, '', { formula: `SUM(H3:H${arr.length + 2})` }];
+        worksheetInStock.getRow(arrstockIn.length + 3).values = ['Total:', '', '', { formula: `SUM(D3:D${arrstockIn.length + 2})` }, '', { formula: `SUM(F3:F${arrstockIn.length + 2})` }, '', { formula: `SUM(H3:H${arrstockIn.length + 2})` }];
 
-        worksheetInStock.getRow(arr.length + 3).eachCell((cell) => {
+        worksheetInStock.getRow(arrstockIn.length + 3).eachCell((cell) => {
             cell.font = { bold: true, size: 14, color: { argb: '808080' } }
             cell.alignment = { vertical: 'middle', horizontal: 'center', wrapText: true };
         })
@@ -1617,10 +1617,10 @@ const exportExcelSheetForProductTable = (req, res) => {
         const worksheetLowStock = workbook.addWorksheet("Low Stock"); // New Worksheet
 
         if (req.query.startDate && req.query.endDate) {
-            worksheetLowStock.mergeCells('A1', 'K1');
+            worksheetLowStock.mergeCells('A1', 'M1');
             worksheetLowStock.getCell('A1').value = `Low-Stock Product List From ${data.startDate} To ${data.endDate}`;
         } else {
-            worksheetLowStock.mergeCells('A1', 'K1');
+            worksheetLowStock.mergeCells('A1', 'M1');
             worksheetLowStock.getCell('A1').value = `Low-Stock Product List From ${firstDay} To ${lastDay}`;
         }
 
@@ -1696,9 +1696,9 @@ const exportExcelSheetForProductTable = (req, res) => {
         });
         worksheetLowStock.getRow(1).height = 30;
         worksheetLowStock.getRow(2).height = 20;
-        worksheetLowStock.getRow(arr.length + 3).values = ['Total:', '', '', { formula: `SUM(D3:D${arr.length + 2})` }, '', { formula: `SUM(F3:F${arr.length + 2})` }, '', { formula: `SUM(H3:H${arr.length + 2})` }];
+        worksheetLowStock.getRow(arrstockLow.length + 3).values = ['Total:', '', '', { formula: `SUM(D3:D${arrstockLow.length + 2})` }, '', { formula: `SUM(F3:F${arrstockLow.length + 2})` }, '', { formula: `SUM(H3:H${arrstockLow.length + 2})` }];
 
-        worksheetLowStock.getRow(arr.length + 3).eachCell((cell) => {
+        worksheetLowStock.getRow(arrstockLow.length + 3).eachCell((cell) => {
             cell.font = { bold: true, size: 14, color: { argb: '808080' } }
             cell.alignment = { vertical: 'middle', horizontal: 'center', wrapText: true };
         })
@@ -1712,10 +1712,10 @@ const exportExcelSheetForProductTable = (req, res) => {
         const worksheetOutStock = workbook.addWorksheet("Out Stock"); // New Worksheet
 
         if (req.query.startDate && req.query.endDate) {
-            worksheetOutStock.mergeCells('A1', 'K1');
+            worksheetOutStock.mergeCells('A1', 'M1');
             worksheetOutStock.getCell('A1').value = `Out-Stock Product List From ${data.startDate} To ${data.endDate}`;
         } else {
-            worksheetOutStock.mergeCells('A1', 'K1');
+            worksheetOutStock.mergeCells('A1', 'M1');
             worksheetOutStock.getCell('A1').value = `Out-Stock Product List From ${firstDay} To ${lastDay}`;
         }
 
@@ -1789,9 +1789,9 @@ const exportExcelSheetForProductTable = (req, res) => {
         });
         worksheetOutStock.getRow(1).height = 30;
         worksheetOutStock.getRow(2).height = 20;
-        worksheetOutStock.getRow(arr.length + 3).values = ['Total:', '', '', { formula: `SUM(D3:D${arr.length + 2})` }, '', { formula: `SUM(F3:F${arr.length + 2})` }, '', { formula: `SUM(H3:H${arr.length + 2})` }];
+        worksheetOutStock.getRow(arrstockOut.length + 3).values = ['Total:', '', '', { formula: `SUM(D3:D${arrstockOut.length + 2})` }, '', { formula: `SUM(F3:F${arrstockOut.length + 2})` }, '', { formula: `SUM(H3:H${arrstockOut.length + 2})` }];
 
-        worksheetOutStock.getRow(arr.length + 3).eachCell((cell) => {
+        worksheetOutStock.getRow(arrstockOut.length + 3).eachCell((cell) => {
             cell.font = { bold: true, size: 14, color: { argb: '808080' } }
             cell.alignment = { vertical: 'middle', horizontal: 'center', wrapText: true };
         })

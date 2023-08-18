@@ -32,7 +32,7 @@ const getStockOutList = async (req, res) => {
             } else {
                 const numRows = rows[0].numRows;
                 const numPages = Math.ceil(numRows / numPerPage);
-                const commonQuery = `SELECT stockOutId, user_details.userName AS outBy, CONCAT(user_details.userFirstName,' ',user_details.userLastName) AS userName,inventory_product_data.productName AS productName, CONCAT(productQty,' ',productUnit) AS Quantity, ROUND(stockOutPrice) AS stockOutPrice, inventory_stockOutCategory_data.stockOutCategoryName AS stockOutCategoryName, stockOutComment, CONCAT(DATE_FORMAT(stockOutDate,'%d-%m-%Y'),' ',DATE_FORMAT(stockOutCreationDate, '%h:%i:s %p')) AS stockOutDate 
+                const commonQuery = `SELECT stockOutId, user_details.userName AS outBy, CONCAT(user_details.userFirstName,' ',user_details.userLastName) AS userName,inventory_product_data.productName AS productName, CONCAT(productQty,' ',productUnit) AS Quantity, ROUND(stockOutPrice) AS stockOutPrice, inventory_stockOutCategory_data.stockOutCategoryName AS stockOutCategoryName, stockOutComment, CONCAT(DATE_FORMAT(stockOutDate,'%d-%m-%Y'),' ',DATE_FORMAT(stockOutCreationDate, '%h:%i:%s %p')) AS stockOutDate 
                                                 FROM inventory_stockOut_data
                                                 INNER JOIN user_details ON user_details.userId = inventory_stockOut_data.userId
                                                 INNER JOIN inventory_product_data ON inventory_product_data.productId = inventory_stockOut_data.productId

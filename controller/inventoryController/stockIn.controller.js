@@ -60,7 +60,7 @@ const getStockInList = async (req, res) => {
                                           stockInComment,
                                           productQty,
                                           remainingQty,
-                                          DATE_FORMAT(stockInDate, '%d-%m-%Y') AS stockInDate
+                                          CONCAT(DATE_FORMAT(stockInDate, '%d-%m-%Y'),' ',DATE_FORMAT(stockInCreationDate, '%h:%i %p')) AS stockInDate
                                       FROM
                                           inventory_stockIn_data
                                       INNER JOIN user_details ON user_details.userId = inventory_stockIn_data.userId

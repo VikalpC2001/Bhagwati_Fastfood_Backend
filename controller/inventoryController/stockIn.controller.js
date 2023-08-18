@@ -69,34 +69,34 @@ const getStockInList = async (req, res) => {
                 if (req.query.supplierId && req.query.payType && req.query.startDate && req.query.endDate) {
                     sql_queries_getdetails = `${commanQuarry}
                                                 WHERE inventory_stockIn_data.supplierId = '${data.supplierId}' AND inventory_stockIn_data.stockInPaymentMethod = '${data.payType}' AND inventory_stockIn_data.stockInDate BETWEEN STR_TO_DATE('${data.startDate}','%b %d %Y') AND STR_TO_DATE('${data.endDate}','%b %d %Y')
-                                                ORDER BY inventory_stockIn_data.stockInDate DESC`;
+                                                ORDER BY inventory_stockIn_data.stockInDate DESC, inventory_stockIn_data.stockInCreationDate DESC`;
                 } else if (req.query.supplierId && req.query.startDate && req.query.endDate) {
                     sql_queries_getdetails = `${commanQuarry}
                                                 WHERE inventory_stockIn_data.supplierId = '${data.supplierId}' AND inventory_stockIn_data.stockInDate BETWEEN STR_TO_DATE('${data.startDate}','%b %d %Y') AND STR_TO_DATE('${data.endDate}','%b %d %Y')
-                                                ORDER BY inventory_stockIn_data.stockInDate DESC LIMIT ${limit}`;
+                                                ORDER BY inventory_stockIn_data.stockInDate DESC, inventory_stockIn_data.stockInCreationDate DESC LIMIT ${limit}`;
                 } else if (req.query.productId && req.query.startDate && req.query.endDate) {
                     sql_queries_getdetails = `${commanQuarry}
                                                 WHERE inventory_stockIn_data.productId = '${data.productId}' AND inventory_stockIn_data.stockInDate BETWEEN STR_TO_DATE('${data.startDate}','%b %d %Y') AND STR_TO_DATE('${data.endDate}','%b %d %Y')
-                                                ORDER BY inventory_stockIn_data.stockInDate DESC  LIMIT ${limit}`;
+                                                ORDER BY inventory_stockIn_data.stockInDate DESC, inventory_stockIn_data.stockInCreationDate DESC LIMIT ${limit}`;
                 } else if (req.query.startDate && req.query.endDate) {
                     sql_queries_getdetails = `${commanQuarry}
                                                 WHERE  inventory_stockIn_data.stockInDate BETWEEN STR_TO_DATE('${data.startDate}','%b %d %Y') AND STR_TO_DATE('${data.endDate}','%b %d %Y') 
-                                                ORDER BY inventory_stockIn_data.stockInDate DESC LIMIT ${limit}`;
+                                                ORDER BY inventory_stockIn_data.stockInDate DESC, inventory_stockIn_data.stockInCreationDate DESC LIMIT ${limit}`;
                 } else if (req.query.supplierId && req.query.payType) {
                     sql_queries_getdetails = `${commanQuarry}
                                                 WHERE inventory_stockIn_data.supplierId = '${data.supplierId}' AND inventory_stockIn_data.stockInPaymentMethod = '${data.payType}'
-                                                ORDER BY inventory_stockIn_data.stockInDate DESC LIMIT ${limit}`;
+                                                ORDER BY inventory_stockIn_data.stockInDate DESC, inventory_stockIn_data.stockInCreationDate DESC LIMIT ${limit}`;
                 } else if (req.query.productId) {
                     sql_queries_getdetails = `${commanQuarry}
                                                 WHERE inventory_stockIn_data.productId = '${data.productId}'
-                                                ORDER BY inventory_stockIn_data.stockInDate DESC  LIMIT ${limit}`;
+                                                ORDER BY inventory_stockIn_data.stockInDate DESC, inventory_stockIn_data.stockInCreationDate DESC LIMIT ${limit}`;
                 } else if (req.query.supplierId) {
                     sql_queries_getdetails = `${commanQuarry}
                                                 WHERE inventory_stockIn_data.supplierId = '${data.supplierId}'
-                                                ORDER BY inventory_stockIn_data.stockInDate DESC LIMIT ${limit}`;
+                                                ORDER BY inventory_stockIn_data.stockInDate DESC, inventory_stockIn_data.stockInCreationDate DESC LIMIT ${limit}`;
                 } else {
                     sql_queries_getdetails = `${commanQuarry}
-                                                ORDER BY inventory_stockIn_data.stockInDate DESC LIMIT ${limit}`;
+                                                ORDER BY inventory_stockIn_data.stockInDate DESC, inventory_stockIn_data.stockInCreationDate DESC LIMIT ${limit}`;
                 }
                 console.log('bbbbbbb', sql_queries_getdetails);
                 pool.query(sql_queries_getdetails, (err, rows, fields) => {

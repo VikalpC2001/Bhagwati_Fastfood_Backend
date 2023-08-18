@@ -293,33 +293,67 @@ const calculateDueSalary = (employeeId) => {
                                     if (salaryArray.length !== multiplayArray.length) {
                                         throw new Error("Arrays must have the same length for element-wise addition.");
                                     }
-
-                                    const totalSalary = salaryArray.map((value, index) => value + multiplayArray[index]);
-
-                                    console.log(totalSalary); // Output: [ 10999, 10999, 10999 ]
-
-                                    const values = monthsArray.map((date, index) => `('${employeeId}',${totalSalary[index]},${totalSalary[index]},0,0,STR_TO_DATE('${date}','%d-%m-%Y'),LAST_DAY(STR_TO_DATE('${date}','%d-%m-%Y')))`).join(', ');
-                                    console.log('><><><><', values);
-
-                                    sql_query_addMonthlySalaryData = `INSERT INTO staff_monthlySalary_data (employeeId, totalSalary, remainSalary, maxLeave, remainLeave, msStartDate, msEndDate) VALUES ${values}`
-                                    pool.query(sql_query_addMonthlySalaryData, (err, data) => {
+                                    sql_querry_getRemainMaxLeave = `SELECT remainLeave FROM staff_monthlySalary_data WHERE employeeId = '${employeeId}' ORDER BY msEndDate DESC LIMIT 1`;
+                                    pool.query(sql_querry_getRemainMaxLeave, (err, results) => {
                                         if (err) {
                                             console.error("An error occurd in SQL Queery", err);
-                                            return res.status(500).send('Database Error');
+                                            return;
                                         }
+
+                                        const remainLeaveDb = results.length > 0 ? results[0].remainLeave : 0;
+                                        let monthlySalary = []
+
+                                        var index = 0;
+                                        for (const data of salaryArray) {
+                                            let salaryData = {
+                                                employeeId: employeeId,
+                                                totalSalary: '',
+                                                maxLeave: '',
+                                                remainLeave: '',
+                                                msDate: ''
+                                            }
+                                            if (index == 0) {
+                                                salaryData.maxLeave = remainLeaveDb + leaveArray[index]
+                                                console.log('????', remainLeaveDb, leaveArray[index], index)
+                                                salaryData.remainLeave = salaryData.maxLeave - result[index]
+                                                console.log(';;;', salaryData.maxLeave, result[index], salaryData.maxLeave - result[index])
+                                                if (salaryData.remainLeave >= 0) {
+                                                    salaryData.totalSalary = data
+                                                } else {
+                                                    salaryData.totalSalary = data + (salaryData.remainLeave * perDaysalaryOfEmployee[index])
+                                                    salaryData.remainLeave = 0
+                                                }
+                                                salaryData.msDate = monthsArray[index]
+                                                monthlySalary.push(salaryData)
+                                            } else {
+                                                salaryData.maxLeave = monthlySalary[index - 1].remainLeave + leaveArray[index]
+                                                salaryData.remainLeave = salaryData.maxLeave - result[index]
+                                                if (salaryData.remainLeave >= 0) {
+                                                    salaryData.totalSalary = data
+                                                } else {
+                                                    salaryData.totalSalary = data + (salaryData.remainLeave * perDaysalaryOfEmployee[index])
+                                                    salaryData.remainLeave = 0
+                                                }
+                                                salaryData.msDate = monthsArray[index]
+                                                monthlySalary.push(salaryData)
+                                            }
+                                            index++;
+                                        }
+                                        console.log('arrayss', monthlySalary);
+
+                                        monthlySalary.forEach((item) => {
+                                            const query = `INSERT INTO staff_monthlySalary_data (employeeId, totalSalary, remainSalary, maxLeave, remainLeave, msStartDate, msEndDate)
+                                                            VALUES ('${item.employeeId}', ${item.totalSalary}, ${item.totalSalary} ,${item.maxLeave}, ${item.remainLeave}, STR_TO_DATE('${item.msDate}', '%d-%m-%Y'),LAST_DAY(STR_TO_DATE('${item.msDate}','%d-%m-%Y')))`;
+
+                                            pool.query(query, (err, result) => {
+                                                if (err) {
+                                                    console.error('Error inserting data:', err);
+                                                    return;
+                                                }
+                                                console.log('Data inserted:', result);
+                                            });
+                                        });
                                     })
-
-                                    const sumOfLeaveSalary = multiplayArray.reduce((accumulator, currentValue) => {
-                                        return accumulator + currentValue;
-                                    }, 0);
-                                    const totalLeaveTaken = array2.reduce((accumulator, currentValue) => {
-                                        return accumulator + currentValue;
-                                    }, 0);
-                                    const totalMaxLeave = leaveArray.reduce((accumulator, currentValue) => {
-                                        return accumulator + currentValue;
-                                    }, 0);
-                                    // console.log("jay", sumOfLeaveSalary, multiplayArray, totalLeaveTaken, totalMaxLeave)
-
                                     sql_update_remainSalary = `UPDATE
                                                     staff_employee_data
                                                 SET

@@ -41,23 +41,23 @@ const getStockOutList = async (req, res) => {
 
                     sql_queries_getdetails = `${commonQuery}
                                                 WHERE inventory_stockOut_data.productId = '${data.productId}' AND inventory_stockOut_data.stockOutDate BETWEEN STR_TO_DATE('${data.startDate}','%b %d %Y') AND STR_TO_DATE('${data.endDate}','%b %d %Y')
-                                                ORDER BY inventory_stockOut_data.stockOutCreationDate DESC LIMIT ${limit}`;
+                                                ORDER BY inventory_stockOut_data.stockOutDate DESC LIMIT ${limit}`;
 
                 } else if (req.query.startDate && req.query.endDate) {
 
                     sql_queries_getdetails = `${commonQuery}
                                                 WHERE  inventory_stockOut_data.stockOutDate BETWEEN STR_TO_DATE('${data.startDate}','%b %d %Y') AND STR_TO_DATE('${data.endDate}','%b %d %Y')
-                                                ORDER BY inventory_stockOut_data.stockOutCreationDate DESC LIMIT ${limit}`;
+                                                ORDER BY inventory_stockOut_data.stockOutDate DESC LIMIT ${limit}`;
 
                 } else if (req.query.productId) {
 
                     sql_queries_getdetails = `${commonQuery}
                                                 WHERE inventory_stockOut_data.productId = '${data.productId}'
-                                                ORDER BY inventory_stockOut_data.stockOutCreationDate DESC LIMIT ${limit}`;
+                                                ORDER BY inventory_stockOut_data.stockOutDate DESC LIMIT ${limit}`;
 
                 } else {
                     sql_queries_getdetails = `${commonQuery}
-                                                ORDER BY inventory_stockOut_data.stockOutCreationDate DESC LIMIT ${limit}`
+                                                ORDER BY inventory_stockOut_data.stockOutDate DESC LIMIT ${limit}`
                 }
                 pool.query(sql_queries_getdetails, (err, rows, fields) => {
                     if (err) {

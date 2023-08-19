@@ -213,7 +213,7 @@ const exportExcelSheetForStockout = (req, res) => {
 
     } else if (req.query.productId) {
 
-        sql_queries_getdetails = `${commonQuery}
+        sql_queries_getdetails = `${sql_common_qurey}
                                     WHERE inventory_stockOut_data.productId = '${data.productId}' AND inventory_stockOut_data.stockOutDate BETWEEN STR_TO_DATE('${firstDay}','%b %d %Y') AND STR_TO_DATE('${lastDay}','%b %d %Y')
                                     ORDER BY inventory_stockOut_data.stockOutCreationDate DESC`;
 

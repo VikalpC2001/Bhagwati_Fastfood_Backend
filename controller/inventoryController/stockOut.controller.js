@@ -572,7 +572,7 @@ const removeStockOutTransaction = async (req, res) => {
 
                         data.forEach((item) => {
                             const { stockInId, remainingStock } = item;
-                            query += `    WHEN stockInId = '${stockInId}' THEN ${remainingStock}\n`;
+                            query += `    WHEN stockInId = '${stockInId}' THEN ROUND(${remainingStock},2)\n`;
                         });
 
                         query += '    ELSE remainingQty\nEND\n';
@@ -842,7 +842,7 @@ const updateStockOutTransaction = async (req, res) => {
 
                                     data.forEach((item) => {
                                         const { stockInId, stockInQuantity } = item;
-                                        query += `    WHEN stockInId = '${stockInId}' THEN ${stockInQuantity}\n`;
+                                        query += `    WHEN stockInId = '${stockInId}' THEN ROUND(${stockInQuantity},2)\n`;
                                     });
 
                                     query += '    ELSE remainingQty\nEND\n';
@@ -969,7 +969,7 @@ const updateStockOutTransaction = async (req, res) => {
 
                                         data.forEach((item) => {
                                             const { stockInId, remainingStock } = item;
-                                            query += `    WHEN stockInId = '${stockInId}' THEN ${remainingStock}\n`;
+                                            query += `    WHEN stockInId = '${stockInId}' THEN ROUND(${remainingStock},2)\n`;
                                         });
 
                                         query += '    ELSE remainingQty\nEND\n';

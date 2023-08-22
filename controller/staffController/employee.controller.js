@@ -278,21 +278,7 @@ const calculateDueSalary = (employeeId) => {
                                     console.log('max leave array', leaveArray);
                                     console.log('take leave array', result);
                                     console.log('leave array', totalLeaveArray); // Output: [5, 12]
-                                    const modifiedArray = totalLeaveArray.map(value => (value <= 0 ? 0 : value));
-                                    const modifiedArraylose = totalLeaveArray.map(value => (value >= 0 ? 0 : value));
 
-                                    console.log('modified array', modifiedArray);
-                                    console.log('modifiedArraylose', modifiedArraylose)
-
-                                    // console.log(perDaysalaryOfEmployee);
-                                    const multiplayArray = modifiedArraylose.map((value, index) => value * perDaysalaryOfEmployee[index])
-                                    console.log('bonus', multiplayArray);
-                                    // const array1 = [10000, 10000, 10000];
-                                    // const array2 = [999, 999, 999];
-
-                                    if (salaryArray.length !== multiplayArray.length) {
-                                        throw new Error("Arrays must have the same length for element-wise addition.");
-                                    }
                                     sql_querry_getRemainMaxLeave = `SELECT remainLeave FROM staff_monthlySalary_data WHERE employeeId = '${employeeId}' ORDER BY msEndDate DESC LIMIT 1`;
                                     pool.query(sql_querry_getRemainMaxLeave, (err, results) => {
                                         if (err) {
@@ -570,7 +556,7 @@ const calculateDueSalary = (employeeId) => {
                             }
 
                             // Array to store the corresponding salaries for each date
-                            const leaveArray = dateArray.map((dateString) => {
+                            const leaveArray = dateArray.map((dateString, index) => {
                                 const date = getDateFromString(dateString);
                                 let leave = findClosestEndDate(date);
 
@@ -580,6 +566,9 @@ const calculateDueSalary = (employeeId) => {
                                     leave = findClosestEndDate(latestEndDate);
                                 }
 
+                                if (index === 0) {
+                                    leave = 0;
+                                }
                                 return leave;
                             });
                             console.log('salary Array', salaryArray);
@@ -590,57 +579,71 @@ const calculateDueSalary = (employeeId) => {
                                     const result = await getSumOfLeaveForDates(employeeId, dateArray);
                                     // console.log('....', result);
 
+                                    // const takeLeave = getSumOfLeaveForDates(employeeId, dateArray);
 
-                                    const takeLeave = getSumOfLeaveForDates(employeeId, dateArray);
-                                    const array1 = leaveArray;
-                                    const array2 = result;
                                     console.log('leave array', leaveArray, result);
-                                    function subtractArrays(arr1, arr2) {
-                                        if (arr1.length !== arr2.length) {
-                                            throw new Error('Arrays must have the same length for subtraction.');
-                                        }
 
-                                        return arr1.map((value, index) => value - arr2[index]);
-                                    }
-                                    const totalLeaveArray = subtractArrays(array1, array2);
-                                    totalLeaveArray.splice(0, 1, 0)
-                                    console.log('max leave array', totalLeaveArray); // Output: [5, 12]
-
-                                    // console.log(perDaysalaryOfEmployee);
-                                    const multiplayArray = totalLeaveArray.map((value, index) => value * perDaysalaryOfEmployee[index])
-                                    console.log('bonus', multiplayArray);
-                                    // const array1 = [10000, 10000, 10000];
-                                    // const array2 = [999, 999, 999];
-
-                                    if (salaryArray.length !== multiplayArray.length) {
-                                        throw new Error("Arrays must have the same length for element-wise addition.");
-                                    }
-
-                                    const totalSalary = salaryArray.map((value, index) => value + multiplayArray[index]);
-
-                                    console.log(totalSalary); // Output: [ 10999, 10999, 10999 ]
-
-                                    const values = monthsArray.map((date, index) => `('${employeeId}',${totalSalary[index]},${totalSalary[index]},STR_TO_DATE('${date}','%d-%m-%Y'),LAST_DAY(STR_TO_DATE('${date}','%d-%m-%Y')))`).join(', ');
-                                    console.log('><><><><', values);
-
-                                    sql_query_addMonthlySalaryData = `INSERT INTO staff_monthlySalary_data (employeeId, totalSalary, remainSalary, msStartDate, msEndDate) VALUES ${values}`
-                                    pool.query(sql_query_addMonthlySalaryData, (err, data) => {
+                                    sql_querry_getRemainMaxLeave = `SELECT remainLeave FROM staff_monthlySalary_data WHERE employeeId = '${employeeId}' ORDER BY msEndDate DESC LIMIT 1`;
+                                    pool.query(sql_querry_getRemainMaxLeave, (err, results) => {
                                         if (err) {
                                             console.error("An error occurd in SQL Queery", err);
-                                            return res.status(500).send('Database Error');
+                                            return;
                                         }
-                                    })
 
-                                    const sumOfLeaveSalary = multiplayArray.reduce((accumulator, currentValue) => {
-                                        return accumulator + currentValue;
-                                    }, 0);
-                                    const totalLeaveTaken = array2.reduce((accumulator, currentValue) => {
-                                        return accumulator + currentValue;
-                                    }, 0);
-                                    const totalMaxLeave = leaveArray.reduce((accumulator, currentValue) => {
-                                        return accumulator + currentValue;
-                                    }, 0);
-                                    // console.log("jay", sumOfLeaveSalary, multiplayArray, totalLeaveTaken, totalMaxLeave)
+                                        const remainLeaveDb = results.length > 0 ? results[0].remainLeave : 0;
+                                        let monthlySalary = []
+
+                                        var index = 0;
+                                        for (const data of salaryArray) {
+                                            let salaryData = {
+                                                employeeId: employeeId,
+                                                totalSalary: '',
+                                                maxLeave: '',
+                                                remainLeave: '',
+                                                msDate: ''
+                                            }
+                                            if (index == 0) {
+                                                salaryData.maxLeave = remainLeaveDb + leaveArray[index]
+                                                console.log('????', remainLeaveDb, leaveArray[index], index)
+                                                salaryData.remainLeave = salaryData.maxLeave - result[index]
+                                                console.log(';;;', salaryData.maxLeave, result[index], salaryData.maxLeave - result[index])
+                                                if (salaryData.remainLeave >= 0) {
+                                                    salaryData.totalSalary = data
+                                                } else {
+                                                    salaryData.totalSalary = data + (salaryData.remainLeave * perDaysalaryOfEmployee[index])
+                                                    salaryData.remainLeave = 0
+                                                }
+                                                salaryData.msDate = monthsArray[index]
+                                                monthlySalary.push(salaryData)
+                                            } else {
+                                                salaryData.maxLeave = monthlySalary[index - 1].remainLeave + leaveArray[index]
+                                                salaryData.remainLeave = salaryData.maxLeave - result[index]
+                                                if (salaryData.remainLeave >= 0) {
+                                                    salaryData.totalSalary = data
+                                                } else {
+                                                    salaryData.totalSalary = data + (salaryData.remainLeave * perDaysalaryOfEmployee[index])
+                                                    salaryData.remainLeave = 0
+                                                }
+                                                salaryData.msDate = monthsArray[index]
+                                                monthlySalary.push(salaryData)
+                                            }
+                                            index++;
+                                        }
+                                        console.log('arrayss', monthlySalary);
+
+                                        monthlySalary.forEach((item) => {
+                                            const query = `INSERT INTO staff_monthlySalary_data (employeeId, totalSalary, remainSalary, maxLeave, remainLeave, msStartDate, msEndDate)
+                                                            VALUES ('${item.employeeId}', ${item.totalSalary}, ${item.totalSalary} ,${item.maxLeave}, ${item.remainLeave}, STR_TO_DATE('${item.msDate}', '%d-%m-%Y'),LAST_DAY(STR_TO_DATE('${item.msDate}','%d-%m-%Y')))`;
+
+                                            pool.query(query, (err, result) => {
+                                                if (err) {
+                                                    console.error('Error inserting data:', err);
+                                                    return;
+                                                }
+                                                console.log('Data inserted:', result);
+                                            });
+                                        });
+                                    })
                                     sql_update_remainSalary = `UPDATE
                                                     staff_employee_data
                                                 SET

@@ -2619,8 +2619,8 @@ const updateEmployeeStatus = (req, res, next) => {
             }
             const joiningDate = new Date(result[0].employeeJoiningDate).toString().slice(4, 15);
             if (employeeStatus == false) {
-                sql_querry_addHalfMonthlySalary = `INSERT INTO staff_monthlySalary_data (employeeId, totalSalary, remainSalary, msStartDate, msEndDate)
-                                                   VALUES ('${data.employeeId}','${proratedSalary}','${proratedSalary}',STR_TO_DATE('${joiningDate}','%b %d %Y'),CURDATE())`;
+                sql_querry_addHalfMonthlySalary = `INSERT INTO staff_monthlySalary_data (employeeId, totalSalary, remainSalary, maxLeave, remainLeave, msStartDate, msEndDate)
+                                                   VALUES ('${data.employeeId}',${proratedSalary},${proratedSalary},0,0,STR_TO_DATE('${joiningDate}','%b %d %Y'),CURDATE())`;
                 pool.query(sql_querry_addHalfMonthlySalary, (err, result) => {
                     if (err) {
                         console.error("An error occurd in SQL Queery", err);

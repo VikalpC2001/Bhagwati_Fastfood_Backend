@@ -435,7 +435,7 @@ const addStockOutDetails = async (req, res) => {
 
                             data.forEach((item) => {
                                 const { stockInId, stockInQuantity } = item;
-                                query += `    WHEN stockInId = '${stockInId}' THEN ${stockInQuantity}\n`;
+                                query += `    WHEN stockInId = '${stockInId}' THEN ROUND(${stockInQuantity},2)\n`;
                             });
 
                             query += '    ELSE remainingQty\nEND\n';

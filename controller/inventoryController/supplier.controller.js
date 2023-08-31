@@ -60,11 +60,11 @@ const getSupplierCounterDetailsById = (req, res) => {
             else {
                 const count = {
                     totalBusiness: data[0][0].totalBusiness,
-                    totalBusinessOfDebit: data[1][0],
-                    totalBusinessOfCash: data[2][0],
-                    totalPaid: data[3][0],
-                    totalProduct: data[4][0],
-                    remainingAmount: data[5][0]
+                    totalBusinessOfDebit: data[1][0].totalBusinessOfDebit,
+                    totalBusinessOfCash: data[2][0].totalBusinessOfCash,
+                    totalPaid: data[3][0].totalPaidtoSupplier,
+                    totalProduct: data[4][0].numbreOfProduct,
+                    remainingAmount: data[5][0].remainingAmountOfSupplier
                 }
                 return res.status(200).send(count);
             }

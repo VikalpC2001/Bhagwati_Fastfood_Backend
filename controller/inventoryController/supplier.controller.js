@@ -59,12 +59,12 @@ const getSupplierCounterDetailsById = (req, res) => {
             }
             else {
                 const count = {
-                    totalBusiness: data[0][0].totalBusiness.toLocaleString('en-IN'),
-                    totalBusinessOfDebit: data[1][0].totalBusinessOfDebit.toLocaleString('en-IN'),
-                    totalBusinessOfCash: data[2][0].totalBusinessOfCash.toLocaleString('en-IN'),
-                    totalPaid: data[3][0].totalPaidtoSupplier.toLocaleString('en-IN'),
-                    totalProduct: data[4][0].numbreOfProduct,
-                    remainingAmount: data[5][0].remainingAmountOfSupplier.toLocaleString('en-IN')
+                    totalBusiness: data[0][0].totalBusiness,
+                    totalBusinessOfDebit: data[1][0],
+                    totalBusinessOfCash: data[2][0],
+                    totalPaid: data[3][0],
+                    totalProduct: data[4][0],
+                    remainingAmount: data[5][0]
                 }
                 return res.status(200).send(count);
             }

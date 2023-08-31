@@ -40,8 +40,8 @@ const getCashTransactionCounter = (req, res) => {
                 return res.status(400).send(msg);
             } else {
                 const count = {
-                    totalExpense: data[0][0].totalExpense.toLocaleString('en-IN'),
-                    totalExpenseOfCash: data[1][0].totalExpenseOfCash.toLocaleString('en-IN'),
+                    totalExpense: data[0][0].totalExpense,
+                    totalExpenseOfCash: data[1][0].totalExpenseOfCash,
                 }
                 return res.status(200).send(count);
             }
@@ -112,10 +112,10 @@ const getDebitTransactionCounter = (req, res) => {
                 return res.status(400).send(msg);
             } else {
                 const count = {
-                    totalExpense: data[0][0].totalExpense.toLocaleString('en-IN'),
-                    totalExpenseOfDebit: data[1][0].totalExpenseOfDebit.toLocaleString('en-IN'),
-                    totalPaid: data[2][0].totalPaid.toLocaleString('en-IN'),
-                    remainingAmount: data[3][0].remainingAmount.toLocaleString('en-IN')
+                    totalExpense: data[0][0].totalExpense,
+                    totalExpenseOfDebit: data[1][0].totalExpenseOfDebit,
+                    totalPaid: data[2][0].totalPaid,
+                    remainingAmount: data[3][0].remainingAmount
                 }
                 return res.status(200).send(count);
             }

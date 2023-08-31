@@ -14,7 +14,7 @@ router.get('/getProductListCounter', protect, productController.getProductListCo
 router.get('/getProductCountDetailsById', protect, productController.getProductCountDetailsById);
 router.get('/getSupplierByProductId', protect, productController.getSupplierByProductId);
 router.get('/getProductDetailsTable', protect, productController.getProductDetailsTable);
-router.get('/exportExcelSheetForProductTable', productController.exportExcelSheetForProductTable);
+router.get('/exportExcelSheetForProductTable', protect, productController.exportExcelSheetForProductTable);
 
 // Supplier Routs
 
@@ -29,7 +29,7 @@ router.get('/getSupplierDetailsById', protect, supplierController.getSupplierDet
 router.get('/getSupplierCounterDetailsById', protect, supplierController.getSupplierCounterDetailsById);
 router.get('/getProductDetailsBySupplierId', protect, supplierController.getProductDetailsBySupplierId);
 router.get('/getAllProductDetailsBySupplierId', protect, supplierController.getAllProductDetailsBySupplierId);
-router.get('/exportExcelSheetForAllProductBySupplierId', supplierController.exportExcelSheetForAllProductBySupplierId);
+router.get('/exportExcelSheetForAllProductBySupplierId', protect, supplierController.exportExcelSheetForAllProductBySupplierId);
 
 // StockIn Routs
 
@@ -40,7 +40,7 @@ router.delete('/removeStockInTransaction', protect, stockInController.removeStoc
 router.post('/updateStockInTransaction', protect, stockInController.updateStockInTransaction);
 router.get('/fillStockInTransaction', protect, stockInController.fillStockInTransaction);
 router.get('/getStockInList', protect, stockInController.getStockInList);
-router.get('/exportExcelSheetForStockin', stockInController.exportExcelSheetForStockin);
+router.get('/exportExcelSheetForStockin', protect, stockInController.exportExcelSheetForStockin);
 
 // StockOut Category Routs
 
@@ -60,11 +60,11 @@ router.delete('/removeStockOutTransaction', protect, stockOutController.removeSt
 router.get('/fillStockOutTransaction', protect, stockOutController.fillStockOutTransaction);
 router.post('/updateStockOutTransaction', protect, stockOutController.updateStockOutTransaction);
 router.get('/getStockOutList', protect, stockOutController.getStockOutList);
-router.get('/exportExcelSheetForStockout', stockOutController.exportExcelSheetForStockout);
+router.get('/exportExcelSheetForStockout', protect, stockOutController.exportExcelSheetForStockout);
 router.get('/getCategoryWiseUsedByProduct', protect, stockOutController.getCategoryWiseUsedByProduct);
 router.get('/getUpdateStockOutList', protect, stockOutController.getUpdateStockOutList);
 router.get('/getUpdateStockOutListById', protect, stockOutController.getUpdateStockOutListById);
-router.get('/categoryWisedUsed', stockOutController.categoryWisedUsed);
+router.get('/categoryWisedUsed', protect, stockOutController.categoryWisedUsed);
 
 // Supplier Transaction Routs
 
@@ -80,8 +80,8 @@ router.get('/exportExcelSheetForDebitTransactionList', protect, supplierTransact
 router.get('/exportExcelSheetForCashTransactionList', protect, supplierTransactionController.exportExcelSheetForCashTransactionList);
 router.get('/getCashTransactionCounter', protect, supplierTransactionController.getCashTransactionCounter);
 router.get('/getDebitTransactionCounter', protect, supplierTransactionController.getDebitTransactionCounter);
-router.get('/exportTransactionInvoice', supplierTransactionController.exportTransactionInvoice);
-router.get('/exportExcelSheetForDeditTransaction', supplierTransactionController.exportExcelSheetForDeditTransaction);
+router.get('/exportTransactionInvoice', protect, supplierTransactionController.exportTransactionInvoice);
+router.get('/exportExcelSheetForDeditTransaction', protect, supplierTransactionController.exportExcelSheetForDeditTransaction);
 
 // Inventory Dropdown List Routs
 

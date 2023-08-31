@@ -127,7 +127,7 @@ const updateStockOutCategory = async (req, res) => {
             res.status(400).send("Please Add Category");
         }
         const sql_querry_updatedetails = `UPDATE inventory_stockOutCategory_data SET stockOutCategoryName = '${data.stockOutCategoryName}'
-                                                                                WHERE stockOutCategoryId = '${data.stockOutCategoryId}'`;
+                                          WHERE stockOutCategoryId = '${data.stockOutCategoryId}'`;
         pool.query(sql_querry_updatedetails, (err, data) => {
             if (err) {
                 console.error("An error occurd in SQL Queery", err);

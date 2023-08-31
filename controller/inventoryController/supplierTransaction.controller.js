@@ -40,8 +40,8 @@ const getCashTransactionCounter = (req, res) => {
                 return res.status(400).send(msg);
             } else {
                 const count = {
-                    totalExpense: data[0][0].totalExpense,
-                    totalExpenseOfCash: data[1][0].totalExpenseOfCash,
+                    totalExpense: data[0][0].totalExpense.toLocaleString('en-IN'),
+                    totalExpenseOfCash: data[1][0].totalExpenseOfCash.toLocaleString('en-IN'),
                 }
                 return res.status(200).send(count);
             }
@@ -112,10 +112,10 @@ const getDebitTransactionCounter = (req, res) => {
                 return res.status(400).send(msg);
             } else {
                 const count = {
-                    totalExpense: data[0][0].totalExpense,
-                    totalExpenseOfDebit: data[1][0].totalExpenseOfDebit,
-                    totalPaid: data[2][0].totalPaid,
-                    remainingAmount: data[3][0].remainingAmount
+                    totalExpense: data[0][0].totalExpense.toLocaleString('en-IN'),
+                    totalExpenseOfDebit: data[1][0].totalExpenseOfDebit.toLocaleString('en-IN'),
+                    totalPaid: data[2][0].totalPaid.toLocaleString('en-IN'),
+                    remainingAmount: data[3][0].remainingAmount.toLocaleString('en-IN')
                 }
                 return res.status(200).send(count);
             }
@@ -843,6 +843,22 @@ async function createPDF(res, data) {
         const helveticaFont = await document.embedFont(StandardFonts.Helvetica);
         const HelveticaBold = await document.embedFont(StandardFonts.HelveticaBold);
         const firstPage = document.getPage(0);
+
+        // Load the image data synchronously using readFileSync
+        const draftImageData = fs.readFileSync(process.env.DRAFT_LOGO_IMAGE_URL);
+
+        // Embed the image data in the PDF document
+        const draftImage = await document.embedPng(draftImageData);
+
+        // Draw the image on the desired page
+        const draftImageDims = draftImage.scale(0.6); // Adjust the scale as needed
+        firstPage.drawImage(draftImage, {
+            x: 50, // Adjust the X position as needed
+            y: 100, // Adjust the Y position as needed
+            width: draftImageDims.width + 50,
+            height: draftImageDims.height + 100,
+            opacity: 0.09, // Apply transparency (0.0 to 1.0)
+        });
 
         firstPage.moveTo(105, 530);
         firstPage.drawText(details.invoiceNumber, {

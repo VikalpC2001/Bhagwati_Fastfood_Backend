@@ -92,12 +92,12 @@ const getProductCountDetailsById = (req, res) => {
             else {
                 const count = {
                     totalPurchase: data[0][0].purchase,
-                    totalRs: data[0][0].totalRs,
+                    totalRs: data[0][0].totalRs.toLocaleString('en-IN'),
                     totalUsed: data[1][0].used,
-                    totalUsedPrice: data[1][0].totalUsedPrice,
+                    totalUsedPrice: data[1][0].totalUsedPrice.toLocaleString('en-IN'),
                     remainingStock: data[2][0].remainingStock,
-                    remainUsedPrice: data[2][0].remainPrice,
-                    lastPrice: data[2][0].lastPrice,
+                    remainUsedPrice: data[2][0].remainPrice.toLocaleString('en-IN'),
+                    lastPrice: data[2][0].lastPrice.toLocaleString('en-IN'),
                     minProductQty: data[2][0].minProductQty
                 }
                 return res.status(200).send(count);

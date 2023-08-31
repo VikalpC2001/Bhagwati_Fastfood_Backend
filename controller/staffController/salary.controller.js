@@ -70,6 +70,8 @@ const addAmountOfSFA = (req, res) => {
                 const advanceId = String("advance_" + uid1.getTime());
                 const fineId = String("fine_" + uid1.getTime());
                 const creditId = String("credit_" + uid1.getTime());
+                const remainSalaryId = String("remainSalary_" + uid1.getTime());
+                const bonusId = String("bonus_" + uid1.getTime());
                 const InactivatedData = req.data;
                 console.log('Inactivate', InactivatedData);
                 console.log('body', req.body);
@@ -91,96 +93,150 @@ const addAmountOfSFA = (req, res) => {
                 if (!data.employeeId || 0 > data.payAmount || !data.amountType || !data.amountDate) {
                     return res.status(400).send("Please Fill all the feilds")
                 }
-                // calculateDueSalary(data.employeeId)
-                //     .then((data) => {
 
                 const salaryAmtWOAdv = data.totalSalary - data.payAmount;
                 const remainSalaryAmtWOAdv = salaryAmtWOAdv - data.fineAmount;
-                //     })
+
                 if (req.body.amountType == '1') {
-                    if ((data.fineAmount > 0 || data.advanceAmount > 0) && salaryAmtWOAdv > 0) {
-                        if (data.fineAmount > 0) {
-                            if (salaryAmtWOAdv <= data.fineAmount) {
-                                console.log('fine moto');
-                                sql_querry_getFinedetail = `SELECT fineId, fineAmount,remainFineAmount AS remainFine FROM staff_fine_data WHERE employeeId = '${data.employeeId}' AND remainFineAmount != 0 ORDER BY fineDate ASC`;
-                                pool.query(sql_querry_getFinedetail, (err, datas) => {
-                                    if (err) {
-                                        console.error("An error occurd in SQL Queery", err);
-                                        return res.status(500).send('Database Error');
-                                    }
-                                    const fineData = Object.values(JSON.parse(JSON.stringify(datas)));
-                                    const fineOutData = [
-                                        { fineId: 1, payFineAmount: salaryAmtWOAdv }
-                                    ];
-                                    const desiredFineAmount = fineOutData[0].payFineAmount;
-                                    console.log('jyare fine vadhare hoy tyare ni desiredAmount', desiredFineAmount);
+                    sql_querry_getMsdata = `SELECT remainSalary FROM staff_monthlySalary_data WHERE employeeId = '${data.employeeId}' AND remainSalary != 0 ORDER BY msStartDate ASC;
+                                            SELECT remainAdvanceAmount FROM staff_advance_data WHERE employeeId = '${data.employeeId}' AND remainAdvanceAmount != 0 ORDER BY advanceDate ASC;
+                                            SELECT remainFineAmount FROM staff_fine_data WHERE employeeId = '${data.employeeId}' AND remainFineAmount != 0 ORDER BY fineDate ASC`;
+                    pool.query(sql_querry_getMsdata, (err, msdata) => {
+                        if (err) {
+                            console.error("An error occurd in SQL Queery", err);
+                            return res.status(500).send('Database Error');
+                        }
 
-                                    // Calculate total Fine out price
-                                    let remainingFine = desiredFineAmount;
+                        // Monthly Salary Last Remain Sum
+                        const msdata1 = msdata[0];
+                        const remainSalaryValues = msdata1.map(row => row.remainSalary);
+                        console.log('vvvv', remainSalaryValues, remainSalaryValues != '');
+                        const sumOfRemainSalaryValues = remainSalaryValues.reduce((total, currentValue) => total + currentValue, 0);
 
-                                    // Sort Fine in data by Fine in price in ascending order
-                                    const sortedfineData = fineData
-                                    for (const fineOut of fineOutData) {
-                                        let payFineAmount = fineOut.payFineAmount;
+                        // Advance Last Remain Sum
+                        const msdata2 = msdata[1];
+                        const remainAdvanceValues = msdata2.map(row => row.remainAdvanceAmount);
+                        const sumOfRemainAdvanceValues = remainAdvanceValues.reduce((total, currentValue) => total + currentValue, 0);
 
-                                        for (const fineIn of sortedfineData) {
-                                            const { remainFine } = fineIn;
+                        // Fine Salary Last Remain Sum
+                        const msdata3 = msdata[2];
+                        const remainFineValues = msdata3.map(row => row.remainFineAmount);
+                        const sumOfRemainFineValues = remainFineValues.reduce((total, currentValue) => total + currentValue, 0);
+                        if (remainSalaryValues != '') {
+                            sql_querry_addRemainSlaryHistory = `INSERT INTO staff_remainSalaryHistory_data (
+                                                                                                            remainSalaryId,
+                                                                                                            employeeId,
+                                                                                                            remainSalaryAmt,
+                                                                                                            lastRemainAmt,
+                                                                                                            remainAdvanceAmt,
+                                                                                                            lastAdvanceAmt,
+                                                                                                            remainFineAmt,
+                                                                                                            lastFineAmt
+                                                                                                        )
+                                                                                                        VALUES(
+                                                                                                            '${remainSalaryId}',
+                                                                                                            '${data.employeeId}',
+                                                                                                            ${sumOfRemainSalaryValues},
+                                                                                                            ${remainSalaryValues[0] ? remainSalaryValues[0] : 0},
+                                                                                                            ${sumOfRemainAdvanceValues},
+                                                                                                            ${remainAdvanceValues[0] ? remainAdvanceValues[0] : 0},
+                                                                                                            ${sumOfRemainFineValues},
+                                                                                                            ${remainFineValues[0] ? remainFineValues[0] : 0}
+                                                                                                        )`;
+                        } else {
+                            sql_querry_addRemainSlaryHistory = `SELECT remainSalaryAmt FROM staff_remainSalaryHistory_data`;
+                        }
 
-                                            if (remainFine > 0) {
-                                                const quantityToUse = Math.min(payFineAmount, remainFine, remainingFine);
+                        pool.query(sql_querry_addRemainSlaryHistory, (err, addData) => {
+                            if (err) {
+                                console.error("An error occurd in SQL Queery", err);
+                                return res.status(500).send('Database Error');
+                            }
+                            console.log('remain Salary Added success');
+                            if ((data.fineAmount > 0 || data.advanceAmount > 0) && salaryAmtWOAdv > 0) {
+                                if (data.fineAmount > 0) {
+                                    if (salaryAmtWOAdv <= data.fineAmount) {
+                                        console.log('fine moto');
+                                        sql_querry_getFinedetail = `SELECT fineId, fineAmount,remainFineAmount AS remainFine FROM staff_fine_data WHERE employeeId = '${data.employeeId}' AND remainFineAmount != 0 ORDER BY fineDate ASC`;
+                                        pool.query(sql_querry_getFinedetail, (err, datas) => {
+                                            if (err) {
+                                                console.error("An error occurd in SQL Queery", err);
+                                                return res.status(500).send('Database Error');
+                                            }
+                                            const fineData = Object.values(JSON.parse(JSON.stringify(datas)));
+                                            const fineOutData = [
+                                                { fineId: 1, payFineAmount: salaryAmtWOAdv }
+                                            ];
+                                            const desiredFineAmount = fineOutData[0].payFineAmount;
+                                            console.log('jyare fine vadhare hoy tyare ni desiredAmount', desiredFineAmount);
 
-                                                remainingFine -= quantityToUse;
-                                                payFineAmount -= quantityToUse;
-                                                fineIn.remainFine -= quantityToUse;
+                                            // Calculate total Fine out price
+                                            let remainingFine = desiredFineAmount;
+
+                                            // Sort Fine in data by Fine in price in ascending order
+                                            const sortedfineData = fineData
+                                            for (const fineOut of fineOutData) {
+                                                let payFineAmount = fineOut.payFineAmount;
+
+                                                for (const fineIn of sortedfineData) {
+                                                    const { remainFine } = fineIn;
+
+                                                    if (remainFine > 0) {
+                                                        const quantityToUse = Math.min(payFineAmount, remainFine, remainingFine);
+
+                                                        remainingFine -= quantityToUse;
+                                                        payFineAmount -= quantityToUse;
+                                                        fineIn.remainFine -= quantityToUse;
+                                                        if (remainingFine <= 0) {
+                                                            break;
+                                                        }
+                                                    }
+                                                }
                                                 if (remainingFine <= 0) {
                                                     break;
                                                 }
                                             }
-                                        }
-                                        if (remainingFine <= 0) {
-                                            break;
-                                        }
-                                    }
-                                    // Print updated fineData
-                                    console.log("jyare fine vadhare hoy tyare malto Updated fineData:", fineData);
-                                    const updatedFinedata = fineData.filter((obj) => {
-                                        if (obj.remainFine != obj.fineAmount) {
-                                            return obj;
-                                        }
-                                    })
-                                    const swFId = updatedFinedata.map((obj) => {
-                                        if (obj.remainFine != obj.fineAmount) {
-                                            return obj.fineId;
-                                        }
-                                    })
-                                    const sallaryWiseFineId = () => {
+                                            // Print updated fineData
+                                            console.log("jyare fine vadhare hoy tyare malto Updated fineData:", fineData);
+                                            const updatedFinedata = fineData.filter((obj) => {
+                                                if (obj.remainFine != obj.fineAmount) {
+                                                    return obj;
+                                                }
+                                            })
+                                            const swFId = updatedFinedata.map((obj) => {
+                                                if (obj.remainFine != obj.fineAmount) {
+                                                    return obj.fineId;
+                                                }
+                                            })
+                                            const sallaryWiseFineId = () => {
 
-                                        var string = ''
-                                        swFId.forEach((data, index) => {
-                                            if (index == 0)
-                                                string = "(" + "'" + cutFine + "'" + "," + string + "'" + data + "'" + ")";
-                                            else
-                                                string = string + ",(" + "'" + cutFine + "'" + "," + "'" + data + "'" + ")";
-                                        });
-                                        return string;
+                                                var string = ''
+                                                swFId.forEach((data, index) => {
+                                                    if (index == 0)
+                                                        string = "(" + "'" + cutFine + "'" + "," + string + "'" + data + "'" + ")";
+                                                    else
+                                                        string = string + ",(" + "'" + cutFine + "'" + "," + "'" + data + "'" + ")";
+                                                });
+                                                return string;
 
-                                    }
-                                    // console.log(">?>?>/////", sallaryWiseFineId())
-                                    let sumOfRemainFine = 0;
-                                    fineData.forEach((item) => {
-                                        sumOfRemainFine += item.remainFine;
-                                    });
+                                            }
+                                            // console.log(">?>?>/////", sallaryWiseFineId())
+                                            let sumOfRemainFine = 0;
+                                            fineData.forEach((item) => {
+                                                sumOfRemainFine += item.remainFine;
+                                            });
 
-                                    // console.log("Sum of remainFine:", sumOfRemainFine)
-                                    const updateQuery = generateFineUpdateQuery(updatedFinedata);
-                                    pool.query(updateQuery, (err, result) => {
-                                        if (err) {
-                                            console.error("An error occurred while updating fineData", err);
-                                            return res.status(500).send('Database Error');
-                                        }
-                                        const totalCutamountOffine = data.fineAmount - sumOfRemainFine;
-                                        sql_query_addDetail = `INSERT INTO staff_salary_data(
+                                            // console.log("Sum of remainFine:", sumOfRemainFine)
+                                            const updateQuery = generateFineUpdateQuery(updatedFinedata);
+                                            pool.query(updateQuery, (err, result) => {
+                                                if (err) {
+                                                    console.error("An error occurred while updating fineData", err);
+                                                    return res.status(500).send('Database Error');
+                                                }
+                                                const totalCutamountOffine = data.fineAmount - sumOfRemainFine;
+                                                sql_query_addDetail = `INSERT INTO staff_salary_data(
                                                                     salaryId,
+                                                                    remainSalaryId,
                                                                     userId,
                                                                     employeeId,
                                                                     salaryAmount,
@@ -190,6 +246,7 @@ const addAmountOfSFA = (req, res) => {
                                                                 )
                                                                 VALUES(
                                                                     '${cutFine}',
+                                                                    '${remainSalaryId}',
                                                                     '${userId}',
                                                                     '${data.employeeId}',
                                                                      ${totalCutamountOffine},
@@ -198,93 +255,813 @@ const addAmountOfSFA = (req, res) => {
                                                                     STR_TO_DATE('${data.amountDate}','%b %d %Y')
                                                                 );
                                                                 INSERT INTO salary_salaryWiseFineId_data (salaryId, fineId) VALUES ${sallaryWiseFineId()}`;
-                                        pool.query(sql_query_addDetail, (err, add) => {
-                                            if (err) {
-                                                console.error("An error occurd in SQL Queery", err);
-                                                return res.status(500).send('Database Error');
-                                            }
-                                            if (req.body.amountType == '1') {
-                                                sql_querry_getFinedetail = `SELECT monthlySalaryId, totalSalary, remainSalary AS remainSalary FROM staff_monthlySalary_data WHERE employeeId = '${data.employeeId}' AND remainSalary != 0 ORDER BY msStartDate ASC`;
-                                                pool.query(sql_querry_getFinedetail, (err, datas) => {
+                                                pool.query(sql_query_addDetail, (err, add) => {
                                                     if (err) {
                                                         console.error("An error occurd in SQL Queery", err);
                                                         return res.status(500).send('Database Error');
                                                     }
-                                                    const msData = Object.values(JSON.parse(JSON.stringify(datas)));
-                                                    console.log('fine', msData);
+                                                    if (req.body.amountType == '1') {
+                                                        sql_querry_getFinedetail = `SELECT monthlySalaryId, totalSalary, remainSalary AS remainSalary FROM staff_monthlySalary_data WHERE employeeId = '${data.employeeId}' AND remainSalary != 0 ORDER BY msStartDate ASC`;
+                                                        pool.query(sql_querry_getFinedetail, (err, datas) => {
+                                                            if (err) {
+                                                                console.error("An error occurd in SQL Queery", err);
+                                                                return res.status(500).send('Database Error');
+                                                            }
+                                                            const msData = Object.values(JSON.parse(JSON.stringify(datas)));
+                                                            console.log('fine', msData);
 
-                                                    const salaryOutData = [
-                                                        { monthlySalaryId: 1, paySalaryAmount: salaryAmtWOAdv }
-                                                    ];
-                                                    const desiredSalaryAmount = salaryOutData[0].paySalaryAmount;
-                                                    console.log('jyare fine vadhare hoy tyare ni desiredAmount', desiredFineAmount);
-                                                    // console.log("?????", desiredSalaryAmount);
+                                                            const salaryOutData = [
+                                                                { monthlySalaryId: 1, paySalaryAmount: salaryAmtWOAdv }
+                                                            ];
+                                                            const desiredSalaryAmount = salaryOutData[0].paySalaryAmount;
+                                                            console.log('jyare fine vadhare hoy tyare ni desiredAmount', desiredFineAmount);
+                                                            // console.log("?????", desiredSalaryAmount);
 
-                                                    // Calculate total Salary out price
-                                                    let remainingSalary = desiredSalaryAmount;
+                                                            // Calculate total Salary out price
+                                                            let remainingSalary = desiredSalaryAmount;
 
-                                                    // Sort Salary in data by Salary in price in ascending order
-                                                    const sortedmsData = msData
-                                                    for (const salaryOut of salaryOutData) {
-                                                        let paySalaryAmount = salaryOut.paySalaryAmount;
+                                                            // Sort Salary in data by Salary in price in ascending order
+                                                            const sortedmsData = msData
+                                                            for (const salaryOut of salaryOutData) {
+                                                                let paySalaryAmount = salaryOut.paySalaryAmount;
 
-                                                        for (const salaryIn of sortedmsData) {
-                                                            const { remainSalary } = salaryIn;
+                                                                for (const salaryIn of sortedmsData) {
+                                                                    const { remainSalary } = salaryIn;
 
-                                                            if (remainSalary > 0) {
-                                                                const salaryToUse = Math.min(paySalaryAmount, remainSalary, remainingSalary);
+                                                                    if (remainSalary > 0) {
+                                                                        const salaryToUse = Math.min(paySalaryAmount, remainSalary, remainingSalary);
 
-                                                                remainingSalary -= salaryToUse;
-                                                                paySalaryAmount -= salaryToUse;
-                                                                salaryIn.remainSalary -= salaryToUse;
+                                                                        remainingSalary -= salaryToUse;
+                                                                        paySalaryAmount -= salaryToUse;
+                                                                        salaryIn.remainSalary -= salaryToUse;
+                                                                        if (remainingSalary <= 0) {
+                                                                            break;
+                                                                        }
+                                                                    }
+                                                                }
                                                                 if (remainingSalary <= 0) {
                                                                     break;
                                                                 }
                                                             }
-                                                        }
-                                                        if (remainingSalary <= 0) {
-                                                            break;
+                                                            // Print updated msData
+
+                                                            const updatedmsData = msData.filter((obj) => {
+                                                                if (obj.remainSalary != obj.totalSalary) {
+                                                                    return obj;
+                                                                }
+                                                            })
+                                                            console.log("badho fine cut thaya pachi malti monthly salary,Updated msData:", updatedmsData);
+                                                            const swMsId = updatedmsData.map((obj) => {
+                                                                if (obj.remainSalary != obj.totalSalary) {
+                                                                    return obj.monthlySalaryId;
+                                                                }
+                                                            })
+                                                            const msWiseSid = () => {
+
+                                                                var string = ''
+                                                                swMsId.forEach((data, index) => {
+                                                                    if (index == 0)
+                                                                        string = "(" + "'" + cutFine + "'" + "," + string + "'" + data + "'" + ")";
+                                                                    else
+                                                                        string = string + ",(" + "'" + cutFine + "'" + "," + "'" + data + "'" + ")";
+                                                                });
+                                                                return string;
+
+                                                            }
+                                                            // console.log(">?>?>/////", msWiseSid())
+                                                            sql_querry_addmsFid = `INSERT INTO staff_msWiseSalaryId_data (salaryId, monthlySalaryId) VALUES ${msWiseSid()}`
+                                                            // console.log('><><', sql_querry_addmsFid)
+                                                            pool.query(sql_querry_addmsFid, (err, result) => {
+                                                                if (err) {
+                                                                    console.error("An error occurred while updating msData", err);
+                                                                    return res.status(500).send('Database Error');
+                                                                }
+                                                            })
+                                                            const updateQuery = generateMonthlyUpdateQuery(updatedmsData);
+                                                            pool.query(updateQuery, (err, result) => {
+                                                                if (err) {
+                                                                    console.error("An error occurred while updating msData", err);
+                                                                    return res.status(500).send('Database Error');
+                                                                }
+                                                                else if (data.payAmount != 0 && req.body.amountType == '1') {
+                                                                    sql_querry_getFinedetail = `SELECT monthlySalaryId, totalSalary, remainSalary AS remainSalary FROM staff_monthlySalary_data WHERE employeeId = '${data.employeeId}' AND remainSalary != 0 ORDER BY msStartDate ASC`;
+                                                                    pool.query(sql_querry_getFinedetail, (err, datas) => {
+                                                                        if (err) {
+                                                                            console.error("An error occurd in SQL Queery", err);
+                                                                            return res.status(500).send('Database Error');
+                                                                        }
+                                                                        const msData = Object.values(JSON.parse(JSON.stringify(datas)));
+                                                                        console.log(msData);
+
+                                                                        const salaryOutData = [
+                                                                            { monthlySalaryId: 1, paySalaryAmount: data.payAmount }
+                                                                        ];
+                                                                        const desiredSalaryAmount = salaryOutData[0].paySalaryAmount;
+                                                                        console.log("?????", desiredSalaryAmount);
+
+                                                                        // Calculate total Salary out price
+                                                                        let remainingSalary = desiredSalaryAmount;
+
+                                                                        // Sort Salary in data by Salary in price in ascending order
+                                                                        const sortedmsData = msData
+                                                                        for (const salaryOut of salaryOutData) {
+                                                                            let paySalaryAmount = salaryOut.paySalaryAmount;
+
+                                                                            for (const salaryIn of sortedmsData) {
+                                                                                const { remainSalary } = salaryIn;
+
+                                                                                if (remainSalary > 0) {
+                                                                                    const salaryToUse = Math.min(paySalaryAmount, remainSalary, remainingSalary);
+
+                                                                                    remainingSalary -= salaryToUse;
+                                                                                    paySalaryAmount -= salaryToUse;
+                                                                                    salaryIn.remainSalary -= salaryToUse;
+                                                                                    if (remainingSalary <= 0) {
+                                                                                        break;
+                                                                                    }
+                                                                                }
+                                                                            }
+                                                                            if (remainingSalary <= 0) {
+                                                                                break;
+                                                                            }
+                                                                        }
+                                                                        // Print updated msData
+                                                                        console.log("Updated msData:", msData);
+                                                                        const updatedmsData = msData.filter((obj) => {
+                                                                            if (obj.remainSalary != obj.totalSalary) {
+                                                                                return obj;
+                                                                            }
+                                                                        })
+                                                                        console.log('><', updatedmsData);
+                                                                        const swFId = updatedmsData.map((obj) => {
+                                                                            if (obj.remainSalary != obj.totalSalary) {
+                                                                                return obj.monthlySalaryId;
+                                                                            }
+                                                                        })
+                                                                        const msWiseSid = () => {
+
+                                                                            var string = ''
+                                                                            swFId.forEach((data, index) => {
+                                                                                if (index == 0)
+                                                                                    string = "(" + "'" + salaryId + "'" + "," + string + "'" + data + "'" + ")";
+                                                                                else
+                                                                                    string = string + ",(" + "'" + salaryId + "'" + "," + "'" + data + "'" + ")";
+                                                                            });
+                                                                            return string;
+
+                                                                        }
+                                                                        console.log(">?>?>/////", msWiseSid())
+                                                                        sql_querry_addmsFid = `INSERT INTO staff_msWiseSalaryId_data (salaryId, monthlySalaryId) VALUES ${msWiseSid()}`
+                                                                        pool.query(sql_querry_addmsFid, (err, result) => {
+                                                                            if (err) {
+                                                                                console.error("An error occurred while updating msData", err);
+                                                                                return res.status(500).send('Database Error');
+                                                                            }
+                                                                        })
+                                                                        const updateQuery = generateMonthlyUpdateQuery(updatedmsData);
+                                                                        pool.query(updateQuery, (err, result) => {
+                                                                            if (err) {
+                                                                                console.error("An error occurred while updating msData", err);
+                                                                                return res.status(500).send('Database Error');
+                                                                            }
+                                                                        })
+                                                                    })
+                                                                }
+                                                            })
+                                                        })
+                                                    }
+                                                    // console.log('Advance CutOff');
+                                                })
+                                                // console.log("FineData updated successfully:");
+
+                                                // Here you can continue with the rest of your code or send the response to the client if this is part of an API endpoint.
+                                            });
+                                        })
+                                    } else {
+                                        console.log('fine nano')
+                                        sql_query_allZeroRemainFine = `SELECT
+                                                                        COALESCE(fineId, NULL) AS fineId
+                                                                    FROM
+                                                                        staff_fine_data
+                                                                    WHERE
+                                                                        employeeId = '${data.employeeId}' AND remainFineAmount != 0;
+                                                                  UPDATE
+                                                                        staff_fine_data
+                                                                    SET
+                                                                        remainFineAmount = 0
+                                                                    WHERE
+                                                                        fineId IN(
+                                                                            SELECT
+                                                                                COALESCE(fineId, NULL)
+                                                                            FROM
+                                                                                staff_fine_data
+                                                                            WHERE
+                                                                                employeeId = '${data.employeeId}' AND remainFineAmount != 0
+                                                                        )`;
+                                        pool.query(sql_query_allZeroRemainFine, (err, result) => {
+                                            if (err) {
+                                                console.error("An error occurd in SQL Queery", err);
+                                                return res.status(500).send('Database Error');
+                                            }
+                                            sql_querry_getFinedetail = `SELECT monthlySalaryId, totalSalary, remainSalary AS remainSalary FROM staff_monthlySalary_data WHERE employeeId = '${data.employeeId}' AND remainSalary != 0 ORDER BY msStartDate ASC`;
+                                            pool.query(sql_querry_getFinedetail, (err, datas) => {
+                                                if (err) {
+                                                    console.error("An error occurd in SQL Queery", err);
+                                                    return res.status(500).send('Database Error');
+                                                }
+                                                const msData = Object.values(JSON.parse(JSON.stringify(datas)));
+                                                console.log('fine ochho hoy pachii monthly salary', msData);
+
+                                                const salaryOutData = [
+                                                    { monthlySalaryId: 1, paySalaryAmount: data.fineAmount }
+                                                ];
+                                                const desiredSalaryAmount = salaryOutData[0].paySalaryAmount;
+                                                console.log('fine kapya pachhi pay amount vadi dezire', desiredSalaryAmount);
+
+                                                // Calculate total Salary out price
+                                                let remainingSalary = desiredSalaryAmount;
+
+                                                // Sort Salary in data by Salary in price in ascending order
+                                                const sortedmsData = msData
+                                                for (const salaryOut of salaryOutData) {
+                                                    let paySalaryAmount = salaryOut.paySalaryAmount;
+
+                                                    for (const salaryIn of sortedmsData) {
+                                                        const { remainSalary } = salaryIn;
+
+                                                        if (remainSalary > 0) {
+                                                            const salaryToUse = Math.min(paySalaryAmount, remainSalary, remainingSalary);
+
+                                                            remainingSalary -= salaryToUse;
+                                                            paySalaryAmount -= salaryToUse;
+                                                            salaryIn.remainSalary -= salaryToUse;
+                                                            if (remainingSalary <= 0) {
+                                                                break;
+                                                            }
                                                         }
                                                     }
-                                                    // Print updated msData
-
-                                                    const updatedmsData = msData.filter((obj) => {
-                                                        if (obj.remainSalary != obj.totalSalary) {
-                                                            return obj;
-                                                        }
-                                                    })
-                                                    console.log("badho fine cut thaya pachi malti monthly salary,Updated msData:", updatedmsData);
-                                                    const swMsId = updatedmsData.map((obj) => {
-                                                        if (obj.remainSalary != obj.totalSalary) {
-                                                            return obj.monthlySalaryId;
-                                                        }
-                                                    })
-                                                    const msWiseSid = () => {
-
-                                                        var string = ''
-                                                        swMsId.forEach((data, index) => {
-                                                            if (index == 0)
-                                                                string = "(" + "'" + cutFine + "'" + "," + string + "'" + data + "'" + ")";
-                                                            else
-                                                                string = string + ",(" + "'" + cutFine + "'" + "," + "'" + data + "'" + ")";
-                                                        });
-                                                        return string;
-
+                                                    if (remainingSalary <= 0) {
+                                                        break;
                                                     }
-                                                    // console.log(">?>?>/////", msWiseSid())
-                                                    sql_querry_addmsFid = `INSERT INTO staff_msWiseSalaryId_data (salaryId, monthlySalaryId) VALUES ${msWiseSid()}`
-                                                    // console.log('><><', sql_querry_addmsFid)
-                                                    pool.query(sql_querry_addmsFid, (err, result) => {
-                                                        if (err) {
-                                                            console.error("An error occurred while updating msData", err);
-                                                            return res.status(500).send('Database Error');
-                                                        }
-                                                    })
+                                                }
+                                                // Print updated msData
+                                                console.log("after fine Updated msData:", msData);
+                                                const updatedmsData = msData.filter((obj) => {
+                                                    if (obj.remainSalary != obj.totalSalary) {
+                                                        return obj;
+                                                    }
+                                                })
+                                                const swFId = updatedmsData.map((obj) => {
+                                                    if (obj.remainSalary !== obj.totalSalary) {
+                                                        return obj.monthlySalaryId;
+                                                    }
+                                                })
+                                                // console.log(swFId);
+                                                const msWiseSid = () => {
+
+                                                    var string = ''
+                                                    swFId.forEach((data, index) => {
+                                                        if (index == 0)
+                                                            string = "(" + "'" + cutFine + "'" + "," + string + data + ")";
+                                                        else
+                                                            string = string + ",(" + "'" + cutFine + "'" + "," + data + ")";
+                                                    });
+                                                    return string;
+
+                                                }
+                                                // console.log(">?>?>/////", msWiseSid())
+                                                sql_querry_addmsFid = `INSERT INTO staff_msWiseSalaryId_data (salaryId, monthlySalaryId) VALUES ${msWiseSid()}`
+                                                pool.query(sql_querry_addmsFid, (err, result) => {
+                                                    if (err) {
+                                                        console.error("An error occurred while updating msData", err);
+                                                        // return res.status(500).send('Database Error');
+                                                    }
                                                     const updateQuery = generateMonthlyUpdateQuery(updatedmsData);
                                                     pool.query(updateQuery, (err, result) => {
                                                         if (err) {
                                                             console.error("An error occurred while updating msData", err);
                                                             return res.status(500).send('Database Error');
+                                                        }
+                                                        if (data.advanceAmount != 0) {
+                                                            if (remainSalaryAmtWOAdv <= data.advanceAmount) {
+                                                                console.log('fine pachi advance moto');
+                                                                sql_querry_getAdvanceDetails = `SELECT advanceId, advanceAmount, remainAdvanceAmount AS remainAdvance FROM staff_advance_data WHERE employeeId = '${data.employeeId}' AND remainAdvanceAmount != 0 ORDER BY advanceDate ASC`;
+                                                                pool.query(sql_querry_getAdvanceDetails, (err, datas) => {
+                                                                    if (err) {
+                                                                        console.error("An error occurd in SQL Queery", err);
+                                                                        return res.status(500).send('Database Error');
+                                                                    }
+                                                                    const advanceData = Object.values(JSON.parse(JSON.stringify(datas)));
+                                                                    const advanceOutData = [
+                                                                        { payAdvanceAmount: remainSalaryAmtWOAdv }
+                                                                    ];
+                                                                    const desiredAdvanceAmount = advanceOutData[0].payAdvanceAmount;
+                                                                    console.log("?????", desiredAdvanceAmount);
+
+                                                                    // Calculate total Advance out price
+                                                                    let remainingAdvance = desiredAdvanceAmount;
+
+                                                                    // Sort Advance in data by Advance in price in ascending order
+                                                                    const sortedadvanceData = advanceData
+                                                                    for (const advanceOut of advanceOutData) {
+                                                                        let payAdvanceAmount = advanceOut.payAdvanceAmount;
+
+                                                                        for (const AdvanceIn of sortedadvanceData) {
+                                                                            const { remainAdvance } = AdvanceIn;
+
+                                                                            if (remainAdvance > 0) {
+                                                                                const quantityToUse = Math.min(payAdvanceAmount, remainAdvance, remainingAdvance);
+
+                                                                                remainingAdvance -= quantityToUse;
+                                                                                payAdvanceAmount -= quantityToUse;
+                                                                                AdvanceIn.remainAdvance -= quantityToUse;
+
+                                                                                if (remainingAdvance <= 0) {
+                                                                                    break;
+                                                                                }
+                                                                            }
+                                                                        }
+                                                                        if (remainingAdvance <= 0) {
+                                                                            break;
+                                                                        }
+                                                                    }
+
+                                                                    // Print updated advanceData
+                                                                    console.log("Updated advanceData:", advanceData);
+                                                                    const updatedAdvancedata = advanceData.filter((obj) => {
+                                                                        if (obj.remainAdvance != obj.advanceAmount) {
+                                                                            return obj;
+                                                                        }
+                                                                    })
+                                                                    const swAId = updatedAdvancedata.map((obj) => {
+                                                                        if (obj.remainAdvance != obj.advanceAmount) {
+                                                                            return obj.advanceId;
+                                                                        }
+                                                                    })
+                                                                    const sallaryWiseAdvanceId = () => {
+
+                                                                        var string = ''
+                                                                        swAId.forEach((data, index) => {
+                                                                            if (index == 0)
+                                                                                string = "(" + "'" + cutAdvance + "'" + "," + string + "'" + data + "'" + ")";
+                                                                            else
+                                                                                string = string + ",(" + "'" + cutAdvance + "'" + "," + "'" + data + "'" + ")";
+                                                                        });
+                                                                        return string;
+                                                                    }
+                                                                    // console.log(">?>?>/////", sallaryWiseAdvanceId())
+                                                                    let sumOfUpdatedadvanceRemain = 0;
+                                                                    advanceData.forEach((item) => {
+                                                                        sumOfUpdatedadvanceRemain += item.remainAdvance;
+                                                                    });
+
+                                                                    console.log("Sum of prevaios advanceFine:", sumOfUpdatedadvanceRemain)
+                                                                    const updateQuery = generateAdvanceUpdateQuery(updatedAdvancedata);
+                                                                    pool.query(updateQuery, (err, result) => {
+                                                                        if (err) {
+                                                                            console.error("An error occurred while updating fineData", err);
+                                                                            // return res.status(500).send('Database Error');
+                                                                        }
+
+                                                                        console.log("AdvanceData updated successfully:");
+
+                                                                        const totalCutamountOffAdvance = data.advanceAmount - sumOfUpdatedadvanceRemain;
+                                                                        sql_query_addDetail = `INSERT INTO staff_salary_data(
+                                                                    salaryId,
+                                                                    remainSalaryId,
+                                                                    userId,
+                                                                    employeeId,
+                                                                    salaryAmount,
+                                                                    salaryType,
+                                                                    salaryComment,
+                                                                    salaryDate
+                                                                )
+                                                                VALUES(
+                                                                    '${cutAdvance}',
+                                                                    '${remainSalaryId}',
+                                                                    '${userId}',
+                                                                    '${data.employeeId}',
+                                                                     ${totalCutamountOffAdvance},
+                                                                    'Advance Cut',
+                                                                    NULLIF('${data.comment}','null'),
+                                                                    STR_TO_DATE('${data.amountDate}','%b %d %Y')
+                                                                );
+                                                                INSERT INTO salary_salaryWiseAdvanceId_data (salaryId, advanceId) VALUES ${sallaryWiseAdvanceId()}`
+                                                                        pool.query(sql_query_addDetail, (err, add) => {
+                                                                            if (err) {
+                                                                                console.error("An error occurd in SQL Queery", err);
+                                                                                return res.status(500).send('Database Error');
+                                                                            }
+                                                                            console.log('Advance CutOff');
+
+                                                                            sql_querry_getFinedetail = `SELECT monthlySalaryId, totalSalary, remainSalary AS remainSalary FROM staff_monthlySalary_data WHERE employeeId = '${data.employeeId}' AND remainSalary != 0 ORDER BY msStartDate ASC`;
+                                                                            pool.query(sql_querry_getFinedetail, (err, datas) => {
+                                                                                if (err) {
+                                                                                    console.error("An error occurd in SQL Queery", err);
+                                                                                    return res.status(500).send('Database Error');
+                                                                                }
+                                                                                const msData = Object.values(JSON.parse(JSON.stringify(datas)));
+                                                                                console.log('adv', msData);
+
+                                                                                const salaryOutData = [
+                                                                                    { monthlySalaryId: 1, paySalaryAmount: totalCutamountOffAdvance }
+                                                                                ];
+                                                                                const desiredSalaryAmount = salaryOutData[0].paySalaryAmount;
+                                                                                console.log("?????", desiredSalaryAmount);
+
+                                                                                // Calculate total Salary out price
+                                                                                let remainingSalary = desiredSalaryAmount;
+
+                                                                                // Sort Salary in data by Salary in price in ascending order
+                                                                                const sortedmsData = msData
+                                                                                for (const salaryOut of salaryOutData) {
+                                                                                    let paySalaryAmount = salaryOut.paySalaryAmount;
+
+                                                                                    for (const salaryIn of sortedmsData) {
+                                                                                        const { remainSalary } = salaryIn;
+
+                                                                                        if (remainSalary > 0) {
+                                                                                            const salaryToUse = Math.min(paySalaryAmount, remainSalary, remainingSalary);
+
+                                                                                            remainingSalary -= salaryToUse;
+                                                                                            paySalaryAmount -= salaryToUse;
+                                                                                            salaryIn.remainSalary -= salaryToUse;
+                                                                                            if (remainingSalary <= 0) {
+                                                                                                break;
+                                                                                            }
+                                                                                        }
+                                                                                    }
+                                                                                    if (remainingSalary <= 0) {
+                                                                                        break;
+                                                                                    }
+                                                                                }
+                                                                                // Print updated msData
+                                                                                console.log(" after advance Updated msData:", msData);
+                                                                                const updatedmsData = msData.filter((obj) => {
+                                                                                    if (obj.remainSalary != obj.totalSalary) {
+                                                                                        return obj;
+                                                                                    }
+                                                                                })
+                                                                                const swFId = updatedmsData.map((obj) => {
+                                                                                    if (obj.remainSalary != obj.totalSalary) {
+                                                                                        return obj.monthlySalaryId;
+                                                                                    }
+                                                                                })
+                                                                                const msWiseSid = () => {
+
+                                                                                    var string = ''
+                                                                                    swFId.forEach((data, index) => {
+                                                                                        if (index == 0)
+                                                                                            string = "(" + "'" + cutAdvance + "'" + "," + string + "'" + data + "'" + ")";
+                                                                                        else
+                                                                                            string = string + ",(" + "'" + cutAdvance + "'" + "," + "'" + data + "'" + ")";
+                                                                                    });
+                                                                                    return string;
+
+                                                                                }
+                                                                                console.log(">?>?>/////", msWiseSid())
+                                                                                sql_querry_addmsFid = `INSERT INTO staff_msWiseSalaryId_data (salaryId, monthlySalaryId) VALUES ${msWiseSid()}`
+                                                                                pool.query(sql_querry_addmsFid, (err, result) => {
+                                                                                    if (err) {
+                                                                                        console.error("An error occurred while updating msData", err);
+                                                                                        return res.status(500).send('Database Error');
+                                                                                    }
+                                                                                })
+                                                                                const updateQuery = generateMonthlyUpdateQuery(updatedmsData);
+                                                                                pool.query(updateQuery, (err, result) => {
+                                                                                    if (err) {
+                                                                                        console.error("An error occurred while updating msData", err);
+                                                                                        return res.status(500).send('Database Error');
+                                                                                    }
+                                                                                    if (data.payAmount != 0 && req.body.amountType == '1') {
+                                                                                        sql_querry_getFinedetail = `SELECT monthlySalaryId, totalSalary, remainSalary AS remainSalary FROM staff_monthlySalary_data WHERE employeeId = '${data.employeeId}' AND remainSalary != 0 ORDER BY msStartDate ASC`;
+                                                                                        pool.query(sql_querry_getFinedetail, (err, datas) => {
+                                                                                            if (err) {
+                                                                                                console.error("An error occurd in SQL Queery", err);
+                                                                                                return res.status(500).send('Database Error');
+                                                                                            }
+                                                                                            const msData = Object.values(JSON.parse(JSON.stringify(datas)));
+                                                                                            console.log(msData);
+
+                                                                                            const salaryOutData = [
+                                                                                                { monthlySalaryId: 1, paySalaryAmount: data.payAmount }
+                                                                                            ];
+                                                                                            const desiredSalaryAmount = salaryOutData[0].paySalaryAmount;
+                                                                                            console.log("pay slary", desiredSalaryAmount);
+
+                                                                                            // Calculate total Salary out price
+                                                                                            let remainingSalary = desiredSalaryAmount;
+
+                                                                                            // Sort Salary in data by Salary in price in ascending order
+                                                                                            const sortedmsData = msData
+                                                                                            for (const salaryOut of salaryOutData) {
+                                                                                                let paySalaryAmount = salaryOut.paySalaryAmount;
+
+                                                                                                for (const salaryIn of sortedmsData) {
+                                                                                                    const { remainSalary } = salaryIn;
+
+                                                                                                    if (remainSalary > 0) {
+                                                                                                        const salaryToUse = Math.min(paySalaryAmount, remainSalary, remainingSalary);
+
+                                                                                                        remainingSalary -= salaryToUse;
+                                                                                                        paySalaryAmount -= salaryToUse;
+                                                                                                        salaryIn.remainSalary -= salaryToUse;
+                                                                                                        if (remainingSalary <= 0) {
+                                                                                                            break;
+                                                                                                        }
+                                                                                                    }
+                                                                                                }
+                                                                                                if (remainingSalary <= 0) {
+                                                                                                    break;
+                                                                                                }
+                                                                                            }
+                                                                                            // Print updated msData
+                                                                                            console.log("Updated msData:", msData);
+                                                                                            const updatedmsData = msData.filter((obj) => {
+                                                                                                if (obj.remainSalary != obj.totalSalary) {
+                                                                                                    return obj;
+                                                                                                }
+                                                                                            })
+                                                                                            console.log('><', updatedmsData);
+                                                                                            const swFId = updatedmsData.map((obj) => {
+                                                                                                if (obj.remainSalary != obj.totalSalary) {
+                                                                                                    return obj.monthlySalaryId;
+                                                                                                }
+                                                                                            })
+                                                                                            const msWiseSid = () => {
+
+                                                                                                var string = ''
+                                                                                                swFId.forEach((data, index) => {
+                                                                                                    if (index == 0)
+                                                                                                        string = "(" + "'" + salaryId + "'" + "," + string + "'" + data + "'" + ")";
+                                                                                                    else
+                                                                                                        string = string + ",(" + "'" + salaryId + "'" + "," + "'" + data + "'" + ")";
+                                                                                                });
+                                                                                                return string;
+
+                                                                                            }
+                                                                                            // console.log(">?>?>/////", msWiseSid())
+                                                                                            sql_querry_addmsFid = `INSERT INTO staff_msWiseSalaryId_data (salaryId, monthlySalaryId) VALUES ${msWiseSid()}`
+                                                                                            pool.query(sql_querry_addmsFid, (err, result) => {
+                                                                                                if (err) {
+                                                                                                    console.error("An error occurred while updating msData", err);
+                                                                                                    return res.status(500).send('Database Error');
+                                                                                                }
+                                                                                            })
+                                                                                            const updateQuery = generateMonthlyUpdateQuery(updatedmsData);
+                                                                                            pool.query(updateQuery, (err, result) => {
+                                                                                                if (err) {
+                                                                                                    console.error("An error occurred while updating msData", err);
+                                                                                                    return res.status(500).send('Database Error');
+                                                                                                }
+                                                                                            })
+                                                                                        })
+                                                                                    }
+                                                                                })
+                                                                            })
+                                                                        })
+                                                                    });
+                                                                })
+                                                            } else {
+                                                                console.log('fine pachhi advance nano');
+                                                                sql_query_allZeroRemainFine = `SELECT
+                                                                        advanceId
+                                                                    FROM
+                                                                        staff_advance_data
+                                                                    WHERE
+                                                                        employeeId = '${data.employeeId}' AND remainAdvanceAmount != 0;
+                                                                UPDATE
+                                                                    staff_advance_data
+                                                                SET
+                                                                    remainAdvanceAmount = 0
+                                                                WHERE
+                                                                advanceId IN(
+                                                                    SELECT
+                                                                        COALESCE(advanceId, NULL)
+                                                                    FROM
+                                                                        staff_advance_data
+                                                                    WHERE
+                                                                        employeeId = '${data.employeeId}' AND remainAdvanceAmount != 0
+                                                                    )`;
+                                                                pool.query(sql_query_allZeroRemainFine, (err, result) => {
+                                                                    if (err) {
+                                                                        console.error("An error occurd in SQL Queery", err);
+                                                                        return res.status(500).send('Database Error');
+                                                                    }
+                                                                    console.log(result[0])
+                                                                    const allAdvanceId = result[0];
+                                                                    const swAId = allAdvanceId.map((obj) => {
+                                                                        return obj.advanceId;
+                                                                    })
+                                                                    const sallaryWiseAllAdvanceId = () => {
+
+                                                                        var string = ''
+                                                                        swAId.forEach((data, index) => {
+                                                                            if (index == 0)
+                                                                                string = "(" + "'" + cutAdvance + "'" + "," + string + "'" + data + "'" + ")";
+                                                                            else
+                                                                                string = string + ",(" + "'" + cutAdvance + "'" + "," + "'" + data + "'" + ")";
+                                                                        });
+                                                                        return string;
+
+                                                                    }
+                                                                    // console.log('><><><', sallaryWiseAllAdvanceId());
+                                                                    sql_query_addDetail = `INSERT INTO staff_salary_data(
+                                                                    salaryId,
+                                                                    remainSalaryId,
+                                                                    userId,
+                                                                    employeeId,
+                                                                    salaryAmount,
+                                                                    salaryType,
+                                                                    salaryComment,
+                                                                    salaryDate
+                                                                )
+                                                                VALUES(
+                                                                    '${cutAdvance}',
+                                                                    '${remainSalaryId}',
+                                                                    '${userId}',
+                                                                    '${data.employeeId}',
+                                                                     ${data.advanceAmount},
+                                                                    'Advance Cut',
+                                                                    NULLIF('${data.comment}','null'),
+                                                                    STR_TO_DATE('${data.amountDate}','%b %d %Y')
+                                                                );
+                                                                INSERT INTO salary_salaryWiseAdvanceId_data (salaryId, advanceId) VALUES ${sallaryWiseAllAdvanceId()}`;
+                                                                    pool.query(sql_query_addDetail, (err, add) => {
+                                                                        if (err) {
+                                                                            console.error("An error occurd in SQL Queery", err);
+                                                                            return res.status(500).send('Database Error');
+                                                                        }
+                                                                        // console.log('All Advance Is Done');
+                                                                    })
+                                                                    sql_querry_getFinedetail = `SELECT monthlySalaryId, totalSalary, remainSalary AS remainSalary FROM staff_monthlySalary_data WHERE employeeId = '${data.employeeId}' AND remainSalary != 0 ORDER BY msStartDate ASC`;
+                                                                    pool.query(sql_querry_getFinedetail, (err, datas) => {
+                                                                        if (err) {
+                                                                            console.error("An error occurd in SQL Queery", err);
+                                                                            return res.status(500).send('Database Error');
+                                                                        }
+                                                                        const msData = Object.values(JSON.parse(JSON.stringify(datas)));
+                                                                        console.log('adv', msData);
+
+                                                                        const salaryOutData = [
+                                                                            { monthlySalaryId: 1, paySalaryAmount: data.advanceAmount }
+                                                                        ];
+                                                                        const desiredSalaryAmount = salaryOutData[0].paySalaryAmount;
+                                                                        console.log("?????", desiredSalaryAmount);
+
+                                                                        // Calculate total Salary out price
+                                                                        let remainingSalary = desiredSalaryAmount;
+
+                                                                        // Sort Salary in data by Salary in price in ascending order
+                                                                        const sortedmsData = msData
+                                                                        for (const salaryOut of salaryOutData) {
+                                                                            let paySalaryAmount = salaryOut.paySalaryAmount;
+
+                                                                            for (const salaryIn of sortedmsData) {
+                                                                                const { remainSalary } = salaryIn;
+
+                                                                                if (remainSalary > 0) {
+                                                                                    const salaryToUse = Math.min(paySalaryAmount, remainSalary, remainingSalary);
+
+                                                                                    remainingSalary -= salaryToUse;
+                                                                                    paySalaryAmount -= salaryToUse;
+                                                                                    salaryIn.remainSalary -= salaryToUse;
+                                                                                    if (remainingSalary <= 0) {
+                                                                                        break;
+                                                                                    }
+                                                                                }
+                                                                            }
+                                                                            if (remainingSalary <= 0) {
+                                                                                break;
+                                                                            }
+                                                                        }
+                                                                        // Print updated msData
+                                                                        console.log(" after advance Updated msData:", msData);
+                                                                        const updatedmsData = msData.filter((obj) => {
+                                                                            if (obj.remainSalary != obj.totalSalary) {
+                                                                                return obj;
+                                                                            }
+                                                                        })
+                                                                        const swFId = updatedmsData.map((obj) => {
+                                                                            if (obj.remainSalary != obj.totalSalary) {
+                                                                                return obj.monthlySalaryId;
+                                                                            }
+                                                                        })
+                                                                        const msWiseSid = () => {
+
+                                                                            var string = ''
+                                                                            swFId.forEach((data, index) => {
+                                                                                if (index == 0)
+                                                                                    string = "(" + "'" + cutAdvance + "'" + "," + string + "'" + data + "'" + ")";
+                                                                                else
+                                                                                    string = string + ",(" + "'" + cutAdvance + "'" + "," + "'" + data + "'" + ")";
+                                                                            });
+                                                                            return string;
+
+                                                                        }
+                                                                        // console.log(">?>?>/////", msWiseSid())
+                                                                        sql_querry_addmsFid = `INSERT INTO staff_msWiseSalaryId_data (salaryId, monthlySalaryId) VALUES ${msWiseSid()}`
+                                                                        pool.query(sql_querry_addmsFid, (err, result) => {
+                                                                            if (err) {
+                                                                                console.error("An error occurred while updating msData", err);
+                                                                                return res.status(500).send('Database Error');
+                                                                            }
+                                                                        })
+                                                                        const updateQuery = generateMonthlyUpdateQuery(updatedmsData);
+                                                                        pool.query(updateQuery, (err, result) => {
+                                                                            if (err) {
+                                                                                console.error("An error occurred while updating msData", err);
+                                                                                return res.status(500).send('Database Error');
+                                                                            }
+                                                                            if (data.payAmount != 0 && req.body.amountType == '1') {
+                                                                                sql_querry_getFinedetail = `SELECT monthlySalaryId, totalSalary, remainSalary AS remainSalary FROM staff_monthlySalary_data WHERE employeeId = '${data.employeeId}' AND remainSalary != 0 ORDER BY msStartDate ASC`;
+                                                                                pool.query(sql_querry_getFinedetail, (err, datas) => {
+                                                                                    if (err) {
+                                                                                        console.error("An error occurd in SQL Queery", err);
+                                                                                        return res.status(500).send('Database Error');
+                                                                                    }
+                                                                                    const msData = Object.values(JSON.parse(JSON.stringify(datas)));
+                                                                                    console.log(msData);
+
+                                                                                    const salaryOutData = [
+                                                                                        { monthlySalaryId: 1, paySalaryAmount: data.payAmount }
+                                                                                    ];
+                                                                                    const desiredSalaryAmount = salaryOutData[0].paySalaryAmount;
+                                                                                    console.log("?????", desiredSalaryAmount);
+
+                                                                                    // Calculate total Salary out price
+                                                                                    let remainingSalary = desiredSalaryAmount;
+
+                                                                                    // Sort Salary in data by Salary in price in ascending order
+                                                                                    const sortedmsData = msData
+                                                                                    for (const salaryOut of salaryOutData) {
+                                                                                        let paySalaryAmount = salaryOut.paySalaryAmount;
+
+                                                                                        for (const salaryIn of sortedmsData) {
+                                                                                            const { remainSalary } = salaryIn;
+
+                                                                                            if (remainSalary > 0) {
+                                                                                                const salaryToUse = Math.min(paySalaryAmount, remainSalary, remainingSalary);
+
+                                                                                                remainingSalary -= salaryToUse;
+                                                                                                paySalaryAmount -= salaryToUse;
+                                                                                                salaryIn.remainSalary -= salaryToUse;
+                                                                                                if (remainingSalary <= 0) {
+                                                                                                    break;
+                                                                                                }
+                                                                                            }
+                                                                                        }
+                                                                                        if (remainingSalary <= 0) {
+                                                                                            break;
+                                                                                        }
+                                                                                    }
+                                                                                    // Print updated msData
+                                                                                    console.log("Updated msData:", msData);
+                                                                                    const updatedmsData = msData.filter((obj) => {
+                                                                                        if (obj.remainSalary != obj.totalSalary) {
+                                                                                            return obj;
+                                                                                        }
+                                                                                    })
+                                                                                    console.log('><', updatedmsData);
+                                                                                    const swFId = updatedmsData.map((obj) => {
+                                                                                        if (obj.remainSalary != obj.totalSalary) {
+                                                                                            return obj.monthlySalaryId;
+                                                                                        }
+                                                                                    })
+                                                                                    const msWiseSid = () => {
+
+                                                                                        var string = ''
+                                                                                        swFId.forEach((data, index) => {
+                                                                                            if (index == 0)
+                                                                                                string = "(" + "'" + salaryId + "'" + "," + string + "'" + data + "'" + ")";
+                                                                                            else
+                                                                                                string = string + ",(" + "'" + salaryId + "'" + "," + "'" + data + "'" + ")";
+                                                                                        });
+                                                                                        return string;
+
+                                                                                    }
+                                                                                    // console.log(">?>?>/////", msWiseSid())
+                                                                                    sql_querry_addmsFid = `INSERT INTO staff_msWiseSalaryId_data (salaryId, monthlySalaryId) VALUES ${msWiseSid()}`
+                                                                                    pool.query(sql_querry_addmsFid, (err, result) => {
+                                                                                        if (err) {
+                                                                                            console.error("An error occurred while updating msData", err);
+                                                                                            return res.status(500).send('Database Error');
+                                                                                        }
+                                                                                    })
+                                                                                    const updateQuery = generateMonthlyUpdateQuery(updatedmsData);
+                                                                                    pool.query(updateQuery, (err, result) => {
+                                                                                        if (err) {
+                                                                                            console.error("An error occurred while updating msData", err);
+                                                                                            return res.status(500).send('Database Error');
+                                                                                        }
+                                                                                    })
+
+                                                                                })
+                                                                            }
+                                                                        })
+                                                                    })
+                                                                })
+                                                            }
                                                         }
                                                         else if (data.payAmount != 0 && req.body.amountType == '1') {
                                                             sql_querry_getFinedetail = `SELECT monthlySalaryId, totalSalary, remainSalary AS remainSalary FROM staff_monthlySalary_data WHERE employeeId = '${data.employeeId}' AND remainSalary != 0 ORDER BY msStartDate ASC`;
@@ -372,205 +1149,146 @@ const addAmountOfSFA = (req, res) => {
                                                         }
                                                     })
                                                 })
+
+                                            })
+                                            // console.log("msData updated successfully");
+                                            console.log(result[0])
+                                            const allFineId = result[0];
+                                            const swFId = allFineId.map((obj) => {
+                                                return obj.fineId;
+                                            })
+                                            const sallaryWiseAllFineId = () => {
+
+                                                var string = ''
+                                                swFId.forEach((data, index) => {
+                                                    if (index == 0)
+                                                        string = "(" + "'" + cutFine + "'" + "," + string + "'" + data + "'" + ")";
+                                                    else
+                                                        string = string + ",(" + "'" + cutFine + "'" + "," + "'" + data + "'" + ")";
+                                                });
+                                                return string;
                                             }
-                                            // console.log('Advance CutOff');
+                                            // console.log('><><><', sallaryWiseAllFineId());
+                                            sql_query_addDetail = `INSERT INTO staff_salary_data(
+                                                                    salaryId,
+                                                                    remainSalaryId,
+                                                                    userId,
+                                                                    employeeId,
+                                                                    salaryAmount,
+                                                                    salaryType,
+                                                                    salaryComment,
+                                                                    salaryDate
+                                                                )
+                                                                VALUES(
+                                                                    '${cutFine}',
+                                                                    '${remainSalaryId}',
+                                                                    '${userId}',
+                                                                    '${data.employeeId}',
+                                                                     ${data.fineAmount},
+                                                                    'Fine Cut',
+                                                                    NULLIF('${data.comment}','null'),
+                                                                    STR_TO_DATE('${data.amountDate}','%b %d %Y')
+                                                                );
+                                                                INSERT INTO salary_salaryWiseFineId_data (salaryId, fineId) VALUES ${sallaryWiseAllFineId()}`
+                                            pool.query(sql_query_addDetail, (err, add) => {
+                                                if (err) {
+                                                    console.error("An error occurd in SQL Queery", err);
+                                                }
+                                                // console.log('Fine CutOff');
+                                            })
                                         })
-                                        // console.log("FineData updated successfully:");
-
-                                        // Here you can continue with the rest of your code or send the response to the client if this is part of an API endpoint.
-                                    });
-                                })
-                            } else {
-                                console.log('fine nano')
-                                sql_query_allZeroRemainFine = `SELECT
-                                                                        COALESCE(fineId, NULL) AS fineId
-                                                                    FROM
-                                                                        staff_fine_data
-                                                                    WHERE
-                                                                        employeeId = '${data.employeeId}' AND remainFineAmount != 0;
-                                                                  UPDATE
-                                                                        staff_fine_data
-                                                                    SET
-                                                                        remainFineAmount = 0
-                                                                    WHERE
-                                                                        fineId IN(
-                                                                            SELECT
-                                                                                COALESCE(fineId, NULL)
-                                                                            FROM
-                                                                                staff_fine_data
-                                                                            WHERE
-                                                                                employeeId = '${data.employeeId}' AND remainFineAmount != 0
-                                                                        )`;
-                                pool.query(sql_query_allZeroRemainFine, (err, result) => {
-                                    if (err) {
-                                        console.error("An error occurd in SQL Queery", err);
-                                        return res.status(500).send('Database Error');
                                     }
-                                    sql_querry_getFinedetail = `SELECT monthlySalaryId, totalSalary, remainSalary AS remainSalary FROM staff_monthlySalary_data WHERE employeeId = '${data.employeeId}' AND remainSalary != 0 ORDER BY msStartDate ASC`;
-                                    pool.query(sql_querry_getFinedetail, (err, datas) => {
-                                        if (err) {
-                                            console.error("An error occurd in SQL Queery", err);
-                                            return res.status(500).send('Database Error');
-                                        }
-                                        const msData = Object.values(JSON.parse(JSON.stringify(datas)));
-                                        console.log('fine ochho hoy pachii monthly salary', msData);
+                                }
+                                else if (data.advanceAmount > 0) {
+                                    console.log('?avyu')
+                                    if (remainSalaryAmtWOAdv <= data.advanceAmount) {
+                                        console.log('only advance motot')
+                                        sql_querry_getAdvanceDetails = `SELECT advanceId, advanceAmount, remainAdvanceAmount AS remainAdvance FROM staff_advance_data WHERE employeeId = '${data.employeeId}' AND remainAdvanceAmount != 0 ORDER BY advanceDate ASC`;
+                                        pool.query(sql_querry_getAdvanceDetails, (err, datas) => {
+                                            if (err) {
+                                                console.error("An error occurd in SQL Queery", err);
+                                                return res.status(500).send('Database Error');
+                                            }
+                                            const advanceData = Object.values(JSON.parse(JSON.stringify(datas)));
+                                            const advanceOutData = [
+                                                { payAdvanceAmount: remainSalaryAmtWOAdv }
+                                            ];
+                                            const desiredAdvanceAmount = advanceOutData[0].payAdvanceAmount;
+                                            console.log("?????", desiredAdvanceAmount);
 
-                                        const salaryOutData = [
-                                            { monthlySalaryId: 1, paySalaryAmount: data.fineAmount }
-                                        ];
-                                        const desiredSalaryAmount = salaryOutData[0].paySalaryAmount;
-                                        console.log('fine kapya pachhi pay amount vadi dezire', desiredSalaryAmount);
+                                            // Calculate total Advance out price
+                                            let remainingAdvance = desiredAdvanceAmount;
 
-                                        // Calculate total Salary out price
-                                        let remainingSalary = desiredSalaryAmount;
+                                            // Sort Advance in data by Advance in price in ascending order
+                                            const sortedadvanceData = advanceData
+                                            for (const advanceOut of advanceOutData) {
+                                                let payAdvanceAmount = advanceOut.payAdvanceAmount;
 
-                                        // Sort Salary in data by Salary in price in ascending order
-                                        const sortedmsData = msData
-                                        for (const salaryOut of salaryOutData) {
-                                            let paySalaryAmount = salaryOut.paySalaryAmount;
+                                                for (const AdvanceIn of sortedadvanceData) {
+                                                    const { remainAdvance } = AdvanceIn;
 
-                                            for (const salaryIn of sortedmsData) {
-                                                const { remainSalary } = salaryIn;
+                                                    if (remainAdvance > 0) {
+                                                        const quantityToUse = Math.min(payAdvanceAmount, remainAdvance, remainingAdvance);
 
-                                                if (remainSalary > 0) {
-                                                    const salaryToUse = Math.min(paySalaryAmount, remainSalary, remainingSalary);
+                                                        remainingAdvance -= quantityToUse;
+                                                        payAdvanceAmount -= quantityToUse;
+                                                        AdvanceIn.remainAdvance -= quantityToUse;
 
-                                                    remainingSalary -= salaryToUse;
-                                                    paySalaryAmount -= salaryToUse;
-                                                    salaryIn.remainSalary -= salaryToUse;
-                                                    if (remainingSalary <= 0) {
-                                                        break;
+                                                        if (remainingAdvance <= 0) {
+                                                            break;
+                                                        }
                                                     }
                                                 }
+                                                if (remainingAdvance <= 0) {
+                                                    break;
+                                                }
                                             }
-                                            if (remainingSalary <= 0) {
-                                                break;
-                                            }
-                                        }
-                                        // Print updated msData
-                                        console.log("after fine Updated msData:", msData);
-                                        const updatedmsData = msData.filter((obj) => {
-                                            if (obj.remainSalary != obj.totalSalary) {
-                                                return obj;
-                                            }
-                                        })
-                                        const swFId = updatedmsData.map((obj) => {
-                                            if (obj.remainSalary !== obj.totalSalary) {
-                                                return obj.monthlySalaryId;
-                                            }
-                                        })
-                                        // console.log(swFId);
-                                        const msWiseSid = () => {
 
-                                            var string = ''
-                                            swFId.forEach((data, index) => {
-                                                if (index == 0)
-                                                    string = "(" + "'" + cutFine + "'" + "," + string + data + ")";
-                                                else
-                                                    string = string + ",(" + "'" + cutFine + "'" + "," + data + ")";
+                                            // Print updated advanceData
+                                            console.log("Updated advanceData:", advanceData);
+                                            const updatedAdvancedata = advanceData.filter((obj) => {
+                                                if (obj.remainAdvance != obj.advanceAmount) {
+                                                    return obj;
+                                                }
+                                            })
+                                            console.log('upda adv', updatedAdvancedata)
+                                            const swAId = updatedAdvancedata.map((obj) => {
+                                                if (obj.remainAdvance != obj.advanceAmount) {
+                                                    return obj.advanceId;
+                                                }
+                                            })
+                                            const sallaryWiseAdvanceId = () => {
+
+                                                var string = ''
+                                                swAId.forEach((data, index) => {
+                                                    if (index == 0)
+                                                        string = "(" + "'" + cutAdvance + "'" + "," + string + "'" + data + "'" + ")";
+                                                    else
+                                                        string = string + ",(" + "'" + cutAdvance + "'" + "," + "'" + data + "'" + ")";
+                                                });
+                                                return string;
+
+                                            }
+                                            console.log(">?>?>/////", sallaryWiseAdvanceId())
+                                            let sumOfUpdatedadvanceRemain = 0;
+                                            advanceData.forEach((item) => {
+                                                sumOfUpdatedadvanceRemain += item.remainAdvance;
                                             });
-                                            return string;
 
-                                        }
-                                        // console.log(">?>?>/////", msWiseSid())
-                                        sql_querry_addmsFid = `INSERT INTO staff_msWiseSalaryId_data (salaryId, monthlySalaryId) VALUES ${msWiseSid()}`
-                                        pool.query(sql_querry_addmsFid, (err, result) => {
-                                            if (err) {
-                                                console.error("An error occurred while updating msData", err);
-                                                // return res.status(500).send('Database Error');
-                                            }
-                                            const updateQuery = generateMonthlyUpdateQuery(updatedmsData);
+                                            console.log("Sum of prevaios advanceFine:", sumOfUpdatedadvanceRemain)
+                                            const updateQuery = generateAdvanceUpdateQuery(updatedAdvancedata);
                                             pool.query(updateQuery, (err, result) => {
                                                 if (err) {
-                                                    console.error("An error occurred while updating msData", err);
+                                                    console.error("An error occurred while updating fineData", err);
                                                     return res.status(500).send('Database Error');
                                                 }
-                                                if (data.advanceAmount != 0) {
-                                                    if (remainSalaryAmtWOAdv <= data.advanceAmount) {
-                                                        console.log('fine pachi advance moto');
-                                                        sql_querry_getAdvanceDetails = `SELECT advanceId, advanceAmount, remainAdvanceAmount AS remainAdvance FROM staff_advance_data WHERE employeeId = '${data.employeeId}' AND remainAdvanceAmount != 0 ORDER BY advanceDate ASC`;
-                                                        pool.query(sql_querry_getAdvanceDetails, (err, datas) => {
-                                                            if (err) {
-                                                                console.error("An error occurd in SQL Queery", err);
-                                                                return res.status(500).send('Database Error');
-                                                            }
-                                                            const advanceData = Object.values(JSON.parse(JSON.stringify(datas)));
-                                                            const advanceOutData = [
-                                                                { payAdvanceAmount: remainSalaryAmtWOAdv }
-                                                            ];
-                                                            const desiredAdvanceAmount = advanceOutData[0].payAdvanceAmount;
-                                                            console.log("?????", desiredAdvanceAmount);
 
-                                                            // Calculate total Advance out price
-                                                            let remainingAdvance = desiredAdvanceAmount;
+                                                console.log("AdvanceData updated successfully:");
 
-                                                            // Sort Advance in data by Advance in price in ascending order
-                                                            const sortedadvanceData = advanceData
-                                                            for (const advanceOut of advanceOutData) {
-                                                                let payAdvanceAmount = advanceOut.payAdvanceAmount;
-
-                                                                for (const AdvanceIn of sortedadvanceData) {
-                                                                    const { remainAdvance } = AdvanceIn;
-
-                                                                    if (remainAdvance > 0) {
-                                                                        const quantityToUse = Math.min(payAdvanceAmount, remainAdvance, remainingAdvance);
-
-                                                                        remainingAdvance -= quantityToUse;
-                                                                        payAdvanceAmount -= quantityToUse;
-                                                                        AdvanceIn.remainAdvance -= quantityToUse;
-
-                                                                        if (remainingAdvance <= 0) {
-                                                                            break;
-                                                                        }
-                                                                    }
-                                                                }
-                                                                if (remainingAdvance <= 0) {
-                                                                    break;
-                                                                }
-                                                            }
-
-                                                            // Print updated advanceData
-                                                            console.log("Updated advanceData:", advanceData);
-                                                            const updatedAdvancedata = advanceData.filter((obj) => {
-                                                                if (obj.remainAdvance != obj.advanceAmount) {
-                                                                    return obj;
-                                                                }
-                                                            })
-                                                            const swAId = updatedAdvancedata.map((obj) => {
-                                                                if (obj.remainAdvance != obj.advanceAmount) {
-                                                                    return obj.advanceId;
-                                                                }
-                                                            })
-                                                            const sallaryWiseAdvanceId = () => {
-
-                                                                var string = ''
-                                                                swAId.forEach((data, index) => {
-                                                                    if (index == 0)
-                                                                        string = "(" + "'" + cutAdvance + "'" + "," + string + "'" + data + "'" + ")";
-                                                                    else
-                                                                        string = string + ",(" + "'" + cutAdvance + "'" + "," + "'" + data + "'" + ")";
-                                                                });
-                                                                return string;
-                                                            }
-                                                            // console.log(">?>?>/////", sallaryWiseAdvanceId())
-                                                            let sumOfUpdatedadvanceRemain = 0;
-                                                            advanceData.forEach((item) => {
-                                                                sumOfUpdatedadvanceRemain += item.remainAdvance;
-                                                            });
-
-                                                            console.log("Sum of prevaios advanceFine:", sumOfUpdatedadvanceRemain)
-                                                            const updateQuery = generateAdvanceUpdateQuery(updatedAdvancedata);
-                                                            pool.query(updateQuery, (err, result) => {
-                                                                if (err) {
-                                                                    console.error("An error occurred while updating fineData", err);
-                                                                    // return res.status(500).send('Database Error');
-                                                                }
-
-                                                                console.log("AdvanceData updated successfully:");
-
-                                                                const totalCutamountOffAdvance = data.advanceAmount - sumOfUpdatedadvanceRemain;
-                                                                sql_query_addDetail = `INSERT INTO staff_salary_data(
+                                                const totalCutamountOffAdvance = data.advanceAmount - sumOfUpdatedadvanceRemain;
+                                                sql_query_addDetail = `INSERT INTO staff_salary_data(
                                                                     salaryId,
+                                                                    remainSalaryId,
                                                                     userId,
                                                                     employeeId,
                                                                     salaryAmount,
@@ -580,6 +1298,7 @@ const addAmountOfSFA = (req, res) => {
                                                                 )
                                                                 VALUES(
                                                                     '${cutAdvance}',
+                                                                    '${remainSalaryId}',
                                                                     '${userId}',
                                                                     '${data.employeeId}',
                                                                      ${totalCutamountOffAdvance},
@@ -588,421 +1307,13 @@ const addAmountOfSFA = (req, res) => {
                                                                     STR_TO_DATE('${data.amountDate}','%b %d %Y')
                                                                 );
                                                                 INSERT INTO salary_salaryWiseAdvanceId_data (salaryId, advanceId) VALUES ${sallaryWiseAdvanceId()}`
-                                                                pool.query(sql_query_addDetail, (err, add) => {
-                                                                    if (err) {
-                                                                        console.error("An error occurd in SQL Queery", err);
-                                                                        return res.status(500).send('Database Error');
-                                                                    }
-                                                                    console.log('Advance CutOff');
-
-                                                                    sql_querry_getFinedetail = `SELECT monthlySalaryId, totalSalary, remainSalary AS remainSalary FROM staff_monthlySalary_data WHERE employeeId = '${data.employeeId}' AND remainSalary != 0 ORDER BY msStartDate ASC`;
-                                                                    pool.query(sql_querry_getFinedetail, (err, datas) => {
-                                                                        if (err) {
-                                                                            console.error("An error occurd in SQL Queery", err);
-                                                                            return res.status(500).send('Database Error');
-                                                                        }
-                                                                        const msData = Object.values(JSON.parse(JSON.stringify(datas)));
-                                                                        console.log('adv', msData);
-
-                                                                        const salaryOutData = [
-                                                                            { monthlySalaryId: 1, paySalaryAmount: totalCutamountOffAdvance }
-                                                                        ];
-                                                                        const desiredSalaryAmount = salaryOutData[0].paySalaryAmount;
-                                                                        console.log("?????", desiredSalaryAmount);
-
-                                                                        // Calculate total Salary out price
-                                                                        let remainingSalary = desiredSalaryAmount;
-
-                                                                        // Sort Salary in data by Salary in price in ascending order
-                                                                        const sortedmsData = msData
-                                                                        for (const salaryOut of salaryOutData) {
-                                                                            let paySalaryAmount = salaryOut.paySalaryAmount;
-
-                                                                            for (const salaryIn of sortedmsData) {
-                                                                                const { remainSalary } = salaryIn;
-
-                                                                                if (remainSalary > 0) {
-                                                                                    const salaryToUse = Math.min(paySalaryAmount, remainSalary, remainingSalary);
-
-                                                                                    remainingSalary -= salaryToUse;
-                                                                                    paySalaryAmount -= salaryToUse;
-                                                                                    salaryIn.remainSalary -= salaryToUse;
-                                                                                    if (remainingSalary <= 0) {
-                                                                                        break;
-                                                                                    }
-                                                                                }
-                                                                            }
-                                                                            if (remainingSalary <= 0) {
-                                                                                break;
-                                                                            }
-                                                                        }
-                                                                        // Print updated msData
-                                                                        console.log(" after advance Updated msData:", msData);
-                                                                        const updatedmsData = msData.filter((obj) => {
-                                                                            if (obj.remainSalary != obj.totalSalary) {
-                                                                                return obj;
-                                                                            }
-                                                                        })
-                                                                        const swFId = updatedmsData.map((obj) => {
-                                                                            if (obj.remainSalary != obj.totalSalary) {
-                                                                                return obj.monthlySalaryId;
-                                                                            }
-                                                                        })
-                                                                        const msWiseSid = () => {
-
-                                                                            var string = ''
-                                                                            swFId.forEach((data, index) => {
-                                                                                if (index == 0)
-                                                                                    string = "(" + "'" + cutAdvance + "'" + "," + string + "'" + data + "'" + ")";
-                                                                                else
-                                                                                    string = string + ",(" + "'" + cutAdvance + "'" + "," + "'" + data + "'" + ")";
-                                                                            });
-                                                                            return string;
-
-                                                                        }
-                                                                        console.log(">?>?>/////", msWiseSid())
-                                                                        sql_querry_addmsFid = `INSERT INTO staff_msWiseSalaryId_data (salaryId, monthlySalaryId) VALUES ${msWiseSid()}`
-                                                                        pool.query(sql_querry_addmsFid, (err, result) => {
-                                                                            if (err) {
-                                                                                console.error("An error occurred while updating msData", err);
-                                                                                return res.status(500).send('Database Error');
-                                                                            }
-                                                                        })
-                                                                        const updateQuery = generateMonthlyUpdateQuery(updatedmsData);
-                                                                        pool.query(updateQuery, (err, result) => {
-                                                                            if (err) {
-                                                                                console.error("An error occurred while updating msData", err);
-                                                                                return res.status(500).send('Database Error');
-                                                                            }
-                                                                            if (data.payAmount != 0 && req.body.amountType == '1') {
-                                                                                sql_querry_getFinedetail = `SELECT monthlySalaryId, totalSalary, remainSalary AS remainSalary FROM staff_monthlySalary_data WHERE employeeId = '${data.employeeId}' AND remainSalary != 0 ORDER BY msStartDate ASC`;
-                                                                                pool.query(sql_querry_getFinedetail, (err, datas) => {
-                                                                                    if (err) {
-                                                                                        console.error("An error occurd in SQL Queery", err);
-                                                                                        return res.status(500).send('Database Error');
-                                                                                    }
-                                                                                    const msData = Object.values(JSON.parse(JSON.stringify(datas)));
-                                                                                    console.log(msData);
-
-                                                                                    const salaryOutData = [
-                                                                                        { monthlySalaryId: 1, paySalaryAmount: data.payAmount }
-                                                                                    ];
-                                                                                    const desiredSalaryAmount = salaryOutData[0].paySalaryAmount;
-                                                                                    console.log("pay slary", desiredSalaryAmount);
-
-                                                                                    // Calculate total Salary out price
-                                                                                    let remainingSalary = desiredSalaryAmount;
-
-                                                                                    // Sort Salary in data by Salary in price in ascending order
-                                                                                    const sortedmsData = msData
-                                                                                    for (const salaryOut of salaryOutData) {
-                                                                                        let paySalaryAmount = salaryOut.paySalaryAmount;
-
-                                                                                        for (const salaryIn of sortedmsData) {
-                                                                                            const { remainSalary } = salaryIn;
-
-                                                                                            if (remainSalary > 0) {
-                                                                                                const salaryToUse = Math.min(paySalaryAmount, remainSalary, remainingSalary);
-
-                                                                                                remainingSalary -= salaryToUse;
-                                                                                                paySalaryAmount -= salaryToUse;
-                                                                                                salaryIn.remainSalary -= salaryToUse;
-                                                                                                if (remainingSalary <= 0) {
-                                                                                                    break;
-                                                                                                }
-                                                                                            }
-                                                                                        }
-                                                                                        if (remainingSalary <= 0) {
-                                                                                            break;
-                                                                                        }
-                                                                                    }
-                                                                                    // Print updated msData
-                                                                                    console.log("Updated msData:", msData);
-                                                                                    const updatedmsData = msData.filter((obj) => {
-                                                                                        if (obj.remainSalary != obj.totalSalary) {
-                                                                                            return obj;
-                                                                                        }
-                                                                                    })
-                                                                                    console.log('><', updatedmsData);
-                                                                                    const swFId = updatedmsData.map((obj) => {
-                                                                                        if (obj.remainSalary != obj.totalSalary) {
-                                                                                            return obj.monthlySalaryId;
-                                                                                        }
-                                                                                    })
-                                                                                    const msWiseSid = () => {
-
-                                                                                        var string = ''
-                                                                                        swFId.forEach((data, index) => {
-                                                                                            if (index == 0)
-                                                                                                string = "(" + "'" + salaryId + "'" + "," + string + "'" + data + "'" + ")";
-                                                                                            else
-                                                                                                string = string + ",(" + "'" + salaryId + "'" + "," + "'" + data + "'" + ")";
-                                                                                        });
-                                                                                        return string;
-
-                                                                                    }
-                                                                                    // console.log(">?>?>/////", msWiseSid())
-                                                                                    sql_querry_addmsFid = `INSERT INTO staff_msWiseSalaryId_data (salaryId, monthlySalaryId) VALUES ${msWiseSid()}`
-                                                                                    pool.query(sql_querry_addmsFid, (err, result) => {
-                                                                                        if (err) {
-                                                                                            console.error("An error occurred while updating msData", err);
-                                                                                            return res.status(500).send('Database Error');
-                                                                                        }
-                                                                                    })
-                                                                                    const updateQuery = generateMonthlyUpdateQuery(updatedmsData);
-                                                                                    pool.query(updateQuery, (err, result) => {
-                                                                                        if (err) {
-                                                                                            console.error("An error occurred while updating msData", err);
-                                                                                            return res.status(500).send('Database Error');
-                                                                                        }
-                                                                                    })
-                                                                                })
-                                                                            }
-                                                                        })
-                                                                    })
-                                                                })
-                                                            });
-                                                        })
-                                                    } else {
-                                                        console.log('fine pachhi advance nano');
-                                                        sql_query_allZeroRemainFine = `SELECT
-                                                                        advanceId
-                                                                    FROM
-                                                                        staff_advance_data
-                                                                    WHERE
-                                                                        employeeId = '${data.employeeId}' AND remainAdvanceAmount != 0;
-                                                                UPDATE
-                                                                    staff_advance_data
-                                                                SET
-                                                                    remainAdvanceAmount = 0
-                                                                WHERE
-                                                                advanceId IN(
-                                                                    SELECT
-                                                                        COALESCE(advanceId, NULL)
-                                                                    FROM
-                                                                        staff_advance_data
-                                                                    WHERE
-                                                                        employeeId = '${data.employeeId}' AND remainAdvanceAmount != 0
-                                                                    )`;
-                                                        pool.query(sql_query_allZeroRemainFine, (err, result) => {
-                                                            if (err) {
-                                                                console.error("An error occurd in SQL Queery", err);
-                                                                return res.status(500).send('Database Error');
-                                                            }
-                                                            console.log(result[0])
-                                                            const allAdvanceId = result[0];
-                                                            const swAId = allAdvanceId.map((obj) => {
-                                                                return obj.advanceId;
-                                                            })
-                                                            const sallaryWiseAllAdvanceId = () => {
-
-                                                                var string = ''
-                                                                swAId.forEach((data, index) => {
-                                                                    if (index == 0)
-                                                                        string = "(" + "'" + cutAdvance + "'" + "," + string + "'" + data + "'" + ")";
-                                                                    else
-                                                                        string = string + ",(" + "'" + cutAdvance + "'" + "," + "'" + data + "'" + ")";
-                                                                });
-                                                                return string;
-
-                                                            }
-                                                            // console.log('><><><', sallaryWiseAllAdvanceId());
-                                                            sql_query_addDetail = `INSERT INTO staff_salary_data(
-                                                                    salaryId,
-                                                                    userId,
-                                                                    employeeId,
-                                                                    salaryAmount,
-                                                                    salaryType,
-                                                                    salaryComment,
-                                                                    salaryDate
-                                                                )
-                                                                VALUES(
-                                                                    '${cutAdvance}',
-                                                                    '${userId}',
-                                                                    '${data.employeeId}',
-                                                                     ${data.advanceAmount},
-                                                                    'Advance Pay',
-                                                                    NULLIF('${data.comment}','null'),
-                                                                    STR_TO_DATE('${data.amountDate}','%b %d %Y')
-                                                                );
-                                                                INSERT INTO salary_salaryWiseAdvanceId_data (salaryId, advanceId) VALUES ${sallaryWiseAllAdvanceId()}`;
-                                                            pool.query(sql_query_addDetail, (err, add) => {
-                                                                if (err) {
-                                                                    console.error("An error occurd in SQL Queery", err);
-                                                                    return res.status(500).send('Database Error');
-                                                                }
-                                                                // console.log('All Advance Is Done');
-                                                            })
-                                                            sql_querry_getFinedetail = `SELECT monthlySalaryId, totalSalary, remainSalary AS remainSalary FROM staff_monthlySalary_data WHERE employeeId = '${data.employeeId}' AND remainSalary != 0 ORDER BY msStartDate ASC`;
-                                                            pool.query(sql_querry_getFinedetail, (err, datas) => {
-                                                                if (err) {
-                                                                    console.error("An error occurd in SQL Queery", err);
-                                                                    return res.status(500).send('Database Error');
-                                                                }
-                                                                const msData = Object.values(JSON.parse(JSON.stringify(datas)));
-                                                                console.log('adv', msData);
-
-                                                                const salaryOutData = [
-                                                                    { monthlySalaryId: 1, paySalaryAmount: data.advanceAmount }
-                                                                ];
-                                                                const desiredSalaryAmount = salaryOutData[0].paySalaryAmount;
-                                                                console.log("?????", desiredSalaryAmount);
-
-                                                                // Calculate total Salary out price
-                                                                let remainingSalary = desiredSalaryAmount;
-
-                                                                // Sort Salary in data by Salary in price in ascending order
-                                                                const sortedmsData = msData
-                                                                for (const salaryOut of salaryOutData) {
-                                                                    let paySalaryAmount = salaryOut.paySalaryAmount;
-
-                                                                    for (const salaryIn of sortedmsData) {
-                                                                        const { remainSalary } = salaryIn;
-
-                                                                        if (remainSalary > 0) {
-                                                                            const salaryToUse = Math.min(paySalaryAmount, remainSalary, remainingSalary);
-
-                                                                            remainingSalary -= salaryToUse;
-                                                                            paySalaryAmount -= salaryToUse;
-                                                                            salaryIn.remainSalary -= salaryToUse;
-                                                                            if (remainingSalary <= 0) {
-                                                                                break;
-                                                                            }
-                                                                        }
-                                                                    }
-                                                                    if (remainingSalary <= 0) {
-                                                                        break;
-                                                                    }
-                                                                }
-                                                                // Print updated msData
-                                                                console.log(" after advance Updated msData:", msData);
-                                                                const updatedmsData = msData.filter((obj) => {
-                                                                    if (obj.remainSalary != obj.totalSalary) {
-                                                                        return obj;
-                                                                    }
-                                                                })
-                                                                const swFId = updatedmsData.map((obj) => {
-                                                                    if (obj.remainSalary != obj.totalSalary) {
-                                                                        return obj.monthlySalaryId;
-                                                                    }
-                                                                })
-                                                                const msWiseSid = () => {
-
-                                                                    var string = ''
-                                                                    swFId.forEach((data, index) => {
-                                                                        if (index == 0)
-                                                                            string = "(" + "'" + cutAdvance + "'" + "," + string + "'" + data + "'" + ")";
-                                                                        else
-                                                                            string = string + ",(" + "'" + cutAdvance + "'" + "," + "'" + data + "'" + ")";
-                                                                    });
-                                                                    return string;
-
-                                                                }
-                                                                // console.log(">?>?>/////", msWiseSid())
-                                                                sql_querry_addmsFid = `INSERT INTO staff_msWiseSalaryId_data (salaryId, monthlySalaryId) VALUES ${msWiseSid()}`
-                                                                pool.query(sql_querry_addmsFid, (err, result) => {
-                                                                    if (err) {
-                                                                        console.error("An error occurred while updating msData", err);
-                                                                        return res.status(500).send('Database Error');
-                                                                    }
-                                                                })
-                                                                const updateQuery = generateMonthlyUpdateQuery(updatedmsData);
-                                                                pool.query(updateQuery, (err, result) => {
-                                                                    if (err) {
-                                                                        console.error("An error occurred while updating msData", err);
-                                                                        return res.status(500).send('Database Error');
-                                                                    }
-                                                                    if (data.payAmount != 0 && req.body.amountType == '1') {
-                                                                        sql_querry_getFinedetail = `SELECT monthlySalaryId, totalSalary, remainSalary AS remainSalary FROM staff_monthlySalary_data WHERE employeeId = '${data.employeeId}' AND remainSalary != 0 ORDER BY msStartDate ASC`;
-                                                                        pool.query(sql_querry_getFinedetail, (err, datas) => {
-                                                                            if (err) {
-                                                                                console.error("An error occurd in SQL Queery", err);
-                                                                                return res.status(500).send('Database Error');
-                                                                            }
-                                                                            const msData = Object.values(JSON.parse(JSON.stringify(datas)));
-                                                                            console.log(msData);
-
-                                                                            const salaryOutData = [
-                                                                                { monthlySalaryId: 1, paySalaryAmount: data.payAmount }
-                                                                            ];
-                                                                            const desiredSalaryAmount = salaryOutData[0].paySalaryAmount;
-                                                                            console.log("?????", desiredSalaryAmount);
-
-                                                                            // Calculate total Salary out price
-                                                                            let remainingSalary = desiredSalaryAmount;
-
-                                                                            // Sort Salary in data by Salary in price in ascending order
-                                                                            const sortedmsData = msData
-                                                                            for (const salaryOut of salaryOutData) {
-                                                                                let paySalaryAmount = salaryOut.paySalaryAmount;
-
-                                                                                for (const salaryIn of sortedmsData) {
-                                                                                    const { remainSalary } = salaryIn;
-
-                                                                                    if (remainSalary > 0) {
-                                                                                        const salaryToUse = Math.min(paySalaryAmount, remainSalary, remainingSalary);
-
-                                                                                        remainingSalary -= salaryToUse;
-                                                                                        paySalaryAmount -= salaryToUse;
-                                                                                        salaryIn.remainSalary -= salaryToUse;
-                                                                                        if (remainingSalary <= 0) {
-                                                                                            break;
-                                                                                        }
-                                                                                    }
-                                                                                }
-                                                                                if (remainingSalary <= 0) {
-                                                                                    break;
-                                                                                }
-                                                                            }
-                                                                            // Print updated msData
-                                                                            console.log("Updated msData:", msData);
-                                                                            const updatedmsData = msData.filter((obj) => {
-                                                                                if (obj.remainSalary != obj.totalSalary) {
-                                                                                    return obj;
-                                                                                }
-                                                                            })
-                                                                            console.log('><', updatedmsData);
-                                                                            const swFId = updatedmsData.map((obj) => {
-                                                                                if (obj.remainSalary != obj.totalSalary) {
-                                                                                    return obj.monthlySalaryId;
-                                                                                }
-                                                                            })
-                                                                            const msWiseSid = () => {
-
-                                                                                var string = ''
-                                                                                swFId.forEach((data, index) => {
-                                                                                    if (index == 0)
-                                                                                        string = "(" + "'" + salaryId + "'" + "," + string + "'" + data + "'" + ")";
-                                                                                    else
-                                                                                        string = string + ",(" + "'" + salaryId + "'" + "," + "'" + data + "'" + ")";
-                                                                                });
-                                                                                return string;
-
-                                                                            }
-                                                                            // console.log(">?>?>/////", msWiseSid())
-                                                                            sql_querry_addmsFid = `INSERT INTO staff_msWiseSalaryId_data (salaryId, monthlySalaryId) VALUES ${msWiseSid()}`
-                                                                            pool.query(sql_querry_addmsFid, (err, result) => {
-                                                                                if (err) {
-                                                                                    console.error("An error occurred while updating msData", err);
-                                                                                    return res.status(500).send('Database Error');
-                                                                                }
-                                                                            })
-                                                                            const updateQuery = generateMonthlyUpdateQuery(updatedmsData);
-                                                                            pool.query(updateQuery, (err, result) => {
-                                                                                if (err) {
-                                                                                    console.error("An error occurred while updating msData", err);
-                                                                                    return res.status(500).send('Database Error');
-                                                                                }
-                                                                            })
-
-                                                                        })
-                                                                    }
-                                                                })
-                                                            })
-                                                        })
+                                                pool.query(sql_query_addDetail, (err, add) => {
+                                                    if (err) {
+                                                        console.error("An error occurd in SQL Queery", err);
+                                                        return res.status(500).send('Database Error');
                                                     }
-                                                }
-                                                else if (data.payAmount != 0 && req.body.amountType == '1') {
+                                                    console.log('Advance CutOff');
+
                                                     sql_querry_getFinedetail = `SELECT monthlySalaryId, totalSalary, remainSalary AS remainSalary FROM staff_monthlySalary_data WHERE employeeId = '${data.employeeId}' AND remainSalary != 0 ORDER BY msStartDate ASC`;
                                                     pool.query(sql_querry_getFinedetail, (err, datas) => {
                                                         if (err) {
@@ -1010,10 +1321,10 @@ const addAmountOfSFA = (req, res) => {
                                                             return res.status(500).send('Database Error');
                                                         }
                                                         const msData = Object.values(JSON.parse(JSON.stringify(datas)));
-                                                        console.log(msData);
+                                                        console.log('adv', msData);
 
                                                         const salaryOutData = [
-                                                            { monthlySalaryId: 1, paySalaryAmount: data.payAmount }
+                                                            { monthlySalaryId: 1, paySalaryAmount: totalCutamountOffAdvance }
                                                         ];
                                                         const desiredSalaryAmount = salaryOutData[0].paySalaryAmount;
                                                         console.log("?????", desiredSalaryAmount);
@@ -1051,7 +1362,6 @@ const addAmountOfSFA = (req, res) => {
                                                                 return obj;
                                                             }
                                                         })
-                                                        console.log('><', updatedmsData);
                                                         const swFId = updatedmsData.map((obj) => {
                                                             if (obj.remainSalary != obj.totalSalary) {
                                                                 return obj.monthlySalaryId;
@@ -1062,9 +1372,9 @@ const addAmountOfSFA = (req, res) => {
                                                             var string = ''
                                                             swFId.forEach((data, index) => {
                                                                 if (index == 0)
-                                                                    string = "(" + "'" + salaryId + "'" + "," + string + "'" + data + "'" + ")";
+                                                                    string = "(" + "'" + cutAdvance + "'" + "," + string + "'" + data + "'" + ")";
                                                                 else
-                                                                    string = string + ",(" + "'" + salaryId + "'" + "," + "'" + data + "'" + ")";
+                                                                    string = string + ",(" + "'" + cutAdvance + "'" + "," + "'" + data + "'" + ")";
                                                             });
                                                             return string;
 
@@ -1083,148 +1393,142 @@ const addAmountOfSFA = (req, res) => {
                                                                 console.error("An error occurred while updating msData", err);
                                                                 return res.status(500).send('Database Error');
                                                             }
+                                                            if (data.payAmount != 0 && req.body.amountType == '1') {
+                                                                sql_querry_getFinedetail = `SELECT monthlySalaryId, totalSalary, remainSalary AS remainSalary FROM staff_monthlySalary_data WHERE employeeId = '${data.employeeId}' AND remainSalary != 0 ORDER BY msStartDate ASC`;
+                                                                pool.query(sql_querry_getFinedetail, (err, datas) => {
+                                                                    if (err) {
+                                                                        console.error("An error occurd in SQL Queery", err);
+                                                                        return res.status(500).send('Database Error');
+                                                                    }
+                                                                    const msData = Object.values(JSON.parse(JSON.stringify(datas)));
+                                                                    console.log(msData);
+
+                                                                    const salaryOutData = [
+                                                                        { monthlySalaryId: 1, paySalaryAmount: data.payAmount }
+                                                                    ];
+                                                                    const desiredSalaryAmount = salaryOutData[0].paySalaryAmount;
+                                                                    console.log("?????", desiredSalaryAmount);
+
+                                                                    // Calculate total Salary out price
+                                                                    let remainingSalary = desiredSalaryAmount;
+
+                                                                    // Sort Salary in data by Salary in price in ascending order
+                                                                    const sortedmsData = msData
+                                                                    for (const salaryOut of salaryOutData) {
+                                                                        let paySalaryAmount = salaryOut.paySalaryAmount;
+
+                                                                        for (const salaryIn of sortedmsData) {
+                                                                            const { remainSalary } = salaryIn;
+
+                                                                            if (remainSalary > 0) {
+                                                                                const salaryToUse = Math.min(paySalaryAmount, remainSalary, remainingSalary);
+
+                                                                                remainingSalary -= salaryToUse;
+                                                                                paySalaryAmount -= salaryToUse;
+                                                                                salaryIn.remainSalary -= salaryToUse;
+                                                                                if (remainingSalary <= 0) {
+                                                                                    break;
+                                                                                }
+                                                                            }
+                                                                        }
+                                                                        if (remainingSalary <= 0) {
+                                                                            break;
+                                                                        }
+                                                                    }
+                                                                    // Print updated msData
+                                                                    console.log("Updated msData:", msData);
+                                                                    const updatedmsData = msData.filter((obj) => {
+                                                                        if (obj.remainSalary != obj.totalSalary) {
+                                                                            return obj;
+                                                                        }
+                                                                    })
+                                                                    console.log('><', updatedmsData);
+                                                                    const swFId = updatedmsData.map((obj) => {
+                                                                        if (obj.remainSalary != obj.totalSalary) {
+                                                                            return obj.monthlySalaryId;
+                                                                        }
+                                                                    })
+                                                                    const msWiseSid = () => {
+
+                                                                        var string = ''
+                                                                        swFId.forEach((data, index) => {
+                                                                            if (index == 0)
+                                                                                string = "(" + "'" + salaryId + "'" + "," + string + "'" + data + "'" + ")";
+                                                                            else
+                                                                                string = string + ",(" + "'" + salaryId + "'" + "," + "'" + data + "'" + ")";
+                                                                        });
+                                                                        return string;
+
+                                                                    }
+                                                                    console.log(">?>?>/////", msWiseSid())
+                                                                    sql_querry_addmsFid = `INSERT INTO staff_msWiseSalaryId_data (salaryId, monthlySalaryId) VALUES ${msWiseSid()}`
+                                                                    pool.query(sql_querry_addmsFid, (err, result) => {
+                                                                        if (err) {
+                                                                            console.error("An error occurred while updating msData", err);
+                                                                            return res.status(500).send('Database Error');
+                                                                        }
+                                                                    })
+                                                                    const updateQuery = generateMonthlyUpdateQuery(updatedmsData);
+                                                                    pool.query(updateQuery, (err, result) => {
+                                                                        if (err) {
+                                                                            console.error("An error occurred while updating msData", err);
+                                                                            return res.status(500).send('Database Error');
+                                                                        }
+                                                                    })
+                                                                })
+                                                            }
                                                         })
                                                     })
-                                                }
-                                            })
+                                                })
+                                            });
                                         })
-
-                                    })
-                                    // console.log("msData updated successfully");
-                                    console.log(result[0])
-                                    const allFineId = result[0];
-                                    const swFId = allFineId.map((obj) => {
-                                        return obj.fineId;
-                                    })
-                                    const sallaryWiseAllFineId = () => {
-
-                                        var string = ''
-                                        swFId.forEach((data, index) => {
-                                            if (index == 0)
-                                                string = "(" + "'" + cutFine + "'" + "," + string + "'" + data + "'" + ")";
-                                            else
-                                                string = string + ",(" + "'" + cutFine + "'" + "," + "'" + data + "'" + ")";
-                                        });
-                                        return string;
-                                    }
-                                    // console.log('><><><', sallaryWiseAllFineId());
-                                    sql_query_addDetail = `INSERT INTO staff_salary_data(
-                                                                    salaryId,
-                                                                    userId,
-                                                                    employeeId,
-                                                                    salaryAmount,
-                                                                    salaryType,
-                                                                    salaryComment,
-                                                                    salaryDate
-                                                                )
-                                                                VALUES(
-                                                                    '${cutFine}',
-                                                                    '${userId}',
-                                                                    '${data.employeeId}',
-                                                                     ${data.fineAmount},
-                                                                    'Fine Cut',
-                                                                    NULLIF('${data.comment}','null'),
-                                                                    STR_TO_DATE('${data.amountDate}','%b %d %Y')
-                                                                );
-                                                                INSERT INTO salary_salaryWiseFineId_data (salaryId, fineId) VALUES ${sallaryWiseAllFineId()}`
-                                    pool.query(sql_query_addDetail, (err, add) => {
-                                        if (err) {
-                                            console.error("An error occurd in SQL Queery", err);
-                                        }
-                                        // console.log('Fine CutOff');
-                                    })
-                                })
-                            }
-                        }
-                        else if (data.advanceAmount > 0) {
-                            console.log('?avyu')
-                            if (remainSalaryAmtWOAdv <= data.advanceAmount) {
-                                console.log('only advance motot')
-                                sql_querry_getAdvanceDetails = `SELECT advanceId, advanceAmount, remainAdvanceAmount AS remainAdvance FROM staff_advance_data WHERE employeeId = '${data.employeeId}' AND remainAdvanceAmount != 0 ORDER BY advanceDate ASC`;
-                                pool.query(sql_querry_getAdvanceDetails, (err, datas) => {
-                                    if (err) {
-                                        console.error("An error occurd in SQL Queery", err);
-                                        return res.status(500).send('Database Error');
-                                    }
-                                    const advanceData = Object.values(JSON.parse(JSON.stringify(datas)));
-                                    const advanceOutData = [
-                                        { payAdvanceAmount: remainSalaryAmtWOAdv }
-                                    ];
-                                    const desiredAdvanceAmount = advanceOutData[0].payAdvanceAmount;
-                                    console.log("?????", desiredAdvanceAmount);
-
-                                    // Calculate total Advance out price
-                                    let remainingAdvance = desiredAdvanceAmount;
-
-                                    // Sort Advance in data by Advance in price in ascending order
-                                    const sortedadvanceData = advanceData
-                                    for (const advanceOut of advanceOutData) {
-                                        let payAdvanceAmount = advanceOut.payAdvanceAmount;
-
-                                        for (const AdvanceIn of sortedadvanceData) {
-                                            const { remainAdvance } = AdvanceIn;
-
-                                            if (remainAdvance > 0) {
-                                                const quantityToUse = Math.min(payAdvanceAmount, remainAdvance, remainingAdvance);
-
-                                                remainingAdvance -= quantityToUse;
-                                                payAdvanceAmount -= quantityToUse;
-                                                AdvanceIn.remainAdvance -= quantityToUse;
-
-                                                if (remainingAdvance <= 0) {
-                                                    break;
-                                                }
+                                    } else {
+                                        console.log('only advaance nano');
+                                        sql_query_allZeroRemainFine = `SELECT
+                                                                        advanceId
+                                                                    FROM
+                                                                        staff_advance_data
+                                                                    WHERE
+                                                                        employeeId = '${data.employeeId}' AND remainAdvanceAmount != 0;
+                                                                UPDATE
+                                                                    staff_advance_data
+                                                                SET
+                                                                    remainAdvanceAmount = 0
+                                                                WHERE
+                                                                advanceId IN(
+                                                                    SELECT
+                                                                        COALESCE(advanceId, NULL)
+                                                                    FROM
+                                                                        staff_advance_data
+                                                                    WHERE
+                                                                        employeeId = '${data.employeeId}' AND remainAdvanceAmount != 0
+                                                                    )`;
+                                        pool.query(sql_query_allZeroRemainFine, (err, result) => {
+                                            if (err) {
+                                                console.error("An error occurd in SQL Queery", err);
+                                                return res.status(500).send('Database Error');
                                             }
-                                        }
-                                        if (remainingAdvance <= 0) {
-                                            break;
-                                        }
-                                    }
+                                            console.log(result[0])
+                                            const allAdvanceId = result[0];
+                                            const swAId = allAdvanceId.map((obj) => {
+                                                return obj.advanceId;
+                                            })
+                                            const sallaryWiseAllAdvanceId = () => {
 
-                                    // Print updated advanceData
-                                    console.log("Updated advanceData:", advanceData);
-                                    const updatedAdvancedata = advanceData.filter((obj) => {
-                                        if (obj.remainAdvance != obj.advanceAmount) {
-                                            return obj;
-                                        }
-                                    })
-                                    console.log('upda adv', updatedAdvancedata)
-                                    const swAId = updatedAdvancedata.map((obj) => {
-                                        if (obj.remainAdvance != obj.advanceAmount) {
-                                            return obj.advanceId;
-                                        }
-                                    })
-                                    const sallaryWiseAdvanceId = () => {
+                                                var string = ''
+                                                swAId.forEach((data, index) => {
+                                                    if (index == 0)
+                                                        string = "(" + "'" + cutAdvance + "'" + "," + string + "'" + data + "'" + ")";
+                                                    else
+                                                        string = string + ",(" + "'" + cutAdvance + "'" + "," + "'" + data + "'" + ")";
+                                                });
+                                                return string;
 
-                                        var string = ''
-                                        swAId.forEach((data, index) => {
-                                            if (index == 0)
-                                                string = "(" + "'" + cutAdvance + "'" + "," + string + "'" + data + "'" + ")";
-                                            else
-                                                string = string + ",(" + "'" + cutAdvance + "'" + "," + "'" + data + "'" + ")";
-                                        });
-                                        return string;
-
-                                    }
-                                    console.log(">?>?>/////", sallaryWiseAdvanceId())
-                                    let sumOfUpdatedadvanceRemain = 0;
-                                    advanceData.forEach((item) => {
-                                        sumOfUpdatedadvanceRemain += item.remainAdvance;
-                                    });
-
-                                    console.log("Sum of prevaios advanceFine:", sumOfUpdatedadvanceRemain)
-                                    const updateQuery = generateAdvanceUpdateQuery(updatedAdvancedata);
-                                    pool.query(updateQuery, (err, result) => {
-                                        if (err) {
-                                            console.error("An error occurred while updating fineData", err);
-                                            return res.status(500).send('Database Error');
-                                        }
-
-                                        console.log("AdvanceData updated successfully:");
-
-                                        const totalCutamountOffAdvance = data.advanceAmount - sumOfUpdatedadvanceRemain;
-                                        sql_query_addDetail = `INSERT INTO staff_salary_data(
+                                            }
+                                            console.log('><><><', sallaryWiseAllAdvanceId());
+                                            sql_query_addDetail = `INSERT INTO staff_salary_data(
                                                                     salaryId,
+                                                                    remainSalaryId,
                                                                     userId,
                                                                     employeeId,
                                                                     salaryAmount,
@@ -1234,21 +1538,22 @@ const addAmountOfSFA = (req, res) => {
                                                                 )
                                                                 VALUES(
                                                                     '${cutAdvance}',
+                                                                    '${remainSalaryId}',
                                                                     '${userId}',
                                                                     '${data.employeeId}',
-                                                                     ${totalCutamountOffAdvance},
+                                                                     ${data.advanceAmount},
                                                                     'Advance Cut',
                                                                     NULLIF('${data.comment}','null'),
                                                                     STR_TO_DATE('${data.amountDate}','%b %d %Y')
                                                                 );
-                                                                INSERT INTO salary_salaryWiseAdvanceId_data (salaryId, advanceId) VALUES ${sallaryWiseAdvanceId()}`
-                                        pool.query(sql_query_addDetail, (err, add) => {
-                                            if (err) {
-                                                console.error("An error occurd in SQL Queery", err);
-                                                return res.status(500).send('Database Error');
-                                            }
-                                            console.log('Advance CutOff');
-
+                                                                INSERT INTO salary_salaryWiseAdvanceId_data (salaryId, advanceId) VALUES ${sallaryWiseAllAdvanceId()}`;
+                                            pool.query(sql_query_addDetail, (err, add) => {
+                                                if (err) {
+                                                    console.error("An error occurd in SQL Queery", err);
+                                                    return res.status(500).send('Database Error');
+                                                }
+                                                console.log('All Advance Is Done');
+                                            })
                                             sql_querry_getFinedetail = `SELECT monthlySalaryId, totalSalary, remainSalary AS remainSalary FROM staff_monthlySalary_data WHERE employeeId = '${data.employeeId}' AND remainSalary != 0 ORDER BY msStartDate ASC`;
                                             pool.query(sql_querry_getFinedetail, (err, datas) => {
                                                 if (err) {
@@ -1256,10 +1561,10 @@ const addAmountOfSFA = (req, res) => {
                                                     return res.status(500).send('Database Error');
                                                 }
                                                 const msData = Object.values(JSON.parse(JSON.stringify(datas)));
-                                                console.log('adv', msData);
+                                                console.log(msData);
 
                                                 const salaryOutData = [
-                                                    { monthlySalaryId: 1, paySalaryAmount: totalCutamountOffAdvance }
+                                                    { monthlySalaryId: 1, paySalaryAmount: data.advanceAmount }
                                                 ];
                                                 const desiredSalaryAmount = salaryOutData[0].paySalaryAmount;
                                                 console.log("?????", desiredSalaryAmount);
@@ -1321,6 +1626,7 @@ const addAmountOfSFA = (req, res) => {
                                                         console.error("An error occurred while updating msData", err);
                                                         return res.status(500).send('Database Error');
                                                     }
+
                                                 })
                                                 const updateQuery = generateMonthlyUpdateQuery(updatedmsData);
                                                 pool.query(updateQuery, (err, result) => {
@@ -1415,250 +1721,11 @@ const addAmountOfSFA = (req, res) => {
                                                 })
                                             })
                                         })
-                                    });
-                                })
+                                    }
+                                }
                             } else {
-                                console.log('only advaance nano');
-                                sql_query_allZeroRemainFine = `SELECT
-                                                                        advanceId
-                                                                    FROM
-                                                                        staff_advance_data
-                                                                    WHERE
-                                                                        employeeId = '${data.employeeId}' AND remainAdvanceAmount != 0;
-                                                                UPDATE
-                                                                    staff_advance_data
-                                                                SET
-                                                                    remainAdvanceAmount = 0
-                                                                WHERE
-                                                                advanceId IN(
-                                                                    SELECT
-                                                                        COALESCE(advanceId, NULL)
-                                                                    FROM
-                                                                        staff_advance_data
-                                                                    WHERE
-                                                                        employeeId = '${data.employeeId}' AND remainAdvanceAmount != 0
-                                                                    )`;
-                                pool.query(sql_query_allZeroRemainFine, (err, result) => {
-                                    if (err) {
-                                        console.error("An error occurd in SQL Queery", err);
-                                        return res.status(500).send('Database Error');
-                                    }
-                                    console.log(result[0])
-                                    const allAdvanceId = result[0];
-                                    const swAId = allAdvanceId.map((obj) => {
-                                        return obj.advanceId;
-                                    })
-                                    const sallaryWiseAllAdvanceId = () => {
-
-                                        var string = ''
-                                        swAId.forEach((data, index) => {
-                                            if (index == 0)
-                                                string = "(" + "'" + cutAdvance + "'" + "," + string + "'" + data + "'" + ")";
-                                            else
-                                                string = string + ",(" + "'" + cutAdvance + "'" + "," + "'" + data + "'" + ")";
-                                        });
-                                        return string;
-
-                                    }
-                                    console.log('><><><', sallaryWiseAllAdvanceId());
-                                    sql_query_addDetail = `INSERT INTO staff_salary_data(
-                                                                    salaryId,
-                                                                    userId,
-                                                                    employeeId,
-                                                                    salaryAmount,
-                                                                    salaryType,
-                                                                    salaryComment,
-                                                                    salaryDate
-                                                                )
-                                                                VALUES(
-                                                                    '${cutAdvance}',
-                                                                    '${userId}',
-                                                                    '${data.employeeId}',
-                                                                     ${data.advanceAmount},
-                                                                    'Advance Pay',
-                                                                    NULLIF('${data.comment}','null'),
-                                                                    STR_TO_DATE('${data.amountDate}','%b %d %Y')
-                                                                );
-                                                                INSERT INTO salary_salaryWiseAdvanceId_data (salaryId, advanceId) VALUES ${sallaryWiseAllAdvanceId()}`;
-                                    pool.query(sql_query_addDetail, (err, add) => {
-                                        if (err) {
-                                            console.error("An error occurd in SQL Queery", err);
-                                            return res.status(500).send('Database Error');
-                                        }
-                                        console.log('All Advance Is Done');
-                                    })
-                                    sql_querry_getFinedetail = `SELECT monthlySalaryId, totalSalary, remainSalary AS remainSalary FROM staff_monthlySalary_data WHERE employeeId = '${data.employeeId}' AND remainSalary != 0 ORDER BY msStartDate ASC`;
-                                    pool.query(sql_querry_getFinedetail, (err, datas) => {
-                                        if (err) {
-                                            console.error("An error occurd in SQL Queery", err);
-                                            return res.status(500).send('Database Error');
-                                        }
-                                        const msData = Object.values(JSON.parse(JSON.stringify(datas)));
-                                        console.log(msData);
-
-                                        const salaryOutData = [
-                                            { monthlySalaryId: 1, paySalaryAmount: data.advanceAmount }
-                                        ];
-                                        const desiredSalaryAmount = salaryOutData[0].paySalaryAmount;
-                                        console.log("?????", desiredSalaryAmount);
-
-                                        // Calculate total Salary out price
-                                        let remainingSalary = desiredSalaryAmount;
-
-                                        // Sort Salary in data by Salary in price in ascending order
-                                        const sortedmsData = msData
-                                        for (const salaryOut of salaryOutData) {
-                                            let paySalaryAmount = salaryOut.paySalaryAmount;
-
-                                            for (const salaryIn of sortedmsData) {
-                                                const { remainSalary } = salaryIn;
-
-                                                if (remainSalary > 0) {
-                                                    const salaryToUse = Math.min(paySalaryAmount, remainSalary, remainingSalary);
-
-                                                    remainingSalary -= salaryToUse;
-                                                    paySalaryAmount -= salaryToUse;
-                                                    salaryIn.remainSalary -= salaryToUse;
-                                                    if (remainingSalary <= 0) {
-                                                        break;
-                                                    }
-                                                }
-                                            }
-                                            if (remainingSalary <= 0) {
-                                                break;
-                                            }
-                                        }
-                                        // Print updated msData
-                                        console.log("Updated msData:", msData);
-                                        const updatedmsData = msData.filter((obj) => {
-                                            if (obj.remainSalary != obj.totalSalary) {
-                                                return obj;
-                                            }
-                                        })
-                                        const swFId = updatedmsData.map((obj) => {
-                                            if (obj.remainSalary != obj.totalSalary) {
-                                                return obj.monthlySalaryId;
-                                            }
-                                        })
-                                        const msWiseSid = () => {
-
-                                            var string = ''
-                                            swFId.forEach((data, index) => {
-                                                if (index == 0)
-                                                    string = "(" + "'" + cutAdvance + "'" + "," + string + "'" + data + "'" + ")";
-                                                else
-                                                    string = string + ",(" + "'" + cutAdvance + "'" + "," + "'" + data + "'" + ")";
-                                            });
-                                            return string;
-
-                                        }
-                                        console.log(">?>?>/////", msWiseSid())
-                                        sql_querry_addmsFid = `INSERT INTO staff_msWiseSalaryId_data (salaryId, monthlySalaryId) VALUES ${msWiseSid()}`
-                                        pool.query(sql_querry_addmsFid, (err, result) => {
-                                            if (err) {
-                                                console.error("An error occurred while updating msData", err);
-                                                return res.status(500).send('Database Error');
-                                            }
-
-                                        })
-                                        const updateQuery = generateMonthlyUpdateQuery(updatedmsData);
-                                        pool.query(updateQuery, (err, result) => {
-                                            if (err) {
-                                                console.error("An error occurred while updating msData", err);
-                                                return res.status(500).send('Database Error');
-                                            }
-                                            if (data.payAmount != 0 && req.body.amountType == '1') {
-                                                sql_querry_getFinedetail = `SELECT monthlySalaryId, totalSalary, remainSalary AS remainSalary FROM staff_monthlySalary_data WHERE employeeId = '${data.employeeId}' AND remainSalary != 0 ORDER BY msStartDate ASC`;
-                                                pool.query(sql_querry_getFinedetail, (err, datas) => {
-                                                    if (err) {
-                                                        console.error("An error occurd in SQL Queery", err);
-                                                        return res.status(500).send('Database Error');
-                                                    }
-                                                    const msData = Object.values(JSON.parse(JSON.stringify(datas)));
-                                                    console.log(msData);
-
-                                                    const salaryOutData = [
-                                                        { monthlySalaryId: 1, paySalaryAmount: data.payAmount }
-                                                    ];
-                                                    const desiredSalaryAmount = salaryOutData[0].paySalaryAmount;
-                                                    console.log("?????", desiredSalaryAmount);
-
-                                                    // Calculate total Salary out price
-                                                    let remainingSalary = desiredSalaryAmount;
-
-                                                    // Sort Salary in data by Salary in price in ascending order
-                                                    const sortedmsData = msData
-                                                    for (const salaryOut of salaryOutData) {
-                                                        let paySalaryAmount = salaryOut.paySalaryAmount;
-
-                                                        for (const salaryIn of sortedmsData) {
-                                                            const { remainSalary } = salaryIn;
-
-                                                            if (remainSalary > 0) {
-                                                                const salaryToUse = Math.min(paySalaryAmount, remainSalary, remainingSalary);
-
-                                                                remainingSalary -= salaryToUse;
-                                                                paySalaryAmount -= salaryToUse;
-                                                                salaryIn.remainSalary -= salaryToUse;
-                                                                if (remainingSalary <= 0) {
-                                                                    break;
-                                                                }
-                                                            }
-                                                        }
-                                                        if (remainingSalary <= 0) {
-                                                            break;
-                                                        }
-                                                    }
-                                                    // Print updated msData
-                                                    console.log("Updated msData:", msData);
-                                                    const updatedmsData = msData.filter((obj) => {
-                                                        if (obj.remainSalary != obj.totalSalary) {
-                                                            return obj;
-                                                        }
-                                                    })
-                                                    console.log('><', updatedmsData);
-                                                    const swFId = updatedmsData.map((obj) => {
-                                                        if (obj.remainSalary != obj.totalSalary) {
-                                                            return obj.monthlySalaryId;
-                                                        }
-                                                    })
-                                                    const msWiseSid = () => {
-
-                                                        var string = ''
-                                                        swFId.forEach((data, index) => {
-                                                            if (index == 0)
-                                                                string = "(" + "'" + salaryId + "'" + "," + string + "'" + data + "'" + ")";
-                                                            else
-                                                                string = string + ",(" + "'" + salaryId + "'" + "," + "'" + data + "'" + ")";
-                                                        });
-                                                        return string;
-
-                                                    }
-                                                    console.log(">?>?>/////", msWiseSid())
-                                                    sql_querry_addmsFid = `INSERT INTO staff_msWiseSalaryId_data (salaryId, monthlySalaryId) VALUES ${msWiseSid()}`
-                                                    pool.query(sql_querry_addmsFid, (err, result) => {
-                                                        if (err) {
-                                                            console.error("An error occurred while updating msData", err);
-                                                            return res.status(500).send('Database Error');
-                                                        }
-                                                    })
-                                                    const updateQuery = generateMonthlyUpdateQuery(updatedmsData);
-                                                    pool.query(updateQuery, (err, result) => {
-                                                        if (err) {
-                                                            console.error("An error occurred while updating msData", err);
-                                                            return res.status(500).send('Database Error');
-                                                        }
-                                                    })
-                                                })
-                                            }
-                                        })
-                                    })
-                                })
-                            }
-                        }
-                    } else {
-                        if (salaryAmtWOAdv < 0) {
-                            sql_query_addAdvanceDetail = `INSERT INTO staff_advance_data(
+                                if (salaryAmtWOAdv < 0) {
+                                    sql_query_addAdvanceDetail = `INSERT INTO staff_advance_data(
                                                                     advanceId,
                                                                     userId,
                                                                     employeeId,
@@ -1676,12 +1743,100 @@ const addAmountOfSFA = (req, res) => {
                                                                     NULLIF('${data.comment}','null'),
                                                                     STR_TO_DATE('${data.amountDate}','%b %d %Y')
                                                                 )`;
-                            pool.query(sql_query_addAdvanceDetail, (err, rest) => {
-                                if (err) {
-                                    console.error("An error occurd in SQL Queery", err);
-                                    return res.status(500).send('Database Error');
+                                    pool.query(sql_query_addAdvanceDetail, (err, rest) => {
+                                        if (err) {
+                                            console.error("An error occurd in SQL Queery", err);
+                                            return res.status(500).send('Database Error');
+                                        }
+                                        else if (data.payAmount != 0 && req.body.amountType == '1' && data.totalSalary > 0) {
+                                            sql_querry_getFinedetail = `SELECT monthlySalaryId, totalSalary, remainSalary AS remainSalary FROM staff_monthlySalary_data WHERE employeeId = '${data.employeeId}' AND remainSalary != 0 ORDER BY msStartDate ASC`;
+                                            pool.query(sql_querry_getFinedetail, (err, datas) => {
+                                                if (err) {
+                                                    console.error("An error occurd in SQL Queery", err);
+                                                    return res.status(500).send('Database Error');
+                                                }
+                                                const msData = Object.values(JSON.parse(JSON.stringify(datas)));
+                                                console.log(msData);
+
+                                                const salaryOutData = [
+                                                    { monthlySalaryId: 1, paySalaryAmount: data.totalSalary }
+                                                ];
+                                                const desiredSalaryAmount = salaryOutData[0].paySalaryAmount;
+                                                console.log("?????", desiredSalaryAmount);
+
+                                                // Calculate total Salary out price
+                                                let remainingSalary = desiredSalaryAmount;
+
+                                                // Sort Salary in data by Salary in price in ascending order
+                                                const sortedmsData = msData
+                                                for (const salaryOut of salaryOutData) {
+                                                    let paySalaryAmount = salaryOut.paySalaryAmount;
+
+                                                    for (const salaryIn of sortedmsData) {
+                                                        const { remainSalary } = salaryIn;
+
+                                                        if (remainSalary > 0) {
+                                                            const salaryToUse = Math.min(paySalaryAmount, remainSalary, remainingSalary);
+
+                                                            remainingSalary -= salaryToUse;
+                                                            paySalaryAmount -= salaryToUse;
+                                                            salaryIn.remainSalary -= salaryToUse;
+                                                            if (remainingSalary <= 0) {
+                                                                break;
+                                                            }
+                                                        }
+                                                    }
+                                                    if (remainingSalary <= 0) {
+                                                        break;
+                                                    }
+                                                }
+                                                // Print updated msData
+                                                console.log("Updated msData:", msData);
+                                                const updatedmsData = msData.filter((obj) => {
+                                                    if (obj.remainSalary != obj.totalSalary) {
+                                                        return obj;
+                                                    }
+                                                })
+                                                console.log('><', updatedmsData);
+                                                const swFId = updatedmsData.map((obj) => {
+                                                    if (obj.remainSalary != obj.totalSalary) {
+                                                        return obj.monthlySalaryId;
+                                                    }
+                                                })
+                                                const msWiseSid = () => {
+
+                                                    var string = ''
+                                                    swFId.forEach((data, index) => {
+                                                        if (index == 0)
+                                                            string = "(" + "'" + salaryId + "'" + "," + string + "'" + data + "'" + ")";
+                                                        else
+                                                            string = string + ",(" + "'" + salaryId + "'" + "," + "'" + data + "'" + ")";
+                                                    });
+                                                    return string;
+
+                                                }
+                                                console.log(">?>?>/////", msWiseSid())
+                                                sql_querry_addmsFid = `INSERT INTO staff_msWiseSalaryId_data (salaryId, monthlySalaryId) VALUES ${msWiseSid()}`
+                                                pool.query(sql_querry_addmsFid, (err, result) => {
+                                                    if (err) {
+                                                        console.error("An error occurred while updating msData", err);
+                                                        return res.status(500).send('Database Error');
+                                                    }
+                                                })
+
+                                                const updateQuery = generateMonthlyUpdateQuery(updatedmsData);
+                                                pool.query(updateQuery, (err, result) => {
+                                                    if (err) {
+                                                        console.error("An error occurred while updating msData", err);
+                                                        return res.status(500).send('Database Error');
+                                                    }
+                                                })
+
+                                            })
+                                        }
+                                    })
                                 }
-                                else if (data.payAmount != 0 && req.body.amountType == '1' && data.totalSalary > 0) {
+                                else if (data.payAmount != 0 && req.body.amountType == '1') {
                                     sql_querry_getFinedetail = `SELECT monthlySalaryId, totalSalary, remainSalary AS remainSalary FROM staff_monthlySalary_data WHERE employeeId = '${data.employeeId}' AND remainSalary != 0 ORDER BY msStartDate ASC`;
                                     pool.query(sql_querry_getFinedetail, (err, datas) => {
                                         if (err) {
@@ -1692,7 +1847,7 @@ const addAmountOfSFA = (req, res) => {
                                         console.log(msData);
 
                                         const salaryOutData = [
-                                            { monthlySalaryId: 1, paySalaryAmount: data.totalSalary }
+                                            { monthlySalaryId: 1, paySalaryAmount: data.payAmount }
                                         ];
                                         const desiredSalaryAmount = salaryOutData[0].paySalaryAmount;
                                         console.log("?????", desiredSalaryAmount);
@@ -1756,7 +1911,6 @@ const addAmountOfSFA = (req, res) => {
                                                 return res.status(500).send('Database Error');
                                             }
                                         })
-
                                         const updateQuery = generateMonthlyUpdateQuery(updatedmsData);
                                         pool.query(updateQuery, (err, result) => {
                                             if (err) {
@@ -1764,116 +1918,15 @@ const addAmountOfSFA = (req, res) => {
                                                 return res.status(500).send('Database Error');
                                             }
                                         })
-
                                     })
                                 }
-                            })
-                        }
-                        else if (data.payAmount != 0 && req.body.amountType == '1') {
-                            sql_querry_getFinedetail = `SELECT monthlySalaryId, totalSalary, remainSalary AS remainSalary FROM staff_monthlySalary_data WHERE employeeId = '${data.employeeId}' AND remainSalary != 0 ORDER BY msStartDate ASC`;
-                            pool.query(sql_querry_getFinedetail, (err, datas) => {
-                                if (err) {
-                                    console.error("An error occurd in SQL Queery", err);
-                                    return res.status(500).send('Database Error');
-                                }
-                                const msData = Object.values(JSON.parse(JSON.stringify(datas)));
-                                console.log(msData);
+                            }
 
-                                const salaryOutData = [
-                                    { monthlySalaryId: 1, paySalaryAmount: data.payAmount }
-                                ];
-                                const desiredSalaryAmount = salaryOutData[0].paySalaryAmount;
-                                console.log("?????", desiredSalaryAmount);
-
-                                // Calculate total Salary out price
-                                let remainingSalary = desiredSalaryAmount;
-
-                                // Sort Salary in data by Salary in price in ascending order
-                                const sortedmsData = msData
-                                for (const salaryOut of salaryOutData) {
-                                    let paySalaryAmount = salaryOut.paySalaryAmount;
-
-                                    for (const salaryIn of sortedmsData) {
-                                        const { remainSalary } = salaryIn;
-
-                                        if (remainSalary > 0) {
-                                            const salaryToUse = Math.min(paySalaryAmount, remainSalary, remainingSalary);
-
-                                            remainingSalary -= salaryToUse;
-                                            paySalaryAmount -= salaryToUse;
-                                            salaryIn.remainSalary -= salaryToUse;
-                                            if (remainingSalary <= 0) {
-                                                break;
-                                            }
-                                        }
-                                    }
-                                    if (remainingSalary <= 0) {
-                                        break;
-                                    }
-                                }
-                                // Print updated msData
-                                console.log("Updated msData:", msData);
-                                const updatedmsData = msData.filter((obj) => {
-                                    if (obj.remainSalary != obj.totalSalary) {
-                                        return obj;
-                                    }
-                                })
-                                console.log('><', updatedmsData);
-                                const swFId = updatedmsData.map((obj) => {
-                                    if (obj.remainSalary != obj.totalSalary) {
-                                        return obj.monthlySalaryId;
-                                    }
-                                })
-                                const msWiseSid = () => {
-
-                                    var string = ''
-                                    swFId.forEach((data, index) => {
-                                        if (index == 0)
-                                            string = "(" + "'" + salaryId + "'" + "," + string + "'" + data + "'" + ")";
-                                        else
-                                            string = string + ",(" + "'" + salaryId + "'" + "," + "'" + data + "'" + ")";
-                                    });
-                                    return string;
-
-                                }
-                                console.log(">?>?>/////", msWiseSid())
-                                sql_querry_addmsFid = `INSERT INTO staff_msWiseSalaryId_data (salaryId, monthlySalaryId) VALUES ${msWiseSid()}`
-                                pool.query(sql_querry_addmsFid, (err, result) => {
-                                    if (err) {
-                                        console.error("An error occurred while updating msData", err);
-                                        return res.status(500).send('Database Error');
-                                    }
-                                })
-                                const updateQuery = generateMonthlyUpdateQuery(updatedmsData);
-                                pool.query(updateQuery, (err, result) => {
-                                    if (err) {
-                                        console.error("An error occurred while updating msData", err);
-                                        return res.status(500).send('Database Error');
-                                    }
-                                })
-                            })
-                        }
-                    }
-                }
-                if (req.body.amountType == '1' || req.body.amountType == '2' || req.body.amountType == '3') {
-                    sql_update_lastPaymentDate = `UPDATE
-                                                        staff_employee_data
-                                                    SET
-                                                        employeeLastPaymentDate = CURDATE()
-                                                    WHERE
-                                                        employeeId = '${data.employeeId}'`;
-                    pool.query(sql_update_lastPaymentDate, (err, updateLpd) => {
-                        if (err) {
-                            console.error("An error occurd in SQL Queery", err);
-                            return res.status(500).send('Database Error');
-                        }
-                        console.log('Date Updated');
-                    })
-                    if (data.payAmount != 0) {
-                        if (req.body.amountType == '1') {
                             if (data.totalSalary > 0) {
-                                sql_query_addDetail = `INSERT INTO staff_salary_data(
+                                if (data.payAmount != 0) {
+                                    sql_query_addDetail = `INSERT INTO staff_salary_data(
                                                                     salaryId,
+                                                                    remainSalaryId,
                                                                     userId,
                                                                     employeeId,
                                                                     salaryAmount,
@@ -1883,6 +1936,7 @@ const addAmountOfSFA = (req, res) => {
                                                                 )
                                                                 VALUES(
                                                                     '${salaryId}',
+                                                                    '${remainSalaryId}',
                                                                     '${userId}',
                                                                     '${data.employeeId}',
                                                                     ${salaryAmtWOAdv < 0 ? data.totalSalary : data.payAmount},
@@ -1890,11 +1944,37 @@ const addAmountOfSFA = (req, res) => {
                                                                     NULLIF('${data.comment}','null'),
                                                                     STR_TO_DATE('${data.amountDate}','%b %d %Y')
                                                                 )`
+                                } else {
+                                    return res.status(200).send("Data Added SuccsessFully");
+                                }
                             } else {
-                                return res.status(200).send("Advance Added SuccsessFully");
+                                return res.status(200).send("Advance Added Successfully");
                             }
-                        } else if (req.body.amountType == '2') {
-                            sql_query_addDetail = `INSERT INTO staff_advance_data(
+                            pool.query(sql_query_addDetail, (err, data) => {
+                                if (err) {
+                                    console.error("An error occurd in SQL Queery", err);
+                                    return res.status(500).send('Database Error');
+                                }
+                                sql_update_lastPaymentDate = `UPDATE
+                                                        staff_employee_data
+                                                    SET
+                                                        employeeLastPaymentDate = CURDATE()
+                                                    WHERE
+                                                        employeeId = '${data.employeeId}'`;
+                                pool.query(sql_update_lastPaymentDate, (err, updateLpd) => {
+                                    if (err) {
+                                        console.error("An error occurd in SQL Queery", err);
+                                        return res.status(500).send('Database Error');
+                                    }
+                                    console.log('Date Updated');
+                                    return res.status(200).send("Data Added Successfully");
+                                })
+                            })
+                        })
+                    })
+                } else if (req.body.amountType == '2' || req.body.amountType == '3') {
+                    if (req.body.amountType == '2') {
+                        sql_query_addDetail = `INSERT INTO staff_advance_data(
                                                                     advanceId,
                                                                     userId,
                                                                     employeeId,
@@ -1912,8 +1992,8 @@ const addAmountOfSFA = (req, res) => {
                                                                     NULLIF('${data.comment}','null'),
                                                                     STR_TO_DATE('${data.amountDate}','%b %d %Y')
                                                                 )`
-                        } else if (req.body.amountType == '3') {
-                            sql_query_addDetail = `INSERT INTO staff_fine_data(
+                    } else if (req.body.amountType == '3') {
+                        sql_query_addDetail = `INSERT INTO staff_fine_data(
                                                                     fineId,
                                                                     userId,
                                                                     employeeId,
@@ -1931,11 +2011,6 @@ const addAmountOfSFA = (req, res) => {
                                                                     NULLIF('${data.comment}','null'),
                                                                     STR_TO_DATE('${data.amountDate}','%b %d %Y')
                                                                 )`;
-                        } else {
-                            return res.status(400).send("Please Select Amount Type");
-                        }
-                    } else {
-                        return res.status(200).send("Data Added Successfully");
                     }
                     pool.query(sql_query_addDetail, (err, data) => {
                         if (err) {
@@ -2168,6 +2243,32 @@ const addAmountOfSFA = (req, res) => {
                     } else {
                         return res.status(401).send('You can not credit Fine');
                     }
+                } else if (req.body.amountType == '6') {
+                    sql_query_addDetail = `INSERT INTO staff_bonus_data (
+                                                                            bonusId,
+                                                                            userId,
+                                                                            employeeId,
+                                                                            bonusAmount,
+                                                                            bonusComment,
+                                                                            bonusDate
+                                                                        )
+                                                                    VALUES(
+                                                                        '${bonusId}',
+                                                                        '${userId}',
+                                                                        '${data.employeeId}',
+                                                                         ${data.payAmount},
+                                                                        NULLIF('${data.comment}','null'),
+                                                                        STR_TO_DATE('${data.amountDate}','%b %d %Y')
+                                                                    )`;
+                    pool.query(sql_query_addDetail, (err, add) => {
+                        if (err) {
+                            console.error("An error occurd in SQL Queery", err);
+                            return res.status(500).send('Database Error');
+                        }
+                        return res.status(200).send('Your Amount is Credited Successfully');
+                    })
+                } else {
+                    return res.status(400).send('Please Select AmountType');
                 }
             } else {
                 return res.status(400).send('Unauthorised Person');
@@ -2599,7 +2700,7 @@ const updateEmployeeStatus = (req, res, next) => {
     try {
         const employeeStatus = req.body.employeeStatus;
         const payStatus = req.body.payStatus;
-        const proratedSalary = req.body.proratedSalary;
+        const proratedSalary = req.body.proratedSalary ? req.body.proratedSalary : 0;
         const data = {
             employeeId: req.body.employeeId,
             payAmount: req.body.payAmount,
@@ -2610,6 +2711,9 @@ const updateEmployeeStatus = (req, res, next) => {
             amountType: req.body.amountType,
             comment: req.body.comment ? req.body.comment.trim() : null,
             amountDate: new Date(req.body.amountDate ? req.body.amountDate : "10/10/1001").toString().slice(4, 15)
+        }
+        if (!data.employeeId) {
+            return res.status(401).send('EmployeeId Not Found');
         }
         sql_querry_getEmployeeJoiningDate = `SELECT employeeJoiningDate FROM staff_employee_data WHERE employeeId = '${data.employeeId}'`;
         pool.query(sql_querry_getEmployeeJoiningDate, (err, result) => {

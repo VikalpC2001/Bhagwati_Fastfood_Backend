@@ -42,6 +42,24 @@ const leaveController = require('../../controller/staffController/leave.controll
 router.post('/addEmployeeLeave', leaveController.addEmployeeLeave);
 router.post('/addLeaveForAllEployee', leaveController.addLeaveForAllEployee);
 
+// Employee Table Routs
+
+const employeeTableController = require('../../controller/staffController/employeeTable.controller.js');
+
+router.get('/getEmployeeMonthlySalaryById', employeeTableController.getEmployeeMonthlySalaryById);
+router.get('/getAdvanceDataById', employeeTableController.getAdvanceDataById);
+router.get('/getFineDataById', employeeTableController.getFineDataById);
+router.get('/getBonusDataById', employeeTableController.getBonusDataById);
+router.get('/getCreditDataById', employeeTableController.getCreditDataById);
+router.get('/getLeaveDataById', employeeTableController.getLeaveDataById);
+router.get('/getTransactionDataById', employeeTableController.getTransactionDataById);
+
+// Employee Invoice Routs
+
+const employeeInvoiceController = require('../../controller/staffController/empInvoice.controller.js');
+
+router.get('/getEmployeeInvoice', employeeInvoiceController.getEmployeeInvoice);
+
 module.exports = router;
 
 

@@ -97,7 +97,7 @@ const addLeaveForAllEployee = (req, res) => {
                         console.error("An error occurd in SQL Queery", err);
                         return res.status(500).send('Database Error');
                     }
-                    return res.status(200).send('Leaves Add Success Fully');
+                    return res.status(200).send('Leave Add Success Fully');
                 })
             })
         } else {

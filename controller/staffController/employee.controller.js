@@ -1229,7 +1229,7 @@ const getEmployeeData = (req, res) => {
                             FROM
                                 staff_fine_data
                             WHERE
-                                staff_fine_data.remainFineAmount != 0
+                                staff_fine_data.remainFineAmount != 0 AND staff_fine_data.fineStatus = 1
                             GROUP BY
                                 staff_fine_data.employeeId
                         ) AS sfd

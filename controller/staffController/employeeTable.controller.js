@@ -582,6 +582,7 @@ const getTransactionDataById = (req, res) => {
                                                 ORDER BY salaryDate DESC, salaryCreationDate DESC
                                                 LIMIT ${limit}`;
                 }
+                console.log(sql_queries_getdetails);
                 pool.query(sql_queries_getdetails, (err, rows, fields) => {
                     if (err) {
                         console.error("An error occurd in SQL Queery", err);

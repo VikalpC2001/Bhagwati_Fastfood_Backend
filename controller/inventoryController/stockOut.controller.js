@@ -1418,6 +1418,190 @@ const categoryWisedUsed = (req, res) => {
     })
 };
 
+const categoryWisedUsedPrice = (req, res) => {
+
+    var date = new Date(), y = date.getFullYear(), m = (date.getMonth());
+    var firstDay = new Date(y, m, 1).toString().slice(4, 15);
+    var lastDay = new Date(y, m + 1, 0).toString().slice(4, 15);
+
+
+    const data = {
+        startDate: (req.query.startDate ? req.query.startDate : '').slice(4, 15),
+        endDate: (req.query.endDate ? req.query.endDate : '').slice(4, 15),
+        productId: req.query.productId
+    }
+
+    sql_queries_getdetails = `SET @sql = NULL;
+                            SELECT
+                            GROUP_CONCAT(DISTINCT
+                                CONCAT(
+                                'COALESCE(MAX(CASE WHEN so.productId = ''',
+                                p.productId,
+                                ''' THEN so.usedQty END), 0) AS ',
+                                QUOTE(CONCAT(p.productName,' (',p.minProductUnit,')'))
+                            )
+                            ) INTO @sql
+                            FROM inventory_product_data p;
+                                
+                            SET @sql = CONCAT(
+                                'SELECT c.stockOutCategoryName AS "stockout Category", ', @sql, '
+                               FROM inventory_stockOutCategory_data c
+                               LEFT JOIN(
+                                    SELECT so.stockOutCategory, so.productId, SUM(so.stockOutPrice) AS usedQty
+                                 FROM inventory_stockOut_data so
+                                 GROUP BY so.stockOutCategory, so.productId
+                                ) so ON c.stockOutCategoryId = so.stockOutCategory
+                               GROUP BY c.stockOutCategoryId, c.stockOutCategoryName'
+                            );
+                            
+                            PREPARE stmt FROM @sql;
+                            EXECUTE stmt;
+                            DEALLOCATE PREPARE stmt;`;
+
+    pool.query(sql_queries_getdetails, async (err, rows) => {
+        if (err) return res.status(404).send(err);
+        console.log("::::::::::;;;;;;;;;;;;", rows[1])
+        const workbook = new excelJS.Workbook();
+        const worksheet = workbook.addWorksheet('Stock Out Data');
+
+        const abs = rows[4];
+        const headerName = rows[4][0];
+        console.log("><><>", Object.keys(headerName).map(key => key.toUpperCase()));
+        const headersName = Object.keys(headerName).map(key => key.toUpperCase());
+        // Create the headers row
+        const headersRow = headersName;
+        console.log('headName', headersRow);
+        worksheet.addRow(headersRow);
+
+        // Populate the worksheet with data
+        abs.forEach((row) => {
+            const dataRow = [...Object.values(row)];
+            worksheet.addRow(dataRow);
+        });
+
+        // Calculate the total for each column
+        const totalRow = [];
+        worksheet.columns.forEach((column) => {
+            let columnTotal = 0;
+            column.eachCell({ includeEmpty: true }, (cell, rowNumber) => {
+                // Skip the header row
+                if (rowNumber !== 1) {
+                    const value = parseFloat(cell.value) || 0;
+                    columnTotal += value;
+                }
+            });
+            totalRow.push(columnTotal);
+        });
+        totalRow[0] = "Total";
+        // Add the total row to the worksheet
+        const totalRowCell = worksheet.addRow(totalRow);
+        totalRowCell.eachCell((cell) => {
+            cell.font = { bold: true, color: { theme: 12 } }; // Set the font of the total row cells to bold
+        });
+
+        totalRowCell.fill = {
+            type: 'pattern',
+            pattern: 'solid',
+            fgColor: { argb: 'FFC6EFCE' },
+        };
+
+        worksheet.getRow(1).eachCell((cell) => {
+            cell.font = { bold: true, size: 11 }
+            cell.alignment = { vertical: 'middle', horizontal: 'center', wrapText: true };
+            height = 300
+        });
+
+        // worksheet.views = [
+        //     {
+        //         state: 'frozen',
+        //         xSplit: 1, // Number of columns to freeze (in this case, the first column)
+        //         ySplit: 1, // Number of rows to freeze (0 means no rows are frozen)
+        //         topLeftCell: 'B1', // Cell reference indicating the top-left visible cell after freezing
+        //     },
+        // ];
+
+        worksheet.columns.forEach((column) => {
+            let maxLength = 0;
+            column.eachCell({ includeEmpty: true }, (cell) => {
+                const columnLength = cell.value ? String(cell.value).length : 0;
+                if (columnLength > maxLength) {
+                    maxLength = columnLength;
+                }
+            });
+            column.width = maxLength < 10 ? 12 : maxLength;
+        });
+
+        worksheet.getColumn(1).eachCell((cell) => {
+            cell.font = { bold: true };
+        });
+
+        worksheet.eachRow((row) => {
+            row.eachCell((cell) => {
+                cell.alignment = { horizontal: 'center', vertical: 'middle' };
+                row.height = 20
+                cell.border = {
+                    top: { style: 'thin' },
+                    left: { style: 'thin' },
+                    bottom: { style: 'thin' },
+                    right: { style: 'thin' },
+                };
+            });
+        });
+
+
+        // Create a new worksheet for transposed data
+        const transposedWorksheet = workbook.addWorksheet('Transposed Data');
+
+        // Transpose the data from the original worksheet to the transposed worksheet
+        for (let row = 1; row <= worksheet.rowCount; row++) {
+            for (let col = 1; col <= worksheet.columnCount; col++) {
+                const cell = worksheet.getCell(row, col);
+                const transposedCell = transposedWorksheet.getCell(col, row);
+                transposedCell.value = cell.value;
+                transposedCell.style = Object.assign({}, cell.style); // Copy cell styles
+            }
+        }
+
+        transposedWorksheet.columns.forEach((column) => {
+            let maxLength = 0;
+            column.eachCell({ includeEmpty: true }, (cell) => {
+                const columnLength = cell.value ? String(cell.value).length : 0;
+                if (columnLength > maxLength) {
+                    maxLength = columnLength;
+                }
+            });
+            column.width = maxLength < 10 ? 12 : maxLength;
+        });
+
+        transposedWorksheet.eachRow((row) => {
+            row.eachCell((cell) => {
+                cell.alignment = { horizontal: 'center', vertical: 'middle' };
+                row.height = 20
+            });
+        });
+
+        try {
+            const data = await workbook.xlsx.writeBuffer()
+            var fileName = new Date().toString().slice(4, 15) + ".xlsx";
+            console.log(">>>", fileName);
+            // res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+            // res.addHeader(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename="+ fileName)
+            res.contentType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+            res.type = 'blob';
+            res.send(data)
+            // res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+            // res.setHeader("Content-Disposition", "attachment; filename=" + "Report.xlsx");
+            // workbook.xlsx.write(res)
+            // .then((data)=>{
+            //     res.end();
+            //         console.log('File write done........');
+            //     });
+        } catch (err) {
+            throw new Error(err);
+        }
+    })
+};
+
 module.exports = {
     addStockOutDetails,
     removeStockOutTransaction,
@@ -1428,7 +1612,8 @@ module.exports = {
     getCategoryWiseUsedByProduct,
     getUpdateStockOutList,
     getUpdateStockOutListById,
-    categoryWisedUsed
+    categoryWisedUsed,
+    categoryWisedUsedPrice
 }
 
 // SELECT

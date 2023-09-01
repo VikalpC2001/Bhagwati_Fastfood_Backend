@@ -77,12 +77,12 @@ const getProductCountDetailsById = (req, res) => {
                                           WHERE p.productId = '${data.productId}'`;
         if (req.query.startDate && req.query.endDate) {
             sql_querry_getProductCount = `SELECT COALESCE(ROUND(SUM(productQty),2),0) AS purchase, COALESCE(ROUND(SUM(totalPrice)),0) AS totalRs FROM inventory_stockIn_data WHERE inventory_stockIn_data.productId = '${data.productId}' AND inventory_stockIn_data.stockInDate BETWEEN STR_TO_DATE('${data.startDate}','%b %d %Y') AND STR_TO_DATE('${data.endDate}','%b %d %Y');
-                                            SELECT COALESCE(ROUND(SUM(productQty),2),0) AS used, COALESCE(ROUND(SUM(stockOutPrice)),0) AS totalUsedPrice FROM inventory_stockOut_data WHERE inventory_stockOut_data.productId = '${data.productId}' AND inventory_stockOut_data.stockOutDate BETWEEN STR_TO_DATE('${data.startDate}','%b %d %Y') AND STR_TO_DATE('${data.endDate}','%b %d %Y');
-                                            ${sql_querry_StatickCCount}`;
+                                          SELECT COALESCE(ROUND(SUM(productQty),2),0) AS used, COALESCE(ROUND(SUM(stockOutPrice)),0) AS totalUsedPrice FROM inventory_stockOut_data WHERE inventory_stockOut_data.productId = '${data.productId}' AND inventory_stockOut_data.stockOutDate BETWEEN STR_TO_DATE('${data.startDate}','%b %d %Y') AND STR_TO_DATE('${data.endDate}','%b %d %Y');
+                                          ${sql_querry_StatickCCount}`;
         } else {
             sql_querry_getProductCount = `SELECT COALESCE(ROUND(SUM(productQty),2),0) AS purchase, COALESCE(ROUND(SUM(totalPrice)),0) AS totalRs FROM inventory_stockIn_data WHERE inventory_stockIn_data.productId = '${data.productId}' AND inventory_stockIn_data.stockInDate BETWEEN STR_TO_DATE('${firstDay}','%b %d %Y') AND STR_TO_DATE('${lastDay}','%b %d %Y');
-                                            SELECT COALESCE(ROUND(SUM(productQty),2),0) AS used, COALESCE(ROUND(SUM(stockOutPrice)),0) AS totalUsedPrice FROM inventory_stockOut_data WHERE inventory_stockOut_data.productId = '${data.productId}' AND inventory_stockOut_data.stockOutDate BETWEEN STR_TO_DATE('${firstDay}','%b %d %Y') AND STR_TO_DATE('${lastDay}','%b %d %Y');
-                                            ${sql_querry_StatickCCount}`;
+                                          SELECT COALESCE(ROUND(SUM(productQty),2),0) AS used, COALESCE(ROUND(SUM(stockOutPrice)),0) AS totalUsedPrice FROM inventory_stockOut_data WHERE inventory_stockOut_data.productId = '${data.productId}' AND inventory_stockOut_data.stockOutDate BETWEEN STR_TO_DATE('${firstDay}','%b %d %Y') AND STR_TO_DATE('${lastDay}','%b %d %Y');
+                                          ${sql_querry_StatickCCount}`;
         }
         pool.query(sql_querry_getProductCount, (err, data) => {
             if (err) {

@@ -34,6 +34,7 @@ router.post('/addAmountOfSFA', protect, sallaryController.addAmountOfSFA);
 router.delete('/removeSalaryHistory', sallaryController.removeSalaryHistory);
 router.delete('/removeCreditTransaction', sallaryController.removeCreditTransaction);
 router.post('/updateEmployeeStatus', sallaryController.updateEmployeeStatus, sallaryController.addAmountOfSFA);
+router.post('/updateFineStatus', sallaryController.updateFineStatus);
 
 // Leave Routs
 

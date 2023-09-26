@@ -10,7 +10,7 @@ async function createPDF(res, data) {
 
         const monthlySalaryCut = data[0];
         if (monthlySalaryCut.length > 0) {
-            monthlySalaryCut[0].Remain = data[4][0].lastRemainAmt;
+            monthlySalaryCut[0].Remaining = data[4][0].lastRemainAmt;
         }
         const advanceCutData = data[1];
         if (advanceCutData.length > 0) {
@@ -29,6 +29,7 @@ async function createPDF(res, data) {
         const msDataJson = Object.values(JSON.parse(JSON.stringify(monthlySalaryCut)));
         const advanceJson = Object.values(JSON.parse(JSON.stringify(advanceCutData)));
         const fineJson = Object.values(JSON.parse(JSON.stringify(fineCutData)));
+        const leaveJson = Object.values(JSON.parse(JSON.stringify(data[6])));
         const totalSalary = data[4][0].remainSalaryAmt;
         const totalAdvance = data[4][0].remainAdvanceAmt;
         const totalFine = data[4][0].remainFineAmt;
@@ -213,9 +214,12 @@ async function createPDF(res, data) {
                     tableY -= cellHeight;
                 }
 
+                console.log(rowData);
+
                 // Draw table data
                 tableXPosition = tableX;
                 for (const key in rowData) {
+                    // console.log(rowData[key], rowData[key].toString());
                     const cellText = rowData[key].toString();
                     const textWidth = helveticaFont.widthOfTextAtSize(cellText, 12);
 
@@ -250,6 +254,24 @@ async function createPDF(res, data) {
         const headingText1 = "Monthly Salary :";
         const headingText2 = "Advance Cut :";
         const headingText3 = "Fine Cut :";
+        const headingText4 = "Leave Report"
+
+        if (leaveJson != '') {
+
+            currentPage.drawText(headingText4, {
+                x: tableX,
+                y: tableY + 10, // Adjust the Y position as needed
+                font: helveticaBoldFont,
+                size: 14,
+                color: rgb(0, 0, 0),
+            });
+
+            // Draw the first table
+            drawTable(leaveJson, 84, 20);
+
+            // Add spacing between tables
+            tableY -= 20 * 2;
+        }
 
         if (msDataJson != '') {
 
@@ -262,7 +284,7 @@ async function createPDF(res, data) {
             });
 
             // Draw the first table
-            drawTable(msDataJson, 63, 20);
+            drawTable(msDataJson, 84, 20);
 
             // Add spacing between tables
             tableY -= 20 * 2;
@@ -429,13 +451,12 @@ const getEmployeeInvoice = (req, res) => {
     try {
         const invoiceId = req.query.invoiceId;
         const employeeId = req.query.employeeId;
+        console.log(invoiceId, employeeId);
         if (!invoiceId || !employeeId) {
             return res.status(400).send("InvoiceId OR employeeId Not Found")
         }
-        const sqlQuery_monthlySalary = `SELECT
+        const sqlQuery_leaveData = `SELECT
                                         DATE_FORMAT(smsd.msStartDate, '%b-%y') AS "Month",
-                                        smsd.totalSalary AS "Salary",
-                                        smsd.totalSalary AS "Remain",
                                         smsd.maxLeave AS "Max Leave",
                                         COALESCE(
                                             (
@@ -539,82 +560,90 @@ const getEmployeeInvoice = (req, res) => {
                                     )
                                     ORDER BY
                                         smsd.msStartDate ASC`;
+        const sqlQuery_monthlySalary = `SELECT
+                                            DATE_FORMAT(msEndDate, '%b %Y') AS MONTH,
+                                            staff_monthlySalary_data.totalSalary AS "Total Salary",
+                                            staff_monthlySalary_data.totalSalary AS "Remaining",
+                                            COALESCE(
+                                                MAX(
+                                                    CASE WHEN staff_salary_data.salaryType = 'Advance Cut' THEN cutSalaryAmount
+                                                END
+                                            ),
+                                            0
+                                        ) AS "Advance Cut",
+                                        COALESCE(
+                                            MAX(
+                                                CASE WHEN staff_salary_data.salaryType = 'Fine Cut' THEN cutSalaryAmount
+                                            END
+                                        ),
+                                        0
+                                        ) AS "Fine Cut",
+                                        COALESCE(
+                                            MAX(
+                                                CASE WHEN staff_salary_data.salaryType = 'Salary Pay' THEN cutSalaryAmount
+                                            END
+                                        ),
+                                        0
+                                        ) AS "Salary Cut"
+                                        FROM
+                                            staff_msWiseSalaryId_data
+                                        INNER JOIN staff_monthlySalary_data ON staff_monthlySalary_data.monthlySalaryId = staff_msWiseSalaryId_data.monthlySalaryId
+                                        INNER JOIN staff_salary_data ON staff_salary_data.salaryId = staff_msWiseSalaryId_data.salaryId
+                                        WHERE
+                                            staff_msWiseSalaryId_data.salaryId IN(
+                                            SELECT
+                                                COALESCE(salaryId, NULL)
+                                            FROM
+                                                staff_salary_data
+                                            WHERE
+                                                staff_salary_data.remainSalaryId = '${invoiceId}'
+                                        )
+                                        GROUP BY
+                                            staff_msWiseSalaryId_data.monthlySalaryId`;
         const sqlQuery_AdvanceData = `SELECT
-                                        CONCAT(
-                                            user_details.userFirstName,
-                                            ' ',
-                                            user_details.userLastName
-                                        ) AS "Given By",
-                                        advanceAmount AS "Advance Amount",
-                                        advanceAmount AS "Remain Advance",
-                                        advanceComment "Comment",
-                                        DATE_FORMAT(advanceDate, '%d %b %Y') AS "Date"
+                                        CONCAT(user_details.userFirstName,' ',user_details.userLastName) AS "Given By",
+                                        staff_advance_data.advanceAmount AS "Advance Amount",
+                                        staff_advance_data.advanceAmount AS "Remain Advance",
+                                        cutAdvanceAmount AS "Advance Cut",
+                                        DATE_FORMAT(
+                                            staff_advance_data.advanceDate,
+                                            '%d-%b-%Y'
+                                        ) AS "Advance Date"
                                     FROM
-                                        staff_advance_data
+                                        salary_salaryWiseAdvanceId_data
+                                    INNER JOIN staff_advance_data ON staff_advance_data.advanceId = salary_salaryWiseAdvanceId_data.advanceId
                                     LEFT JOIN user_details ON user_details.userId = staff_advance_data.userId
                                     WHERE
-                                        employeeId = '${employeeId}' AND advanceId IN(
+                                        salaryId IN(
                                         SELECT
-                                            COALESCE(
-                                                salary_salaryWiseAdvanceId_data.advanceId,
-                                                NULL
-                                            )
+                                            COALESCE(salaryId, NULL)
                                         FROM
-                                            salary_salaryWiseAdvanceId_data
+                                            staff_salary_data
                                         WHERE
-                                            salary_salaryWiseAdvanceId_data.salaryId IN(
-                                            SELECT
-                                                COALESCE(
-                                                    staff_salary_data.salaryId,
-                                                    NULL
-                                                )
-                                            FROM
-                                                staff_salary_data
-                                            WHERE
-                                                staff_salary_data.remainSalaryId = '${invoiceId}'
-                                        )
-                                    )
-                                    ORDER BY
-                                        advanceDate ASC,
-                                        advanceCreationDate ASC`;
+                                            staff_salary_data.remainSalaryId = '${invoiceId}'
+                                    )`;
         const sqlQuery_FineData = `SELECT
-                                        CONCAT(
-                                            user_details.userFirstName,
-                                            ' ',
-                                            user_details.userLastName
-                                        ) AS "Given By",
-                                        fineAmount AS "Fine Amount",
-                                        fineAmount  AS "Remain Fine",
-                                        reason AS "Reason",
-                                        DATE_FORMAT(fineDate, '%d-%b-%Y') AS "Date"
+                                	CONCAT(user_details.userFirstName,' ',user_details.userLastName) AS "Given By",
+                                    staff_fine_data.fineAmount AS "Fine Amount",
+                                    staff_fine_data.fineAmount AS "Remain Fine",
+                                    cutFineAmount AS "Fine Cut",
+                                    DATE_FORMAT(
+                                        staff_fine_data.fineDate,
+                                        '%d-%b-%Y'
+                                    ) AS "Fine Date"
+                                FROM
+                                    salary_salaryWiseFineId_data
+                                INNER JOIN staff_fine_data ON staff_fine_data.fineId = salary_salaryWiseFineId_data.fineId
+                                LEFT JOIN user_details ON user_details.userId = staff_fine_data.userId
+                                WHERE
+                                    salaryId IN(
+                                    SELECT
+                                        COALESCE(salaryId, NULL)
                                     FROM
-                                        staff_fine_data
-                                    LEFT JOIN user_details ON user_details.userId = staff_fine_data.userId
+                                        staff_salary_data
                                     WHERE
-                                        employeeId = '${employeeId}' AND fineId IN(
-                                        SELECT
-                                            COALESCE(
-                                                salary_salaryWiseFineId_data.fineId,
-                                                NULL
-                                            )
-                                        FROM
-                                            salary_salaryWiseFineId_data
-                                        WHERE
-                                            salary_salaryWiseFineId_data.salaryId IN(
-                                            SELECT
-                                                COALESCE(
-                                                    staff_salary_data.salaryId,
-                                                    NULL
-                                                )
-                                            FROM
-                                                staff_salary_data
-                                            WHERE
-                                                staff_salary_data.remainSalaryId = '${invoiceId}'
-                                        )
-                                    )
-                                    ORDER BY
-                                        fineDate ASC,
-                                        fineCreationDate ASC`;
+                                        staff_salary_data.remainSalaryId = '${invoiceId}'
+                                )`;
         const sqlQuery_TransactionData = `SELECT
                                             RIGHT(staff_salary_data.remainSalaryId, 10) AS trasactionId,
                                             CONCAT(
@@ -661,7 +690,7 @@ const getEmployeeInvoice = (req, res) => {
                                             staff_remainSalaryHistory_data
                                         WHERE remainSalaryId = '${invoiceId}' AND employeeId = '${employeeId}'`;
         const sqlQuery_EmployeeData = `SELECT
-                                        sed.employeeNickName,
+                                        CONCAT(sed.employeeFirstName,' ',sed.employeeLastName) AS employeeNickName,
                                         CONCAT(
                                             staff_category_data.staffCategoryName,
                                             ' (',
@@ -681,7 +710,8 @@ const getEmployeeInvoice = (req, res) => {
                                             ${sqlQuery_FineData};
                                             ${sqlQuery_TransactionData};
                                             ${sqlQuery_RemainHistory};
-                                            ${sqlQuery_EmployeeData}`;
+                                            ${sqlQuery_EmployeeData};
+                                            ${sqlQuery_leaveData}`;
         pool.query(sql_query_transactionTable, (err, data) => {
             if (err) {
                 console.error("An error occurd in SQL Queery", err);

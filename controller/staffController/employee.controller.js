@@ -256,7 +256,21 @@ const calculateDueSalary = (employeeId) => {
                                 return leave;
                             });
                             console.log('salary Array', salaryArray);
-                            const perDaysalaryOfEmployee = salaryArray.map(salary => Math.floor(salary / 30));
+
+                            // Function to get the last day of a month for a given date as an integer
+                            const getLastDayOfMonth = (dateStr) => {
+                                const [day, month, year] = dateStr.split('-').map(Number);
+                                const lastDay = new Date(year, month, 0).getDate();
+                                return lastDay;
+                            };
+
+                            // Map the dates to their last days of the month as integers
+                            const lastDaysOfMonths = monthsArray.map(getLastDayOfMonth);
+
+                            console.log('mane joy ee', lastDaysOfMonths);
+
+
+                            const perDaysalaryOfEmployee = salaryArray.map((salary, index) => Math.floor(salary / lastDaysOfMonths[index]));
                             console.log('per day salary', perDaysalaryOfEmployee);
                             (async () => {
                                 try {
@@ -572,8 +586,22 @@ const calculateDueSalary = (employeeId) => {
                                 return leave;
                             });
                             console.log('salary Array', salaryArray);
-                            const perDaysalaryOfEmployee = salaryArray.map(salary => Math.floor(salary / 30));
+
+                            const getLastDayOfMonth = (dateStr) => {
+                                const [day, month, year] = dateStr.split('-').map(Number);
+                                const lastDay = new Date(year, month, 0).getDate();
+                                return lastDay;
+                            };
+
+                            // Map the dates to their last days of the month as integers
+                            const lastDaysOfMonths = monthsArray.map(getLastDayOfMonth);
+
+                            console.log('mane joy ee', lastDaysOfMonths);
+
+
+                            const perDaysalaryOfEmployee = salaryArray.map((salary, index) => Math.floor(salary / lastDaysOfMonths[index]));
                             console.log('per day salary', perDaysalaryOfEmployee);
+
                             (async () => {
                                 try {
                                     const result = await getSumOfLeaveForDates(employeeId, dateArray);
@@ -765,7 +793,7 @@ const addEmployeedetails = (req, res) => {
 
             if (!data.employeeFirstName || !data.employeeLastName || !data.employeeGender || !data.employeeNickName ||
                 !data.employeeMobileNumber || !data.presentAddress ||
-                !data.homeAddress || !data.adharCardNum || !data.category || !data.designation ||
+                !data.homeAddress || !data.category || !data.designation ||
                 !data.salary || !data.maxLeave || !data.joiningDate || !data.employeeStatus) {
                 return res.status(400).send("Please Fill all the feilds");
             }
@@ -905,7 +933,8 @@ const removeEmployeeDetails = async (req, res) => {
             }
             if (row && row.length) {
                 const imgFilePath = row[0].imageFilePath;
-                fs.unlink(imgFilePath, (err) => {
+                const fpath = process.env.EMPLOYEE_PHOTO_PATH + '/' + imgFilePath;
+                fs.unlink(fpath, (err) => {
                     if (err) {
                         console.error('Error deleting file:', err);
                     } else {
@@ -1168,132 +1197,166 @@ const updateEmployeeDetails = (req, res) => {
 
 const getEmployeeData = (req, res) => {
     try {
-        const categoryId = req.query.categoryId
+        const categoryId = req.query.categoryId;
+        const employeeStatus = req.query.employeeStatus ? req.query.employeeStatus : 1;
+        console.log(employeeStatus);
         sql_common_query = `SELECT
-                            sed.employeeId,
-                            CONCAT(
-                                sed.employeeFirstName,
-                                ' ',
-                                sed.employeeLastName
-                            ) AS employeeName,
-                            sed.employeeNickName AS nickName,
-                            sed.employeeStatus AS employeeStatus,
-                            sed.salary AS salary,
-                            sed.imageLink AS imageLink,
-                            COALESCE(
+                                sed.employeeId,
                                 CONCAT(
-                                    DATE_FORMAT(smsddate.startDate, '%d-%b-%Y'),
-                                    ' - ',
-                                    DATE_FORMAT(smsddate.endDate, '%d-%b-%Y')
-                                ),
-                                'No Payment Remaining'
-                            ) AS dateOfPayment,
-                            CONCAT(
-                                scd.staffCategoryName,
-                                ' (',
-                                sed.designation,
-                                ')'
-                            ) AS category,
-                            IF(employeeStatus = 1, true, false) AS employeeStatus,
-                            COALESCE(smsd.remainSalary, 0) AS totalSalary,
-                            COALESCE(sad.advaceAmount, 0) AS advanceAmount,
-                            COALESCE(sfd.fineAmount, 0) AS fineAmount,
-                            COALESCE(esd.totalPaidSalary, 0) AS totalPaidSalary,
-                            COALESCE(smsd.remainSalary, 0) - COALESCE(sad.advaceAmount, 0) - COALESCE(sfd.fineAmount, 0) AS paymentDue
-                        FROM
-                            staff_employee_data AS sed
-                        INNER JOIN staff_category_data AS scd
-                        ON
-                            scd.staffCategoryId = sed.category
-                        LEFT JOIN(
-                            SELECT
-                                staff_advance_data.employeeId,
-                                SUM(
-                                    staff_advance_data.remainAdvanceAmount
-                                ) AS advaceAmount
-                            FROM
-                                staff_advance_data
-                            WHERE
-                                staff_advance_data.remainAdvanceAmount != 0
-                            GROUP BY
-                                staff_advance_data.employeeId
-                        ) AS sad
-                        ON
-                            sed.employeeId = sad.employeeId
-                        LEFT JOIN(
-                            SELECT
-                                staff_fine_data.employeeId,
-                                SUM(
-                                    staff_fine_data.remainFineAmount
-                                ) AS fineAmount
-                            FROM
-                                staff_fine_data
-                            WHERE
-                                staff_fine_data.remainFineAmount != 0 AND staff_fine_data.fineStatus = 1
-                            GROUP BY
-                                staff_fine_data.employeeId
-                        ) AS sfd
-                        ON
-                            sed.employeeId = sfd.employeeId
-                        LEFT JOIN(
-                            SELECT
-                                staff_salary_data.employeeId,
-                                SUM(staff_salary_data.salaryAmount) totalPaidSalary
-                            FROM
-                                staff_salary_data
-                            WHERE
-                                staff_salary_data.salaryDate BETWEEN(
+                                    sed.employeeFirstName,
+                                    ' ',
+                                    sed.employeeLastName
+                                ) AS employeeName,
+                                sed.employeeNickName AS nickName,
+                                sed.employeeStatus AS employeeStatus,
+                                sed.salary AS salary,
+                                FLOOR(sed.salary / DAY(LAST_DAY(CURRENT_DATE))) AS perDaySalary,
+                                sed.imageLink AS imageLink,
+                                COALESCE(
+                                    CONCAT(
+                                        DATE_FORMAT(smsddate.startDate, '%d-%b-%Y'),
+                                        ' - ',
+                                        DATE_FORMAT(smsddate.endDate, '%d-%b-%Y')
+                                    ),
+                                    'No Payment Remaining'
+                                ) AS dateOfPayment,
+                                CONCAT(
+                                    scd.staffCategoryName,
+                                    ' (',
+                                    sed.designation,
+                                    ')'
+                                ) AS category,
+                                IF(employeeStatus = 1, TRUE, FALSE) AS employeeStatus,
+                                sed.maxLeave AS maxLeave,
+                                COALESCE(
+                                    (
+                                        (
+                                        SELECT
+                                            staff_monthlySalary_data.remainLeave
+                                        FROM
+                                            staff_monthlySalary_data
+                                        WHERE
+                                            employeeId = sed.employeeId
+                                        ORDER BY
+                                            staff_monthlySalary_data.msStartDate
+                                        DESC
+                                    LIMIT 1
+                                    ) + sed.maxLeave
+                                    ),
+                                    0
+                                ) - COALESCE(
+                                    (
+                                    SELECT
+                                        SUM(staff_leave_data.numLeave)
+                                    FROM
+                                        staff_leave_data
+                                    WHERE
+                                        employeeId = sed.employeeId AND staff_leave_data.leaveDate BETWEEN DATE_FORMAT(CURDATE(), '%Y-%m-01') AND LAST_DAY(CURDATE())),
+                                        0) AS availableLeave,
+                                        COALESCE(smsd.remainSalary, 0) AS totalSalary,
+                                        COALESCE(sad.advaceAmount, 0) AS advanceAmount,
+                                        COALESCE(sfd.fineAmount, 0) AS fineAmount,
+                                        COALESCE(esd.totalPaidSalary, 0) AS totalPaidSalary,
+                                        COALESCE(smsd.remainSalary, 0) - COALESCE(sad.advaceAmount, 0) - COALESCE(sfd.fineAmount, 0) AS paymentDue
+                                    FROM
+                                        staff_employee_data AS sed
+                                    INNER JOIN staff_category_data AS scd
+                                    ON
+                                        scd.staffCategoryId = sed.category
+                                    LEFT JOIN(
+                                        SELECT
+                                            staff_advance_data.employeeId,
+                                            SUM(
+                                                staff_advance_data.remainAdvanceAmount
+                                            ) AS advaceAmount
+                                        FROM
+                                            staff_advance_data
+                                        WHERE
+                                            staff_advance_data.remainAdvanceAmount != 0
+                                        GROUP BY
+                                            staff_advance_data.employeeId
+                                    ) AS sad
+                                ON
+                                    sed.employeeId = sad.employeeId
+                                LEFT JOIN(
+                                    SELECT
+                                        staff_fine_data.employeeId,
+                                        SUM(
+                                            staff_fine_data.remainFineAmount
+                                        ) AS fineAmount
+                                    FROM
+                                        staff_fine_data
+                                    WHERE
+                                        staff_fine_data.remainFineAmount != 0 AND staff_fine_data.fineStatus = 1
+                                    GROUP BY
+                                        staff_fine_data.employeeId
+                                ) AS sfd
+                            ON
+                                sed.employeeId = sfd.employeeId
+                            LEFT JOIN(
                                 SELECT
-                                    DATE_ADD(
-                                        DATE_FORMAT(employeeJoiningDate, '%Y-%m-01'),
-                                        INTERVAL 1 MONTH
-                                    )
+                                    staff_salary_data.employeeId,
+                                    SUM(staff_salary_data.salaryAmount) totalPaidSalary
                                 FROM
-                                    staff_employee_data sed
+                                    staff_salary_data
                                 WHERE
-                                    sed.employeeId = staff_salary_data.employeeId
-                            ) AND CURDATE()
-                        GROUP BY
-                            staff_salary_data.employeeId) AS esd
-                        ON
-                            sed.employeeId = esd.employeeId
-                        LEFT JOIN(
-                            SELECT
-                                staff_monthlySalary_data.employeeId,
-                                SUM(
-                                    staff_monthlySalary_data.remainSalary
-                                ) AS remainSalary
-                            FROM
-                                staff_monthlySalary_data
-                            WHERE
-                                staff_monthlySalary_data.remainSalary != 0
+                                    staff_salary_data.salaryDate BETWEEN(
+                                    SELECT
+                                        DATE_ADD(
+                                            DATE_FORMAT(employeeJoiningDate, '%Y-%m-01'),
+                                            INTERVAL 1 MONTH
+                                        )
+                                    FROM
+                                        staff_employee_data sed
+                                    WHERE
+                                        sed.employeeId = staff_salary_data.employeeId
+                                ) AND CURDATE()
                             GROUP BY
-                                staff_monthlySalary_data.employeeId
-                        ) AS smsd ON sed.employeeId = smsd.employeeId
-                        LEFT JOIN(
-                            SELECT
-                                staff_monthlySalary_data.employeeId,
-                                MIN(
-                                    staff_monthlySalary_data.msStartDate
-                                ) AS startDate,
-                                MAX(
-                                    staff_monthlySalary_data.msEndDate
-                                ) AS endDate
-                            FROM
-                                staff_monthlySalary_data
-                            WHERE
-                                staff_monthlySalary_data.remainSalary != 0
-                            GROUP BY
-                                staff_monthlySalary_data.employeeId
-                        ) AS smsddate
-                        ON
-                            sed.employeeId = smsddate.employeeId`;
+                                staff_salary_data.employeeId) AS esd
+                            ON
+                                sed.employeeId = esd.employeeId
+                            LEFT JOIN(
+                                SELECT
+                                    staff_monthlySalary_data.employeeId,
+                                    SUM(
+                                        staff_monthlySalary_data.remainSalary
+                                    ) AS remainSalary
+                                FROM
+                                    staff_monthlySalary_data
+                                WHERE
+                                    staff_monthlySalary_data.remainSalary != 0
+                                GROUP BY
+                                    staff_monthlySalary_data.employeeId
+                            ) AS smsd
+                            ON
+                                sed.employeeId = smsd.employeeId
+                            LEFT JOIN(
+                                SELECT
+                                    staff_monthlySalary_data.employeeId,
+                                    MIN(
+                                        staff_monthlySalary_data.msStartDate
+                                    ) AS startDate,
+                                    MAX(
+                                        staff_monthlySalary_data.msEndDate
+                                    ) AS endDate
+                                FROM
+                                    staff_monthlySalary_data
+                                WHERE
+                                    staff_monthlySalary_data.remainSalary != 0
+                                GROUP BY
+                                    staff_monthlySalary_data.employeeId
+                            ) AS smsddate
+                            ON
+                                sed.employeeId = smsddate.employeeId`;
+        console.log(sql_common_query);
         if (req.query.categoryId) {
             sql_query_getEmployee = `${sql_common_query}
-                                     WHERE sed.category = '${categoryId}'`;
+                                     WHERE sed.category = '${categoryId}' AND sed.employeeStatus = 1`;
         } else {
-            sql_query_getEmployee = `${sql_common_query}`;
+            sql_query_getEmployee = `${sql_common_query}
+                                     WHERE sed.employeeStatus = ${employeeStatus}`;
         }
+        console.log(sql_query_getEmployee);
         if (!req.query.categoryId) {
             sql_query_getEmployeeIds = `SELECT employeeId FROM staff_employee_data WHERE employeeStatus = 1 AND MONTH(CURDATE()) != MONTH(salaryCalculationDate)`;
             pool.query(sql_query_getEmployeeIds, (err, data) => {
@@ -1355,36 +1418,65 @@ const getMidMonthInActiveSalaryOfEmployee = (req, res) => {
     try {
         const employeeId = req.query.employeeId;
         sql_querry_calculateMidSalary = `SELECT
-                                            ROUND((
-                                                salary / 30 * DATEDIFF(CURDATE(), employeeJoiningDate)) -(
-                                                    salary / 30 * COALESCE(sld.numLeave, 0)
-                                                )) AS proratedSalary
+                                                ceil(salary / DAY(LAST_DAY(CURRENT_DATE)) * DATEDIFF(CURDATE(), employeeJoiningDate)) AS daySalary,
+                                                ceil(salary / DAY(LAST_DAY(CURRENT_DATE)) * COALESCE(sld.numLeave, 0)) AS currentMonthLeaveSalary,
+                                                ceil(salary / DAY(LAST_DAY(CURRENT_DATE)) * COALESCE(msld.remainLeave, 0)) AS remainLeaveSalary,
+                                                CONCAT(DATE_FORMAT(sed.employeeJoiningDate, '%d-%b-%Y'), ' - ', DATE_FORMAT(DATE_SUB(CURDATE(), INTERVAL 1 DAY), '%d-%b-%Y')) AS dateOfPayment
                                             FROM
                                                 staff_employee_data AS sed
                                             LEFT JOIN(
-                                                SELECT employeeId,
-                                                    SUM(staff_leave_data.numLeave) AS numLeave
+                                                SELECT
+                                                    employeeId,
+                                                SUM(staff_leave_data.numLeave) AS numLeave
                                                 FROM
                                                     staff_leave_data
                                                 WHERE
                                                     staff_leave_data.employeeId = '${employeeId}' AND staff_leave_data.leaveDate BETWEEN(
                                                     SELECT
-                                                           employeeJoiningDate
+                                                        employeeJoiningDate
                                                     FROM
                                                         staff_employee_data sed
                                                     WHERE
                                                         sed.employeeId = '${employeeId}'
                                                 ) AND CURDATE()) AS sld
                                             ON
-                                                sed.employeeId = sld.employeeId
+                                            sed.employeeId = sld.employeeId
+                                            LEFT JOIN(
+                                                SELECT 
+                                                employeeId,
+                                                remainLeave
+                                                FROM
+                                                    staff_monthlySalary_data
+                                                WHERE
+                                                    (employeeId, msEndDate) = (
+                                                    SELECT
+                                                        employeeId,
+                                                MAX(msEndDate)
+                                                    FROM
+                                                        staff_monthlySalary_data
+                                                    WHERE
+                                                        employeeId = '${employeeId}'
+                                            )
+                                            ) AS msld
+                                            ON
+                                            sed.employeeId = msld.employeeId
                                             WHERE
-                                                sed.employeeId = '${employeeId}'`;
+                                            sed.employeeId = '${employeeId}';`;
+        console.log(sql_querry_calculateMidSalary);
         pool.query(sql_querry_calculateMidSalary, (err, data) => {
             if (err) {
                 console.error("An error occurd in SQL Queery", err);
                 return res.status(500).send('Database Error');
             }
-            return res.status(200).send(data[0]);
+            const daySalary = data[0].daySalary;
+            const currentMonthLeaveSalary = data[0].currentMonthLeaveSalary;
+            const remainLeaveSalary = data[0].remainLeaveSalary;
+            const deductionSalary = remainLeaveSalary - currentMonthLeaveSalary;
+            const proratedSalary = {
+                'proratedSalary': daySalary + (deductionSalary < 0 ? deductionSalary : 0),
+                'dateOfPayment': data[0].dateOfPayment
+            }
+            return res.status(200).send(proratedSalary);
         })
     } catch (error) {
         console.error('An error occurd', error);
@@ -1416,6 +1508,7 @@ const getEmployeeDetailsById = (req, res) => {
                                             ')'
                                         ) AS category,
                                         salary,
+                                        FLOOR(salary / DAY(LAST_DAY(CURRENT_DATE))) AS perDaySalary,
                                         maxLeave,
                                         DATE_FORMAT(employeeJoiningDate, '%d-%b-%Y') AS employeeJoiningDate,
                                         DATE_FORMAT(
@@ -1436,43 +1529,68 @@ const getEmployeeDetailsById = (req, res) => {
                                             ),
                                             'No Payment Remaining'
                                         ) AS dateOfPayment,
-                                        IF(employeeStatus = 1, TRUE, FALSE) AS employeeStatus,
-                                        COALESCE(smsd.remainSalary, 0) AS totalSalary,
-                                        COALESCE(sad.advaceAmount, 0) AS advanceAmount,
-                                        COALESCE(sfd.fineAmount, 0) AS fineAmount,
-                                        COALESCE(esd.totalPaidSalary, 0) AS totalPaidSalary,
-                                        COALESCE(smsd.remainSalary, 0) - COALESCE(sad.advaceAmount, 0) - COALESCE(sfd.fineAmount, 0) AS paymentDue
-                                    FROM
-                                        staff_employee_data AS sed
-                                    LEFT JOIN staff_category_data ON staff_category_data.staffCategoryId = sed.category
-                                    LEFT JOIN(
-                                        SELECT
-                                            staff_advance_data.employeeId,
-                                            SUM(
-                                                staff_advance_data.remainAdvanceAmount
-                                            ) AS advaceAmount
-                                        FROM
-                                            staff_advance_data
-                                        WHERE
-                                            staff_advance_data.remainAdvanceAmount != 0
-                                        GROUP BY
-                                            staff_advance_data.employeeId
-                                    ) AS sad
-                                    ON
-                                        sed.employeeId = sad.employeeId
-                                    LEFT JOIN(
-                                        SELECT
-                                            staff_fine_data.employeeId,
-                                            SUM(
-                                                staff_fine_data.remainFineAmount
-                                            ) AS fineAmount
-                                        FROM
-                                            staff_fine_data
-                                        WHERE
-                                            staff_fine_data.remainFineAmount != 0
-                                        GROUP BY
-                                            staff_fine_data.employeeId
-                                    ) AS sfd
+                                        COALESCE(
+                                            (
+                                                (
+                                                SELECT
+                                                    staff_monthlySalary_data.remainLeave
+                                                FROM
+                                                    staff_monthlySalary_data
+                                                WHERE
+                                                    employeeId = sed.employeeId
+                                                ORDER BY
+                                                    staff_monthlySalary_data.msStartDate
+                                                DESC
+                                            LIMIT 1
+                                            ) + sed.maxLeave
+                                            ),
+                                            0
+                                        ) - COALESCE(
+                                            (
+                                            SELECT
+                                                SUM(staff_leave_data.numLeave)
+                                            FROM
+                                                staff_leave_data
+                                            WHERE
+                                                employeeId = sed.employeeId AND staff_leave_data.leaveDate BETWEEN DATE_FORMAT(CURDATE(), '%Y-%m-01') AND LAST_DAY(CURDATE())),
+                                                0) AS availableLeave,
+                                                IF(employeeStatus = 1, TRUE, FALSE) AS employeeStatus,
+                                                COALESCE(smsd.remainSalary, 0) AS totalSalary,
+                                                COALESCE(sad.advaceAmount, 0) AS advanceAmount,
+                                                COALESCE(sfd.fineAmount, 0) AS fineAmount,
+                                                COALESCE(esd.totalPaidSalary, 0) AS totalPaidSalary,
+                                                COALESCE(smsd.remainSalary, 0) - COALESCE(sad.advaceAmount, 0) - COALESCE(sfd.fineAmount, 0) AS paymentDue
+                                            FROM
+                                                staff_employee_data AS sed
+                                            LEFT JOIN staff_category_data ON staff_category_data.staffCategoryId = sed.category
+                                            LEFT JOIN(
+                                                SELECT
+                                                    staff_advance_data.employeeId,
+                                                    SUM(
+                                                        staff_advance_data.remainAdvanceAmount
+                                                    ) AS advaceAmount
+                                                FROM
+                                                    staff_advance_data
+                                                WHERE
+                                                    staff_advance_data.remainAdvanceAmount != 0
+                                                GROUP BY
+                                                    staff_advance_data.employeeId
+                                            ) AS sad
+                                        ON
+                                            sed.employeeId = sad.employeeId
+                                        LEFT JOIN(
+                                            SELECT
+                                                staff_fine_data.employeeId,
+                                                SUM(
+                                                    staff_fine_data.remainFineAmount
+                                                ) AS fineAmount
+                                            FROM
+                                                staff_fine_data
+                                            WHERE
+                                                staff_fine_data.remainFineAmount != 0 AND staff_fine_data.fineStatus = 1
+                                            GROUP BY
+                                                staff_fine_data.employeeId
+                                        ) AS sfd
                                     ON
                                         sed.employeeId = sfd.employeeId
                                     LEFT JOIN(
@@ -1531,7 +1649,7 @@ const getEmployeeDetailsById = (req, res) => {
                                     ON
                                         sed.employeeId = smsddate.employeeId
                                     WHERE
-                                        sed.employeeId = '${employeeId}'`;
+                                        sed.employeeId = '${employeeId}';`;
         pool.query(sql_querry_getEmployeeById, (err, data) => {
             if (err) {
                 console.error("An error occurd in SQL Queery", err);
@@ -1546,6 +1664,70 @@ const getEmployeeDetailsById = (req, res) => {
     }
 }
 
+const ddlForEmployeeList = (req, res) => {
+    try {
+        sql_querry_getEmployeeData = `SELECT
+                                        employeeId,
+                                        employeeNickName,
+                                        COALESCE(
+                                            (
+                                                (
+                                                SELECT
+                                                    staff_monthlySalary_data.remainLeave
+                                                FROM
+                                                    staff_monthlySalary_data
+                                                WHERE
+                                                    employeeId = staff_employee_data.employeeId
+                                                ORDER BY
+                                                    staff_monthlySalary_data.msStartDate
+                                                DESC
+                                            LIMIT 1
+                                            ) + staff_employee_data.maxLeave
+                                            ),
+                                            0
+                                        ) AS maxLeaveMonth, 
+                                        COALESCE(
+                                            (
+                                                (
+                                                SELECT
+                                                    staff_monthlySalary_data.remainLeave
+                                                FROM
+                                                    staff_monthlySalary_data
+                                                WHERE
+                                                    employeeId = staff_employee_data.employeeId
+                                                ORDER BY
+                                                    staff_monthlySalary_data.msStartDate
+                                                DESC
+                                            LIMIT 1
+                                            ) + staff_employee_data.maxLeave
+                                            ),
+                                            0
+                                        ) - COALESCE(
+                                            (
+                                            SELECT
+                                                SUM(staff_leave_data.numLeave)
+                                            FROM
+                                                staff_leave_data
+                                            WHERE
+                                                employeeId = staff_employee_data.employeeId AND staff_leave_data.leaveDate BETWEEN DATE_FORMAT(CURDATE(), '%Y-%m-01') AND LAST_DAY(CURDATE())),
+                                                0) AS availableLeave
+                                            FROM
+                                                staff_employee_data
+                                            WHERE
+                                                employeeStatus = 1`;
+        pool.query(sql_querry_getEmployeeData, (err, data) => {
+            if (err) {
+                console.error("An error occurd in SQL Queery", err);
+                return res.status(500).send('Database Error');
+            }
+            return res.status(200).send(data);
+        })
+    } catch (error) {
+        console.error('An error occurd', error);
+        res.status(500).send('Internal Server Error');
+    }
+}
+
 module.exports = {
     addEmployeedetails,
     getImagebyName,
@@ -1555,6 +1737,6 @@ module.exports = {
     getEmployeeData,
     calculateDueSalary,
     getMidMonthInActiveSalaryOfEmployee,
-    getEmployeeDetailsById
+    getEmployeeDetailsById,
+    ddlForEmployeeList
 }
-

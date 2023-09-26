@@ -115,7 +115,27 @@ const getStaffCategoryList = (req, res) => {
             } else {
                 const numRows = rows[0].numRows;
                 const numPages = Math.ceil(numRows / numPerPage);
-                sql_querry_getdetails = `SELECT staffCategoryId, staffCategoryName, staffCategoryPosition FROM staff_category_data ORDER BY staffCategoryPosition LIMIT ${limit}`;
+                sql_querry_getdetails = `SELECT
+                                            scd.staffCategoryId,
+                                            scd.staffCategoryName,
+                                            SUM(CASE WHEN sed.employeeStatus = 1 THEN sed.salary ELSE 0 END) AS totalSalary,
+                                            COUNT(CASE WHEN sed.employeeStatus = 1 THEN sed.employeeId END) AS numberOfActiveEmployee,
+                                            COUNT(CASE WHEN sed.employeeStatus = 0 THEN sed.employeeId END) AS numberOfInActiveEmployee,
+                                            CONCAT(CAST((SUM(CASE WHEN sed.employeeStatus = 1 THEN sed.salary ELSE 0 END) / activeTotal.totalActiveSalary) * 100 AS UNSIGNED),' %') AS percentageOfTotalSalary,
+                                            scd.staffCategoryPosition
+                                        FROM
+                                            staff_category_data AS scd
+                                        LEFT JOIN staff_employee_data AS sed ON scd.staffCategoryId = sed.category
+                                        LEFT JOIN (
+                                            SELECT SUM(salary) AS totalActiveSalary
+                                            FROM staff_employee_data
+                                            WHERE employeeStatus = 1
+                                        ) AS activeTotal ON 1 = 1
+                                        GROUP BY
+                                            scd.staffCategoryId, scd.staffCategoryName, scd.staffCategoryPosition, activeTotal.totalActiveSalary
+                                        ORDER BY
+                                            scd.staffCategoryPosition
+                                        LIMIT ${limit}`;
                 pool.query(sql_querry_getdetails, (err, rows) => {
                     if (err) {
                         console.error("An error occurd in SQL Queery", err);
@@ -203,17 +223,140 @@ const updateStaffCategory = (req, res) => {
 
 const getStaffCategoryWithEmployeeNumber = (req, res) => {
     try {
-        sql_querry_getStaffcategorywithempNum = `SELECT staffCategoryId, staffCategoryName, num As numberOfEmployee  FROM staff_category_data AS scd
+        sql_querry_getStaffcategorywithempNum = `SELECT '' AS staffCategoryId, "All" AS staffCategoryName, COALESCE(COUNT(employeeId),0) AS numberOfEmployee FROM staff_employee_data WHERE employeeStatus = 1;
+                                                 SELECT staffCategoryId, staffCategoryName, COALESCE(num,0) As numberOfEmployee  FROM staff_category_data AS scd
                                                     LEFT JOIN (
                                                     	SELECT COUNT(employeeId) AS num,staff_employee_data.category FROM staff_employee_data
+                                                        WHERE staff_employee_data.employeeStatus = 1
                                                         GROUP BY category
-                                                    ) AS sed ON scd.staffCategoryId = sed.category`;
+                                                    ) AS sed ON scd.staffCategoryId = sed.category;
+                                                SELECT '9999' AS staffCategoryId, "InActive List" AS staffCategoryName, COALESCE(COUNT(employeeId),0) AS numberOfEmployee FROM staff_employee_data WHERE employeeStatus = 0`;
         pool.query(sql_querry_getStaffcategorywithempNum, (err, data) => {
             if (err) {
                 console.error('An error occurred in SQL Query', err);
                 return res.status(500).send('Database Error');
             }
-            return res.status(200).send(data);
+            const categoryDataWithNum = data.flat(1);
+            return res.status(200).send(categoryDataWithNum);
+        })
+    } catch (error) {
+        console.log('An error occurd', error);
+        res.status(500).send('Internal Server Error');
+    }
+}
+
+const getEmployeeStatisticsByCategoryId = (req, res) => {
+    try {
+        var date = new Date(), y = date.getFullYear(), m = (date.getMonth());
+        var firstDay = new Date(y, m, 1).toString().slice(4, 15);
+        var lastDay = new Date(y, m + 1, 0).toString().slice(4, 15);
+        const categoryId = req.query.categoryId;
+        const employeeStatus = req.query.employeeStatus;
+        const startMonth = req.query.startMonth;
+        const endMonth = req.query.endMonth;
+        if (req.query.categoryId && req.query.startMonth && req.query.endMonth) {
+            sql_querry_getEmployeeStatistics = `SELECT COALESCE(SUM(salary),0) AS totalSalary FROM staff_employee_data 
+                                                WHERE employeeId IN (SELECT COALESCE(employeeId,null) FROM staff_employee_data WHERE category = '${categoryId}' AND employeeStatus = ${employeeStatus});
+
+                                                SELECT COALESCE(SUM(staff_monthlySalary_data.remainSalary),0) AS remainSalary FROM staff_monthlySalary_data 
+                                                WHERE staff_monthlySalary_data.employeeId IN (SELECT COALESCE(employeeId,null) FROM staff_employee_data WHERE category = '${categoryId}' AND employeeStatus = ${employeeStatus});
+
+                                                SELECT COALESCE(SUM(staff_advance_data.remainAdvanceAmount),0) AS remainAdvance FROM staff_advance_data 
+                                                WHERE staff_advance_data.employeeId IN (SELECT COALESCE(employeeId,null) FROM staff_employee_data WHERE category = '${categoryId}' AND employeeStatus = ${employeeStatus});
+
+                                                SELECT COALESCE(SUM(staff_fine_data.remainFineAmount),0) AS remainFine FROM staff_fine_data 
+                                                WHERE staff_fine_data.employeeId IN (SELECT COALESCE(employeeId,null) FROM staff_employee_data WHERE category = '${categoryId}' AND employeeStatus = ${employeeStatus}) AND staff_fine_data.fineStatus = 1;
+
+                                                SELECT COALESCE(SUM(staff_advance_data.advanceAmount),0) AS advanceAmount FROM staff_advance_data 
+                                                WHERE staff_advance_data.employeeId IN (SELECT COALESCE(employeeId,null) FROM staff_employee_data WHERE category = '${categoryId}' AND employeeStatus = ${employeeStatus}) AND DATE_FORMAT(advanceDate,'%Y-%m') BETWEEN '${startMonth}' AND '${endMonth}';
+
+                                                SELECT COALESCE(SUM(staff_fine_data.fineAmount),0) AS fineAmount, COALESCE(SUM(CASE WHEN fineStatus = 1 THEN fineAmount ELSE 0 END), 0) AS totalConsiderFine, COALESCE(SUM(CASE WHEN fineStatus = 0 THEN remainFineAmount ELSE 0 END), 0) AS totalIgnoreFine FROM staff_fine_data 
+                                                WHERE staff_fine_data.employeeId IN (SELECT COALESCE(employeeId,null) FROM staff_employee_data WHERE category = '${categoryId}' AND employeeStatus = ${employeeStatus}) AND DATE_FORMAT(fineDate,'%Y-%m') BETWEEN '${startMonth}' AND '${endMonth}';
+
+                                                SELECT COALESCE(SUM(staff_bonus_data.bonusAmount),0) AS bonusAmount FROM staff_bonus_data
+                                                WHERE staff_bonus_data.employeeId IN (SELECT COALESCE(employeeId,null) FROM staff_employee_data WHERE category = '${categoryId}' AND employeeStatus = ${employeeStatus}) AND DATE_FORMAT(bonusDate,'%Y-%m') BETWEEN '${startMonth}' AND '${endMonth}'`;
+        } else if (req.query.startMonth && req.query.endMonth && req.query.employeeStatus) {
+            sql_querry_getEmployeeStatistics = `SELECT COALESCE(SUM(salary),0) AS totalSalary FROM staff_employee_data 
+                                                WHERE employeeStatus = ${employeeStatus};
+
+                                                SELECT COALESCE(SUM(staff_monthlySalary_data.remainSalary),0) AS remainSalary FROM staff_monthlySalary_data
+                                                WHERE staff_monthlySalary_data.employeeId IN (SELECT COALESCE(employeeId,null) FROM staff_employee_data WHERE employeeStatus = ${employeeStatus});
+
+                                                SELECT COALESCE(SUM(staff_advance_data.remainAdvanceAmount),0) AS remainAdvance FROM staff_advance_data
+                                                WHERE staff_advance_data.employeeId IN (SELECT COALESCE(employeeId,null) FROM staff_employee_data WHERE employeeStatus = ${employeeStatus});
+
+                                                SELECT COALESCE(SUM(staff_fine_data.remainFineAmount),0) AS remainFine FROM staff_fine_data 
+                                                WHERE staff_fine_data.employeeId IN (SELECT COALESCE(employeeId,null) FROM staff_employee_data WHERE employeeStatus = ${employeeStatus}) AND staff_fine_data.fineStatus = 1;
+
+                                                SELECT COALESCE(SUM(staff_advance_data.advanceAmount),0) AS advanceAmount FROM staff_advance_data 
+                                                WHERE staff_advance_data.employeeId IN (SELECT COALESCE(employeeId,null) FROM staff_employee_data WHERE employeeStatus = ${employeeStatus}) AND DATE_FORMAT(advanceDate,'%Y-%m') BETWEEN '${startMonth}' AND '${endMonth}';
+
+                                                SELECT COALESCE(SUM(staff_fine_data.fineAmount),0) AS fineAmount,COALESCE(SUM(CASE WHEN fineStatus = 1 THEN fineAmount ELSE 0 END), 0) AS totalConsiderFine, COALESCE(SUM(CASE WHEN fineStatus = 0 THEN remainFineAmount ELSE 0 END), 0) AS totalIgnoreFine FROM staff_fine_data 
+                                                WHERE staff_fine_data.employeeId IN (SELECT COALESCE(employeeId,null) FROM staff_employee_data WHERE employeeStatus = ${employeeStatus}) AND DATE_FORMAT(fineDate,'%Y-%m') BETWEEN '${startMonth}' AND '${endMonth}';
+
+                                                SELECT COALESCE(SUM(staff_bonus_data.bonusAmount),0) AS bonusAmount FROM staff_bonus_data
+                                                WHERE staff_bonus_data.employeeId IN (SELECT COALESCE(employeeId,null) FROM staff_employee_data WHERE employeeStatus = ${employeeStatus}) AND DATE_FORMAT(bonusDate,'%Y-%m') BETWEEN '${startMonth}' AND '${endMonth}'`;
+        } else if (req.query.categoryId) {
+            sql_querry_getEmployeeStatistics = `SELECT COALESCE(SUM(salary),0) AS totalSalary FROM staff_employee_data 
+                                                WHERE employeeId IN (SELECT COALESCE(employeeId,null) FROM staff_employee_data WHERE category = '${categoryId}' AND employeeStatus = 1);
+
+                                                SELECT COALESCE(SUM(staff_monthlySalary_data.remainSalary),0) AS remainSalary FROM staff_monthlySalary_data 
+                                                WHERE staff_monthlySalary_data.employeeId IN (SELECT COALESCE(employeeId,null) FROM staff_employee_data WHERE category = '${categoryId}' AND employeeStatus = ${employeeStatus});
+
+                                                SELECT COALESCE(SUM(staff_advance_data.remainAdvanceAmount),0) AS remainAdvance FROM staff_advance_data 
+                                                WHERE staff_advance_data.employeeId IN (SELECT COALESCE(employeeId,null) FROM staff_employee_data WHERE category = '${categoryId}' AND employeeStatus = ${employeeStatus});
+
+                                                SELECT COALESCE(SUM(staff_fine_data.remainFineAmount),0) AS remainFine FROM staff_fine_data 
+                                                WHERE staff_fine_data.employeeId IN (SELECT COALESCE(employeeId,null) FROM staff_employee_data WHERE category = '${categoryId}' AND employeeStatus = ${employeeStatus}) AND staff_fine_data.fineStatus = 1;
+
+                                                SELECT COALESCE(SUM(staff_advance_data.advanceAmount),0) AS advanceAmount FROM staff_advance_data 
+                                                WHERE staff_advance_data.employeeId IN (SELECT COALESCE(employeeId,null) FROM staff_employee_data WHERE category = '${categoryId}' AND employeeStatus = ${employeeStatus}) AND advanceDate BETWEEN STR_TO_DATE('${firstDay}','%b %d %Y') AND STR_TO_DATE('${lastDay}','%b %d %Y');
+
+                                                SELECT COALESCE(SUM(staff_fine_data.fineAmount),0) AS fineAmount, COALESCE(SUM(CASE WHEN fineStatus = 1 THEN fineAmount ELSE 0 END), 0) AS totalConsiderFine, COALESCE(SUM(CASE WHEN fineStatus = 0 THEN remainFineAmount ELSE 0 END), 0) AS totalIgnoreFine FROM staff_fine_data 
+                                                WHERE staff_fine_data.employeeId IN (SELECT COALESCE(employeeId,null) FROM staff_employee_data WHERE category = '${categoryId}' AND employeeStatus = ${employeeStatus}) AND fineDate BETWEEN STR_TO_DATE('${firstDay}','%b %d %Y') AND STR_TO_DATE('${lastDay}','%b %d %Y');
+
+                                                SELECT COALESCE(SUM(staff_bonus_data.bonusAmount),0) AS bonusAmount FROM staff_bonus_data
+                                                WHERE staff_bonus_data.employeeId IN (SELECT COALESCE(employeeId,null) FROM staff_employee_data WHERE category = '${categoryId}' AND employeeStatus = ${employeeStatus}) AND bonusDate BETWEEN STR_TO_DATE('${firstDay}','%b %d %Y') AND STR_TO_DATE('${lastDay}','%b %d %Y')`;
+        } else {
+            sql_querry_getEmployeeStatistics = `SELECT COALESCE(SUM(salary),0) AS totalSalary FROM staff_employee_data 
+                                                WHERE employeeStatus = ${employeeStatus};
+
+                                                SELECT COALESCE(SUM(staff_monthlySalary_data.remainSalary),0) AS remainSalary FROM staff_monthlySalary_data 
+                                                WHERE staff_monthlySalary_data.employeeId IN (SELECT COALESCE(employeeId,null) FROM staff_employee_data WHERE employeeStatus = ${employeeStatus});
+
+                                                SELECT COALESCE(SUM(staff_advance_data.remainAdvanceAmount),0) AS remainAdvance FROM staff_advance_data 
+                                                WHERE staff_advance_data.employeeId IN (SELECT COALESCE(employeeId,null) FROM staff_employee_data WHERE employeeStatus = ${employeeStatus});
+
+                                                SELECT COALESCE(SUM(staff_fine_data.remainFineAmount),0) AS remainFine FROM staff_fine_data 
+                                                WHERE staff_fine_data.employeeId IN (SELECT COALESCE(employeeId,null) FROM staff_employee_data WHERE employeeStatus = ${employeeStatus}) AND staff_fine_data.fineStatus = 1;
+
+                                                SELECT COALESCE(SUM(staff_advance_data.advanceAmount),0) AS advanceAmount FROM staff_advance_data 
+                                                WHERE staff_advance_data.employeeId IN (SELECT COALESCE(employeeId,null) FROM staff_employee_data WHERE employeeStatus = ${employeeStatus}) AND advanceDate BETWEEN STR_TO_DATE('${firstDay}','%b %d %Y') AND STR_TO_DATE('${lastDay}','%b %d %Y');
+
+                                                SELECT COALESCE(SUM(staff_fine_data.fineAmount),0) AS fineAmount,COALESCE(SUM(CASE WHEN fineStatus = 1 THEN fineAmount ELSE 0 END), 0) AS totalConsiderFine, COALESCE(SUM(CASE WHEN fineStatus = 0 THEN remainFineAmount ELSE 0 END), 0) AS totalIgnoreFine FROM staff_fine_data 
+                                                WHERE staff_fine_data.employeeId IN (SELECT COALESCE(employeeId,null) FROM staff_employee_data WHERE employeeStatus = ${employeeStatus}) AND fineDate BETWEEN STR_TO_DATE('${firstDay}','%b %d %Y') AND STR_TO_DATE('${lastDay}','%b %d %Y');
+
+                                                SELECT COALESCE(SUM(staff_bonus_data.bonusAmount),0) AS bonusAmount FROM staff_bonus_data
+                                                WHERE staff_bonus_data.employeeId IN (SELECT COALESCE(employeeId,null) FROM staff_employee_data WHERE employeeStatus = ${employeeStatus}) AND bonusDate BETWEEN STR_TO_DATE('${firstDay}','%b %d %Y') AND STR_TO_DATE('${lastDay}','%b %d %Y')`;
+        }
+        pool.query(sql_querry_getEmployeeStatistics, (err, data) => {
+            if (err) {
+                console.error('An error occurred in SQL Query', err);
+                return res.status(500).send('Database Error');
+            }
+            const staticsJson = {
+                "totalSalary": data[0][0].totalSalary,
+                "remainSalary": data[1][0].remainSalary,
+                "remainAdvance": data[2][0].remainAdvance,
+                "remainFine": data[3][0].remainFine,
+                "totalDueSalary": data[1][0].remainSalary - data[2][0].remainAdvance - data[3][0].remainFine,
+                "advanceAmount": data[4][0].advanceAmount,
+                "fineAmount": data[5][0].fineAmount,
+                "totalConsiderFine": data[5][0].totalConsiderFine,
+                "totalIgnoreFine": data[5][0].totalIgnoreFine,
+                "bonusAmount": data[6][0].bonusAmount,
+            }
+            return res.status(200).send(staticsJson);
         })
     } catch (error) {
         console.log('An error occurd', error);
@@ -227,12 +370,6 @@ module.exports = {
     ddlStaffCategory,
     getStaffCategoryList,
     updateStaffCategory,
-    getStaffCategoryWithEmployeeNumber
+    getStaffCategoryWithEmployeeNumber,
+    getEmployeeStatisticsByCategoryId
 }
-
-// [
-//     'Manager',
-//     'Asistant Manager',
-//     'Accoutant',
-//     'sa'
-// ]

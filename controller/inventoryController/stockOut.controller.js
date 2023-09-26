@@ -375,6 +375,7 @@ const addStockOutDetails = async (req, res) => {
                             console.error("An error occurd in SQL Queery", err);
                             return res.status(500).send('Database Error');
                         }
+                        const orignalStockInData = Object.values(JSON.parse(JSON.stringify(data)));
                         const stockInData = Object.values(JSON.parse(JSON.stringify(data)));
                         console.log(">>>", Object.values(JSON.parse(JSON.stringify(data))));
                         const stockOutData = [
@@ -420,7 +421,6 @@ const addStockOutDetails = async (req, res) => {
 
                         // Print updated stockInData
                         console.log("Updated stockInData:", stockInData);
-
                         console.log("Total Stock Out Price:", totalStockOutPrice);
                         const stocokOutPrice = Number(totalStockOutPrice).toFixed(2);
 
@@ -446,7 +446,7 @@ const addStockOutDetails = async (req, res) => {
                             return query;
                         }
 
-                        console.log(generateUpdateQuery(sopq))
+                        // console.log(generateUpdateQuery(sopq))
                         const sql_qurey_updatedRemainQty = generateUpdateQuery(sopq);
                         pool.query(sql_qurey_updatedRemainQty, (err, data) => {
                             if (err) {
@@ -465,22 +465,37 @@ const addStockOutDetails = async (req, res) => {
                                         return obj.stockInId;
                                     }
                                 })
+
+                                const remainingStockByIds = sowsiId.map(stockInId => {
+                                    const stockIn = orignalStockInData.find(item => item.stockInId === stockInId);
+                                    return stockIn ? stockIn.stockInQuantity : undefined;
+                                });
+
+                                const remainingStockByIds1 = sowsiId.map(stockInId => {
+                                    const stockIn = stockInData.find(item => item.stockInId === stockInId);
+                                    return stockIn ? stockIn.stockInQuantity : undefined;
+                                });
+
+                                console.log('orignalStockInData', remainingStockByIds);
+                                console.log('stockInData', remainingStockByIds1);
+
+                                const remainStockCutQty = remainingStockByIds.map((value, index) => value - remainingStockByIds1[index]);
+
+                                console.log(';;;;;;;;', stockInData)
+                                console.log('???????', orignalStockInData);
                                 console.log(">?>?>?<<<<.,,,", sowsiId);
-                                const stockOutWiseStockInId = () => {
+                                console.log("RRRRR", remainStockCutQty);
 
-                                    var string = ''
-                                    sowsiId.forEach((data, index) => {
-                                        if (index == 0)
-                                            string = "(" + "'" + stockOutId + "'" + "," + string + "'" + data + "'" + ")";
-                                        else
-                                            string = string + ",(" + "'" + stockOutId + "'" + "," + "'" + data + "'" + ")";
-                                    });
-                                    return string;
+                                // Use map to combine the arrays and format them
+                                const combinedData = sowsiId.map((id, index) => `('${stockOutId}','${id}',ROUND(${remainStockCutQty[index]},2))`);
 
-                                }
-                                console.log(">?>?>/////", stockOutWiseStockInId())
+                                // Join the array elements into a single string
+                                const stockOutWiseStockInId = combinedData.join(',');
 
-                                sql_querry_addsowsiId = `INSERT INTO inventory_stockOutwiseStockInId_data (stockOutId, stockInId) VALUES ${stockOutWiseStockInId()}`;
+                                // Output the resulting string
+                                console.log(stockOutWiseStockInId);
+
+                                sql_querry_addsowsiId = `INSERT INTO inventory_stockOutwiseStockInId_data (stockOutId, stockInId, cutProductQty) VALUES ${stockOutWiseStockInId}`;
                                 pool.query(sql_querry_addsowsiId, (err, data) => {
                                     if (err) {
                                         console.error("An error occurd in SQL Queery", err);
@@ -515,13 +530,49 @@ const removeStockOutTransaction = async (req, res) => {
             }
             const prevoiusQuantity = row[0].productQty;
             if (row && row.length) {
-                sql_get_sowsoid = `SELECT stockInId, productId, productQty, productPrice AS stockInPrice, remainingQty AS remainingStock FROM inventory_stockIn_data WHERE stockInId IN (SELECT COALESCE(stockInId,null) FROM inventory_stockOutwiseStockInId_data WHERE stockOutId = '${stockOutId}') ORDER BY stockInCreationDate ASC`;
+                sql_get_sowsoid = `SELECT
+                                    inventory_stockIn_data.stockInId,
+                                    productId,
+                                    (
+                                        inventory_stockIn_data.remainingQty + sowsid.cutProductQty
+                                    ) AS productQty,
+                                    productPrice AS stockInPrice,
+                                    remainingQty AS remainingStock
+                                FROM
+                                    inventory_stockIn_data
+                                INNER JOIN(
+                                    SELECT
+                                        inventory_stockOutwiseStockInId_data.stockInId,
+                                        inventory_stockOutwiseStockInId_data.cutProductQty AS cutProductQty
+                                    FROM
+                                        inventory_stockOutwiseStockInId_data
+                                    WHERE
+                                        inventory_stockOutwiseStockInId_data.stockOutId = '${stockOutId}'
+                                ) AS sowsid
+                                ON
+                                    inventory_stockIn_data.stockInId = sowsid.stockInId
+                                WHERE
+                                    inventory_stockIn_data.stockInId IN(
+                                    SELECT
+                                        COALESCE(
+                                            inventory_stockOutwiseStockInId_data.stockInId,
+                                            NULL
+                                        )
+                                    FROM
+                                        inventory_stockOutwiseStockInId_data
+                                    WHERE
+                                        stockOutId = '${stockOutId}'
+                                )
+                                ORDER BY
+                                    stockInCreationDate ASC`;
                 console.log(">>><<<", sql_get_sowsoid);
                 pool.query(sql_get_sowsoid, (err, data) => {
                     if (err) {
                         console.error("An error occurd in SQL Queery", err);
                         return res.status(500).send('Database Error');
                     }
+                    const junoJson = Object.values(JSON.parse(JSON.stringify(data)))
+                    console.log('junoo', junoJson)
                     console.log(">>>", Object.values(JSON.parse(JSON.stringify(data))));
                     const StockInData = Object.values(JSON.parse(JSON.stringify(data)));
                     console.log("::::::::", prevoiusQuantity - req.body.productQty);
@@ -909,14 +960,49 @@ const updateStockOutTransaction = async (req, res) => {
                                     })
                                 })
                             } else if (prevoiusQuantity > req.body.productQty) {
-                                sql_get_sowsoid = `SELECT stockInId, productId, productQty, productPrice AS stockInPrice, remainingQty AS remainingStock FROM inventory_stockIn_data WHERE stockInId IN (SELECT COALESCE(stockInId,null) FROM inventory_stockOutwiseStockInId_data WHERE stockOutId = '${stockOutId}') ORDER BY stockInCreationDate ASC`;
+                                sql_get_sowsoid = `SELECT
+                                                    inventory_stockIn_data.stockInId,
+                                                    productId,
+                                                    (
+                                                        inventory_stockIn_data.remainingQty + sowsid.cutProductQty
+                                                    ) AS productQty,
+                                                    productPrice AS stockInPrice,
+                                                    remainingQty AS remainingStock
+                                                FROM
+                                                    inventory_stockIn_data
+                                                INNER JOIN(
+                                                    SELECT
+                                                        inventory_stockOutwiseStockInId_data.stockInId,
+                                                        inventory_stockOutwiseStockInId_data.cutProductQty AS cutProductQty
+                                                    FROM
+                                                        inventory_stockOutwiseStockInId_data
+                                                    WHERE
+                                                        inventory_stockOutwiseStockInId_data.stockOutId = '${stockOutId}'
+                                                ) AS sowsid
+                                                ON
+                                                    inventory_stockIn_data.stockInId = sowsid.stockInId
+                                                WHERE
+                                                    inventory_stockIn_data.stockInId IN(
+                                                    SELECT
+                                                        COALESCE(
+                                                            inventory_stockOutwiseStockInId_data.stockInId,
+                                                            NULL
+                                                        )
+                                                    FROM
+                                                        inventory_stockOutwiseStockInId_data
+                                                    WHERE
+                                                        stockOutId = '${stockOutId}'
+                                                )
+                                                ORDER BY
+                                                    stockInCreationDate ASC`;
                                 console.log(">>><<<", sql_get_sowsoid);
                                 pool.query(sql_get_sowsoid, (err, data) => {
                                     if (err) {
                                         console.error("An error occurd in SQL Queery", err);
                                         return res.status(500).send('Database Error');
                                     }
-                                    console.log(">>>", Object.values(JSON.parse(JSON.stringify(data))));
+                                    const junoJson = Object.values(JSON.parse(JSON.stringify(data)));
+                                    console.log("Juno Json", junoJson);
                                     const StockInData = Object.values(JSON.parse(JSON.stringify(data)));
                                     console.log("::::::::", prevoiusQuantity - req.body.productQty);
                                     const stockOutData = [
@@ -1236,52 +1322,56 @@ const categoryWcisedUsed = (req, res) => {
 
 const categoryWisedUsed = (req, res) => {
 
-    var date = new Date(), y = date.getFullYear(), m = (date.getMonth());
+    var date = new Date(), y = date.getFullYear(), m = (date.getMonth() - 1);
     var firstDay = new Date(y, m, 1).toString().slice(4, 15);
     var lastDay = new Date(y, m + 1, 0).toString().slice(4, 15);
 
 
+
     const data = {
-        startDate: (req.query.startDate ? req.query.startDate : '').slice(4, 15),
-        endDate: (req.query.endDate ? req.query.endDate : '').slice(4, 15),
-        productId: req.query.productId
+        startDate: req.query.startDate,
+        endDate: req.query.endDate
     }
 
     sql_queries_getdetails = `SET @sql = NULL;
-                            SELECT
-                            GROUP_CONCAT(DISTINCT
-                                CONCAT(
-                                'COALESCE(MAX(CASE WHEN so.productId = ''',
-                                p.productId,
-                                ''' THEN so.usedQty END), 0) AS ',
-                                QUOTE(CONCAT(p.productName,' (',p.minProductUnit,')'))
-                            )
-                            ) INTO @sql
-                            FROM inventory_product_data p;
-                                
-                            SET @sql = CONCAT(
-                                'SELECT c.stockOutCategoryName AS "stockout Category", ', @sql, '
-                               FROM inventory_stockOutCategory_data c
-                               LEFT JOIN(
-                                    SELECT so.stockOutCategory, so.productId, SUM(so.productQty) AS usedQty
-                                 FROM inventory_stockOut_data so
-                                 GROUP BY so.stockOutCategory, so.productId
-                                ) so ON c.stockOutCategoryId = so.stockOutCategory
-                               GROUP BY c.stockOutCategoryId, c.stockOutCategoryName'
-                            );
-                            
-                            PREPARE stmt FROM @sql;
-                            EXECUTE stmt;
-                            DEALLOCATE PREPARE stmt;`;
+                                    SELECT
+                                        GROUP_CONCAT(DISTINCT
+                                            CONCAT(
+                                                'COALESCE(MAX(CASE WHEN so.productId = ''',
+                                                p.productId,
+                                                ''' THEN so.usedQty END), 0) AS ',
+                                                QUOTE(CONCAT(p.productName,' (',p.minProductUnit,')'))
+                                            )
+                                        ) INTO @sql
+                                    FROM inventory_product_data p;
+                                            
+                                    -- Define your date range here
+                                    SET @startDate = '${data.startDate}';
+                                    SET @endDate = '${data.endDate}';
+                                            
+                                    SET @sql = CONCAT(
+                                        'SELECT c.stockOutCategoryName AS "stockout Category", ', @sql, '
+                                        FROM inventory_stockOutCategory_data c
+                                        LEFT JOIN(
+                                            SELECT so.stockOutCategory, so.productId, SUM(so.productQty) AS usedQty
+                                            FROM inventory_stockOut_data so
+                                            WHERE so.stockOutDate BETWEEN ? AND ? -- Apply the date range filter here
+                                            GROUP BY so.stockOutCategory, so.productId
+                                        ) so ON c.stockOutCategoryId = so.stockOutCategory
+                                        GROUP BY c.stockOutCategoryId, c.stockOutCategoryName'
+                                    );
+                                    PREPARE stmt FROM @sql;
+                                    EXECUTE stmt USING @startDate, @endDate; -- Pass the date range as parameters
+                                    DEALLOCATE PREPARE stmt;`;
 
     pool.query(sql_queries_getdetails, async (err, rows) => {
         if (err) return res.status(404).send(err);
-        console.log("::::::::::;;;;;;;;;;;;", rows[1])
+        // console.log("::::::::::;;;;;;;;;;;;", rows[6])
         const workbook = new excelJS.Workbook();
         const worksheet = workbook.addWorksheet('Stock Out Data');
 
-        const abs = rows[4];
-        const headerName = rows[4][0];
+        const abs = rows[6];
+        const headerName = rows[6][0];
         console.log("><><>", Object.keys(headerName).map(key => key.toUpperCase()));
         const headersName = Object.keys(headerName).map(key => key.toUpperCase());
         // Create the headers row
@@ -1426,37 +1516,40 @@ const categoryWisedUsedPrice = (req, res) => {
 
 
     const data = {
-        startDate: (req.query.startDate ? req.query.startDate : '').slice(4, 15),
-        endDate: (req.query.endDate ? req.query.endDate : '').slice(4, 15),
-        productId: req.query.productId
+        startDate: req.query.startDate,
+        endDate: req.query.endDate,
     }
 
     sql_queries_getdetails = `SET @sql = NULL;
-                            SELECT
-                            GROUP_CONCAT(DISTINCT
-                                CONCAT(
-                                'COALESCE(MAX(CASE WHEN so.productId = ''',
-                                p.productId,
-                                ''' THEN so.usedQty END), 0) AS ',
-                                QUOTE(CONCAT(p.productName,' (',p.minProductUnit,')'))
-                            )
-                            ) INTO @sql
-                            FROM inventory_product_data p;
-                                
-                            SET @sql = CONCAT(
-                                'SELECT c.stockOutCategoryName AS "stockout Category", ', @sql, '
-                               FROM inventory_stockOutCategory_data c
-                               LEFT JOIN(
-                                    SELECT so.stockOutCategory, so.productId, SUM(so.stockOutPrice) AS usedQty
-                                 FROM inventory_stockOut_data so
-                                 GROUP BY so.stockOutCategory, so.productId
-                                ) so ON c.stockOutCategoryId = so.stockOutCategory
-                               GROUP BY c.stockOutCategoryId, c.stockOutCategoryName'
-                            );
-                            
-                            PREPARE stmt FROM @sql;
-                            EXECUTE stmt;
-                            DEALLOCATE PREPARE stmt;`;
+                                    SELECT
+                                        GROUP_CONCAT(DISTINCT
+                                            CONCAT(
+                                                'COALESCE(MAX(CASE WHEN so.productId = ''',
+                                                p.productId,
+                                                ''' THEN so.usedQty END), 0) AS ',
+                                                QUOTE(CONCAT(p.productName,' (',p.minProductUnit,')'))
+                                            )
+                                        ) INTO @sql
+                                    FROM inventory_product_data p;
+                                            
+                                    -- Define your date range here
+                                    SET @startDate = '${data.startDate}';
+                                    SET @endDate = '${data.endDate}';
+                                            
+                                    SET @sql = CONCAT(
+                                        'SELECT c.stockOutCategoryName AS "stockout Category", ', @sql, '
+                                        FROM inventory_stockOutCategory_data c
+                                        LEFT JOIN(
+                                            SELECT so.stockOutCategory, so.productId, SUM(so.stockOutPrice) AS usedQty
+                                            FROM inventory_stockOut_data so
+                                            WHERE so.stockOutDate BETWEEN ? AND ? -- Apply the date range filter here
+                                            GROUP BY so.stockOutCategory, so.productId
+                                        ) so ON c.stockOutCategoryId = so.stockOutCategory
+                                        GROUP BY c.stockOutCategoryId, c.stockOutCategoryName'
+                                    );
+                                    PREPARE stmt FROM @sql;
+                                    EXECUTE stmt USING @startDate, @endDate; -- Pass the date range as parameters
+                                    DEALLOCATE PREPARE stmt;`;
 
     pool.query(sql_queries_getdetails, async (err, rows) => {
         if (err) return res.status(404).send(err);
@@ -1464,8 +1557,8 @@ const categoryWisedUsedPrice = (req, res) => {
         const workbook = new excelJS.Workbook();
         const worksheet = workbook.addWorksheet('Stock Out Data');
 
-        const abs = rows[4];
-        const headerName = rows[4][0];
+        const abs = rows[6];
+        const headerName = rows[6][0];
         console.log("><><>", Object.keys(headerName).map(key => key.toUpperCase()));
         const headersName = Object.keys(headerName).map(key => key.toUpperCase());
         // Create the headers row

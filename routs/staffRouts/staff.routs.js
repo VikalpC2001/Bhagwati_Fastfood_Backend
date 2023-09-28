@@ -128,14 +128,6 @@ router.get('/getAllEmployeeAdvanceData', allPaymentController.getAllEmployeeAdva
 router.get('/getAllPaymentStatisticsCount', allPaymentController.getAllPaymentStatisticsCount);
 router.get('/getAllEmployeeHolidayData', allPaymentController.getAllEmployeeHolidayData);
 
-
-
-// temp
-
-const temp = require('../../controller/staffController/temp.js');
-
-router.get('/salary', temp.getCutSalaryDataById);
-
 module.exports = router;
 
 

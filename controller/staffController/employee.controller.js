@@ -828,6 +828,7 @@ const addEmployeedetails = (req, res) => {
                                                                                 designation,
                                                                                 salary,
                                                                                 maxLeave,
+                                                                                employeeStaticJoiningDate,
                                                                                 employeeJoiningDate,
                                                                                 employeeLastPaymentDate,
                                                                                 salaryCalculationDate,
@@ -854,6 +855,7 @@ const addEmployeedetails = (req, res) => {
                                                                                 '${data.designation}',
                                                                                 ${data.salary},
                                                                                 ${data.maxLeave},
+                                                                                STR_TO_DATE('${data.joiningDate}','%b %d %Y'),
                                                                                 STR_TO_DATE('${data.joiningDate}','%b %d %Y'),
                                                                                 STR_TO_DATE('${data.joiningDate}','%b %d %Y'),
                                                                                 STR_TO_DATE('${data.joiningDate}','%b %d %Y'),
@@ -1129,7 +1131,8 @@ const updateEmployeeDetails = (req, res) => {
                         return res.status(500).send('Database Error');
                     }
                     if (req.body.salary != req.body.previousSalary && req.body.previousSalary) {
-                        sql_query_addUpdateHistory = `UPDATE
+                        sql_query_addUpdateHistory = `DELETE FROM salary_history_data WHERE employeeId = '${employeeId}' AND DATE_FORMAT(startDate, '%Y-%m') = DATE_FORMAT(CURDATE(), '%Y-%m');
+                                                    UPDATE
                                                         salary_history_data
                                                       SET
                                                         endDate = STR_TO_DATE('${startEndDate}','%b %d %Y')
@@ -1152,11 +1155,11 @@ const updateEmployeeDetails = (req, res) => {
                                 return res.status(500).send('Database Error');
                             }
                             console.log('Data inserted successfully');
-                            res.status(200).send('Data Updated successfully');
                         })
                     }
                     if (req.body.maxLeave != req.body.previousMaxLeave && req.body.previousMaxLeave) {
-                        sql_query_addUpdateHistory = `UPDATE
+                        sql_query_addUpdateHistory = `DELETE FROM leave_history_data WHERE employeeId = '${employeeId}' AND DATE_FORMAT(startDate, '%Y-%m') = DATE_FORMAT(CURDATE(), '%Y-%m');
+                                                    UPDATE
                                                         leave_history_data
                                                       SET
                                                         endDate = STR_TO_DATE('${startEndDate}','%b %d %Y')

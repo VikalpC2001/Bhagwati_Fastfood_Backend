@@ -3658,24 +3658,3 @@ module.exports = {
     updateFineTransaction,
     updateMonthlySalary
 }
-
-// SELECT
-// smsd.employeeId,
-//     smsd.msStartDate,
-//     smsd.msEndDate,
-//     (DATEDIFF(
-//         smsd.msEndDate,
-//         smsd.msStartDate
-//     ) + 1
-//         - (
-//             SELECT
-//         COALESCE(SUM(sl.numLeave),
-//                 0)
-// FROM
-//         staff_leave_data sl
-// WHERE
-// sl.employeeId = smsd.employeeId AND sl.leaveDate BETWEEN smsd.msStartDate AND smsd.msEndDate
-// )) AS totalNumLeave
-// FROM
-//     staff_monthlySalary_data smsd;
-

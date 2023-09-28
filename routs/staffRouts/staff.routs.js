@@ -68,6 +68,7 @@ router.get('/getTransactionDataById', employeeTableController.getTransactionData
 router.get('/getCutSalaryDataById', employeeTableController.getCutSalaryDataById);
 router.get('/getAllPaymentStatisticsCountById', employeeTableController.getAllPaymentStatisticsCountById);
 router.get('/getCutCreditDataById', employeeTableController.getCutCreditDataById);
+router.get('/getPresentDaysByEmployeeId', employeeTableController.getPresentDaysByEmployeeId);
 
 // Export Table Data Routs
 

@@ -2,6 +2,14 @@ const pool = require('../../database');
 const jwt = require("jsonwebtoken");
 const { route } = require('../../routs/inventoryRouts/inventory.routs');
 
+function convertDaysToYearsMonthsDays(days) {
+    const years = Math.floor(days / 365);
+    const months = Math.floor((days % 365) / 30);
+    const remainingDays = days % 30;
+
+    return `${years > 0 ? `${years} year${years > 1 ? 's' : ''}` : ''}${months > 0 ? `${years > 0 ? ', ' : ''}${months} month${months > 1 ? 's' : ''}` : ''}${remainingDays > 0 ? `${years > 0 || months > 0 ? ', ' : ''}${remainingDays} day${remainingDays > 1 ? 's' : ''}` : ''}`;
+}
+
 // All Table Data By EmployeeId
 
 const getEmployeeMonthlySalaryById = (req, res) => {
@@ -882,9 +890,8 @@ const getAllPaymentStatisticsCountById = (req, res) => {
                                             WHERE employeeId = '${employeeId}';
                                             SELECT COALESCE(SUM(remainSalary),0) AS remainSalary FROM staff_monthlySalary_data WHERE employeeId = '${employeeId}';
                                             SELECT COALESCE(SUM(remainFineAmount),0) AS totalRemainFine FROM staff_fine_data WHERE employeeId = '${employeeId}' AND fineStatus = 1;
-                                            SELECT COALESCE(SUM(remainAdvanceAmount),0) AS totalRemainAdvance FROM staff_advance_data WHERE employeeId = '${employeeId}';`;
+                                            SELECT COALESCE(SUM(remainAdvanceAmount),0) AS totalRemainAdvance FROM staff_advance_data WHERE employeeId = '${employeeId}'`;
         }
-        console.log(sql_queries_getStatisticsCountById)
         pool.query(sql_queries_getStatisticsCountById, (err, date) => {
             if (err) {
                 console.error("An error occurd in SQL Queery", err);
@@ -892,6 +899,104 @@ const getAllPaymentStatisticsCountById = (req, res) => {
             }
             const mergedObject = Object.assign({}, ...date.map(arr => arr[0] || {}));
             return res.status(200).send(mergedObject);
+        })
+    } catch (error) {
+        console.error('An error occurd', error);
+        res.status(500).send('Internal Server Error');
+    }
+}
+
+const getPresentDaysByEmployeeId = (req, res) => {
+    try {
+        const employeeId = req.query.employeeId;
+        if (!employeeId) {
+            res.status(401).send('EmployeeId Is Not Found');
+        }
+        sql_queries_countDay = `SELECT  
+                                    SUM(
+                                        DATEDIFF(
+                                            smsd.msEndDate,
+                                            smsd.msStartDate
+                                        ) + 1 -(
+                                        SELECT
+                                            COALESCE(SUM(sl.numLeave),
+                                            0)
+                                        FROM
+                                            staff_leave_data sl
+                                        WHERE
+                                            sl.employeeId = smsd.employeeId AND sl.leaveDate BETWEEN smsd.msStartDate AND smsd.msEndDate
+                                    )
+                                    ) AS daysOfSalary
+                                FROM
+                                    staff_monthlySalary_data smsd
+                                WHERE smsd.employeeId = '${employeeId}';
+                                SELECT
+                                    DATEDIFF(
+                                        CURDATE(), DATE_ADD(msEndDate, INTERVAL 1 DAY)) -(
+                                        SELECT
+                                            COALESCE(SUM(sl.numLeave),
+                                            0)
+                                        FROM
+                                            staff_leave_data sl
+                                        WHERE
+                                            sl.employeeId = smsd.employeeId AND sl.leaveDate BETWEEN DATE_ADD(msEndDate, INTERVAL 1 DAY) AND CURDATE()) AS currentMonthPresentDays
+                                FROM
+                                    staff_monthlySalary_data AS smsd
+                                WHERE smsd.employeeId = '${employeeId}'
+                                ORDER BY
+                                    msEndDate DESC
+                                LIMIT 1;
+                                SELECT
+                                    SUM(
+                                      DATEDIFF(
+                                        smsd.msEndDate,
+                                        smsd.msStartDate
+                                      ) + 1 - (
+                                        SELECT
+                                                COALESCE(SUM(sl.numLeave),
+                                          0)
+                                            FROM
+                                                staff_leave_data sl
+                                            WHERE
+                                                sl.employeeId = smsd.employeeId AND sl.leaveDate BETWEEN smsd.msStartDate AND smsd.msEndDate
+                                    )
+                                        ) AS daysOfSalaryAlert
+                                    FROM
+                                        staff_monthlySalary_data smsd
+                                    LEFT JOIN(
+                                      SELECT
+                                            salary_history_data.employeeId,
+                                      salary_history_data.startDate AS lastUpdateSalaryDate
+                                        FROM
+                                            salary_history_data
+                                        WHERE
+                                            salary_history_data.employeeId = '${employeeId}'
+                                        ORDER BY
+                                            salary_history_data.startDate
+                                        DESC
+                                    LIMIT 1
+                                    ) AS shDate
+                                    ON
+                                    smsd.employeeId = shDate.employeeId
+                                    WHERE
+                                    smsd.employeeId = '${employeeId}' AND smsd.msStartDate >= shDate.lastUpdateSalaryDate;`;
+        pool.query(sql_queries_countDay, (err, data) => {
+            if (err) {
+                console.error("An error occurd in SQL Queery", err);
+                return res.status(500).send('Database Error');
+            }
+            const daysOfSalary = data && data[0][0].daysOfSalary ? data[0][0].daysOfSalary : 0;
+            const currentMonthPresentDays = data && data[1][0].currentMonthPresentDays ? data[1][0].currentMonthPresentDays : 0;
+            const alertDay = data && data[2][0].daysOfSalaryAlert ? data[1][0].daysOfSalaryAlert : 0;
+            const totalPresentDays = daysOfSalary + currentMonthPresentDays;
+            const days = totalPresentDays;
+            const totalPresentDaysInword = convertDaysToYearsMonthsDays(days);
+            return res.status(200).send({
+                totalPresentDaysInword: totalPresentDaysInword ? `${totalPresentDaysInword}` : '0 days',
+                totalPresentDays: totalPresentDays ? `${totalPresentDays} days` : '0 days',
+                alertDay: alertDay + currentMonthPresentDays ? alertDay + currentMonthPresentDays : 0
+            });
+
         })
     } catch (error) {
         console.error('An error occurd', error);
@@ -909,5 +1014,6 @@ module.exports = {
     getTransactionDataById,
     getCutSalaryDataById,
     getAllPaymentStatisticsCountById,
-    getCutCreditDataById
+    getCutCreditDataById,
+    getPresentDaysByEmployeeId
 }

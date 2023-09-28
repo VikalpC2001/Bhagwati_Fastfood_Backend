@@ -1326,8 +1326,6 @@ const categoryWisedUsed = (req, res) => {
     var firstDay = new Date(y, m, 1).toString().slice(4, 15);
     var lastDay = new Date(y, m + 1, 0).toString().slice(4, 15);
 
-
-
     const data = {
         startDate: req.query.startDate,
         endDate: req.query.endDate
@@ -1708,60 +1706,3 @@ module.exports = {
     categoryWisedUsed,
     categoryWisedUsedPrice
 }
-
-// SELECT
-// p.productId,
-//     p.productName,
-//     iscd.stockOutCategoryId,
-//     iscd.stockOutCategoryName,
-//     COALESCE(so.usedQty, 0) AS usedQty
-// FROM
-//     inventory_product_data AS p
-// LEFT JOIN(
-//     SELECT
-//         inventory_stockOut_data.productId,
-//     inventory_stockOut_data.stockOutCategory,
-//     SUM(inventory_stockOut_data.productQty) AS usedQty
-//     FROM
-//         inventory_stockOut_data
-//     GROUP BY
-//         inventory_stockOut_data.productId,
-//     inventory_stockOut_data.stockOutCategory
-// ) AS so
-// ON
-// p.productId = so.productId
-// LEFT JOIN inventory_stockOutCategory_data AS iscd
-// ON
-// iscd.stockOutCategoryId = so.stockOutCategory
-// ORDER BY
-// p.productId;
-
-// Finally Done
-
-// SET @sql = NULL;
-
-// SELECT
-// GROUP_CONCAT(DISTINCT
-//     CONCAT(
-//     'COALESCE(MAX(CASE WHEN so.productId = ''',
-//     p.productId,
-//     ''' THEN so.usedQty END), 0) AS ',
-//     QUOTE(p.productName)
-// )
-// ) INTO @sql
-// FROM inventory_product_data p;
-
-// SET @sql = CONCAT(
-//     'SELECT c.stockOutCategoryId, c.stockOutCategoryName, ', @sql, '
-//    FROM inventory_stockOutCategory_data c
-//    LEFT JOIN(
-//         SELECT so.stockOutCategory, so.productId, SUM(so.productQty) AS usedQty
-//      FROM inventory_stockOut_data so
-//      GROUP BY so.stockOutCategory, so.productId
-//     ) so ON c.stockOutCategoryId = so.stockOutCategory
-//    GROUP BY c.stockOutCategoryId, c.stockOutCategoryName'
-// );
-
-// PREPARE stmt FROM @sql;
-// EXECUTE stmt;
-// DEALLOCATE PREPARE stmt;

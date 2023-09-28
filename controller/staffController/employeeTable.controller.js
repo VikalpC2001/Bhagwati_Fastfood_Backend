@@ -768,7 +768,7 @@ const getCutCreditDataById = (req, res) => {
                 console.error("An error occurd in SQL Queery", err);
                 return res.status(500).send('Database Error');
             }
-            if (row?.[0]?.cafId?.length) {
+            if (row && row[0] && row[0].cafId && row[0].cafId.length) {
                 const creditType = row[0].creditType;
                 if (creditType == 'Advance') {
                     sql_queries_getCutCreditData = `SELECT

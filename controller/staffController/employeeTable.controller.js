@@ -654,7 +654,7 @@ const getCutSalaryDataById = (req, res) => {
                 console.error("An error occurd in SQL Queery", err);
                 return res.status(500).send('Database Error');
             }
-            if (row?.[0]?.remainSalaryId?.length) {
+            if (row && row[0] && row[0].remainSalaryId) {
                 sql_queries_getRemainSalaryData = `SELECT
                                                     remainSalaryAmt,
                                                     lastRemainAmt,

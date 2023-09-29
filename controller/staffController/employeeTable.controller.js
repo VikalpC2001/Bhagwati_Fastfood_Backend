@@ -986,7 +986,7 @@ const getPresentDaysByEmployeeId = (req, res) => {
                 return res.status(500).send('Database Error');
             }
             const daysOfSalary = data && data[0][0].daysOfSalary ? data[0][0].daysOfSalary : 0;
-            const currentMonthPresentDays = data && data[1][0].currentMonthPresentDays ? data[1][0].currentMonthPresentDays : 0;
+            const currentMonthPresentDays = data && data[1][0] && data[1][0].currentMonthPresentDays ? data[1][0].currentMonthPresentDays : 0;
             const alertDay = data && data[2][0].daysOfSalaryAlert ? data[1][0].daysOfSalaryAlert : 0;
             const totalPresentDays = daysOfSalary + currentMonthPresentDays;
             const days = totalPresentDays;

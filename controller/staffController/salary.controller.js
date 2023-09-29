@@ -8,7 +8,7 @@ function generateMonthlyUpdateQuery(data) {
 
     data.forEach((item) => {
         const { monthlySalaryId, remainSalary } = item;
-        query += `    WHEN monthlySalaryId = '${monthlySalaryId}' THEN ${remainSalary}\n`;
+        query += `    WHEN monthlySalaryId = '${monthlySalaryId}' THEN ROUND(${remainSalary})\n`;
     });
 
     query += '    ELSE remainSalary\nEND\n';
@@ -24,7 +24,7 @@ function generateAdvanceUpdateQuery(data) {
 
     data.forEach((item) => {
         const { advanceId, remainAdvance } = item;
-        query += `    WHEN advanceId = '${advanceId}' THEN ${remainAdvance}\n`;
+        query += `    WHEN advanceId = '${advanceId}' THEN ROUND(${remainAdvance})\n`;
     });
 
     query += '    ELSE remainAdvanceAmount\nEND\n';
@@ -40,7 +40,7 @@ function generateFineUpdateQuery(data) {
 
     data.forEach((item) => {
         const { fineId, remainFine } = item;
-        query += `      WHEN fineId = '${fineId}' THEN ${remainFine}\n`;
+        query += `      WHEN fineId = '${fineId}' THEN ROUND(${remainFine})\n`;
     });
 
     query += '    ELSE remainFineAmount\nEND\n';

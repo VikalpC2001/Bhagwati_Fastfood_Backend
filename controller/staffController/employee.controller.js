@@ -343,7 +343,7 @@ const calculateDueSalary = (employeeId) => {
 
                                         monthlySalary.forEach((item) => {
                                             const query = `INSERT INTO staff_monthlySalary_data (employeeId, totalSalary, remainSalary, maxLeave, remainLeave, msStartDate, msEndDate)
-                                                            VALUES ('${item.employeeId}', ${item.totalSalary}, ${item.totalSalary} ,${item.maxLeave}, ${item.remainLeave}, STR_TO_DATE('${item.msDate}', '%d-%m-%Y'),LAST_DAY(STR_TO_DATE('${item.msDate}','%d-%m-%Y')))`;
+                                                            VALUES ('${item.employeeId}', ROUND(${item.totalSalary}), ROUND(${item.totalSalary}) ,${item.maxLeave}, ${item.remainLeave}, STR_TO_DATE('${item.msDate}', '%d-%m-%Y'),LAST_DAY(STR_TO_DATE('${item.msDate}','%d-%m-%Y')))`;
 
                                             pool.query(query, (err, result) => {
                                                 if (err) {
@@ -661,7 +661,7 @@ const calculateDueSalary = (employeeId) => {
 
                                         monthlySalary.forEach((item) => {
                                             const query = `INSERT INTO staff_monthlySalary_data (employeeId, totalSalary, remainSalary, maxLeave, remainLeave, msStartDate, msEndDate)
-                                                            VALUES ('${item.employeeId}', ${item.totalSalary}, ${item.totalSalary} ,${item.maxLeave}, ${item.remainLeave}, STR_TO_DATE('${item.msDate}', '%d-%m-%Y'),LAST_DAY(STR_TO_DATE('${item.msDate}','%d-%m-%Y')))`;
+                                                            VALUES ('${item.employeeId}', ROUND(${item.totalSalary}), ROUND(${item.totalSalary}) ,${item.maxLeave}, ${item.remainLeave}, STR_TO_DATE('${item.msDate}', '%d-%m-%Y'),LAST_DAY(STR_TO_DATE('${item.msDate}','%d-%m-%Y')))`;
 
                                             pool.query(query, (err, result) => {
                                                 if (err) {
@@ -1731,6 +1731,22 @@ const ddlForEmployeeList = (req, res) => {
     }
 }
 
+const getEmployeeIdAndName = (req, res) => {
+    try {
+        sql_querry_getEmployeeIdAndName = `SELECT employeeId, employeeNickName FROM staff_employee_data ORDER BY employeeCreationDate DESC`;
+        pool.query(sql_querry_getEmployeeIdAndName, (err, data) => {
+            if (err) {
+                console.error("An error occurd in SQL Queery", err);
+                return res.status(500).send('Database Error');
+            }
+            return res.status(200).send(data);
+        })
+    } catch (error) {
+        console.error('An error occurd', error);
+        res.status(500).send('Internal Server Error');
+    }
+}
+
 module.exports = {
     addEmployeedetails,
     getImagebyName,
@@ -1741,5 +1757,6 @@ module.exports = {
     calculateDueSalary,
     getMidMonthInActiveSalaryOfEmployee,
     getEmployeeDetailsById,
-    ddlForEmployeeList
+    ddlForEmployeeList,
+    getEmployeeIdAndName
 }

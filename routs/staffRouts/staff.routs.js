@@ -15,6 +15,7 @@ router.get('/getEmployeeData', protect, employeeController.getEmployeeData);
 router.get('/getMidMonthInActiveSalaryOfEmployee', protect, employeeController.getMidMonthInActiveSalaryOfEmployee);
 router.get('/getEmployeeDetailsById', protect, employeeController.getEmployeeDetailsById);
 router.get('/ddlForEmployeeList', protect, employeeController.ddlForEmployeeList);
+router.get('/getEmployeeIdAndName', employeeController.getEmployeeIdAndName);
 
 // Staff Category Routs
 

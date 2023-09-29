@@ -440,7 +440,7 @@ const addAmountOfSFA = (req, res) => {
                                                                         // Output the resulting string
                                                                         console.log(msWiseSid);
 
-                                                                        sql_querry_addmsFid = `INSERT INTO staff_msWiseSalaryId_data (salaryId, monthlySalaryId, cutSalaryId) VALUES ${msWiseSid()}`
+                                                                        sql_querry_addmsFid = `INSERT INTO staff_msWiseSalaryId_data (salaryId, monthlySalaryId, cutSalaryId) VALUES ${msWiseSid}`
                                                                         pool.query(sql_querry_addmsFid, (err, result) => {
                                                                             if (err) {
                                                                                 console.error("An error occurred while updating msData", err);
@@ -1233,7 +1233,7 @@ const addAmountOfSFA = (req, res) => {
                                                                 // Output the resulting string
                                                                 console.log(msWiseSid);
 
-                                                                sql_querry_addmsFid = `INSERT INTO staff_msWiseSalaryId_data (salaryId, monthlySalaryId, cutSalaryAmount) VALUES ${msWiseSid()}`
+                                                                sql_querry_addmsFid = `INSERT INTO staff_msWiseSalaryId_data (salaryId, monthlySalaryId, cutSalaryAmount) VALUES ${msWiseSid}`
                                                                 pool.query(sql_querry_addmsFid, (err, result) => {
                                                                     if (err) {
                                                                         console.error("An error occurred while updating msData", err);
@@ -1707,6 +1707,7 @@ const addAmountOfSFA = (req, res) => {
                                                     console.error("An error occurd in SQL Queery", err);
                                                     return res.status(500).send('Database Error');
                                                 }
+                                                const oldMsdData = Object.values(JSON.parse(JSON.stringify(datas)));
                                                 const msData = Object.values(JSON.parse(JSON.stringify(datas)));
                                                 console.log(msData);
 
@@ -1776,7 +1777,7 @@ const addAmountOfSFA = (req, res) => {
                                                 // Output the resulting string
                                                 console.log(msWiseSid);
 
-                                                sql_querry_addmsFid = `INSERT INTO staff_msWiseSalaryId_data (salaryId, monthlySalaryId, cutSalaryAmount) VALUES ${msWiseSid()}`
+                                                sql_querry_addmsFid = `INSERT INTO staff_msWiseSalaryId_data (salaryId, monthlySalaryId, cutSalaryAmount) VALUES ${msWiseSid}`
                                                 pool.query(sql_querry_addmsFid, (err, result) => {
                                                     if (err) {
                                                         console.error("An error occurred while updating msData", err);

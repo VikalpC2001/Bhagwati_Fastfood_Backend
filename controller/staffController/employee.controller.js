@@ -1354,10 +1354,12 @@ const getEmployeeData = (req, res) => {
         console.log(sql_common_query);
         if (req.query.categoryId) {
             sql_query_getEmployee = `${sql_common_query}
-                                     WHERE sed.category = '${categoryId}' AND sed.employeeStatus = 1`;
+                                     WHERE sed.category = '${categoryId}' AND sed.employeeStatus = 1
+                                     ORDER BY sed.employeeFirstName`;
         } else {
             sql_query_getEmployee = `${sql_common_query}
-                                     WHERE sed.employeeStatus = ${employeeStatus}`;
+                                     WHERE sed.employeeStatus = ${employeeStatus}
+                                     ORDER BY sed.employeeFirstName`;
         }
         console.log(sql_query_getEmployee);
         if (!req.query.categoryId) {

@@ -3359,7 +3359,7 @@ const removeFineTransaction = (req, res) => {
                 return res.status(500).send('Database Error');
             }
             if (row && row.length) {
-                sql_querry_removedetails = `DELETE FROM staff_fine_data WHERE fineId = '${advanceId}'`;
+                sql_querry_removedetails = `DELETE FROM staff_fine_data WHERE fineId = '${fineId}'`;
                 pool.query(sql_querry_removedetails, (err, data) => {
                     if (err) {
                         console.error("An error occurd in SQL Queery", err);

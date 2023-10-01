@@ -395,7 +395,7 @@ const calculateDueSalary = (employeeId) => {
                         return `${year}-${month}-${day}`;
                     }
                     const lastDate = getLastDateOfMonth();
-                    console.log(`Last date of the current month: ${lastDate}`);
+                    console.log(`Last date of the current month AA JOVI: ${lastDate}`);
                     function getTotalDays(startDate, endDate) {
                         // Convert both dates to UTC to ensure accurate calculations regardless of time zones
                         const startUTC = Date.UTC(startDate.getFullYear(), startDate.getMonth(), startDate.getDate());
@@ -414,10 +414,11 @@ const calculateDueSalary = (employeeId) => {
                     const joinDate = new Date(joiningDate); // Replace with the actual start date
                     const monthendDate = new Date(lastDate); // Replace with the actual end date
 
-                    const totalDays = getTotalDays(joinDate, monthendDate);
+                    const totalDays = getTotalDays(joinDate, monthendDate) + 1;
+                    var lastMonthEndDay = monthendDate.getDate();
+                    console.log(lastMonthEndDay);
 
-
-                    const perDaysalaryOfEmployee = employeeSalary / 30;
+                    const perDaysalaryOfEmployee = Math.floor(employeeSalary / lastMonthEndDay);
                     const remainDaySalaryOfEmployee = perDaysalaryOfEmployee * totalDays;
                     console.log(`Total Days: ${totalDays}`);
                     console.log(`Total days between the two dates: ${remainDaySalaryOfEmployee}`);
@@ -1233,18 +1234,21 @@ const getEmployeeData = (req, res) => {
                                 sed.maxLeave AS maxLeave,
                                 COALESCE(
                                     (
-                                        (
-                                        SELECT
-                                            staff_monthlySalary_data.remainLeave
-                                        FROM
-                                            staff_monthlySalary_data
-                                        WHERE
-                                            employeeId = sed.employeeId
-                                        ORDER BY
-                                            staff_monthlySalary_data.msStartDate
-                                        DESC
-                                    LIMIT 1
-                                    ) + sed.maxLeave
+                                        COALESCE(
+                                            (
+                                            SELECT
+                                                staff_monthlySalary_data.remainLeave
+                                            FROM
+                                                staff_monthlySalary_data
+                                            WHERE
+                                                employeeId = sed.employeeId
+                                            ORDER BY
+                                                staff_monthlySalary_data.msStartDate
+                                            DESC
+                                        LIMIT 1
+                                        ),
+                                        0
+                                        ) + sed.maxLeave
                                     ),
                                     0
                                 ) - COALESCE(
@@ -1536,18 +1540,21 @@ const getEmployeeDetailsById = (req, res) => {
                                         ) AS dateOfPayment,
                                         COALESCE(
                                             (
-                                                (
-                                                SELECT
-                                                    staff_monthlySalary_data.remainLeave
-                                                FROM
-                                                    staff_monthlySalary_data
-                                                WHERE
-                                                    employeeId = sed.employeeId
-                                                ORDER BY
-                                                    staff_monthlySalary_data.msStartDate
-                                                DESC
-                                            LIMIT 1
-                                            ) + sed.maxLeave
+                                                COALESCE(
+                                                    (
+                                                    SELECT
+                                                        staff_monthlySalary_data.remainLeave
+                                                    FROM
+                                                        staff_monthlySalary_data
+                                                    WHERE
+                                                        employeeId = sed.employeeId
+                                                    ORDER BY
+                                                        staff_monthlySalary_data.msStartDate
+                                                    DESC
+                                                LIMIT 1
+                                                ),
+                                                0
+                                                ) + sed.maxLeave
                                             ),
                                             0
                                         ) - COALESCE(
@@ -1676,35 +1683,21 @@ const ddlForEmployeeList = (req, res) => {
                                         employeeNickName,
                                         COALESCE(
                                             (
-                                                (
-                                                SELECT
-                                                    staff_monthlySalary_data.remainLeave
-                                                FROM
-                                                    staff_monthlySalary_data
-                                                WHERE
-                                                    employeeId = staff_employee_data.employeeId
-                                                ORDER BY
-                                                    staff_monthlySalary_data.msStartDate
-                                                DESC
-                                            LIMIT 1
-                                            ) + staff_employee_data.maxLeave
-                                            ),
-                                            0
-                                        ) AS maxLeaveMonth, 
-                                        COALESCE(
-                                            (
-                                                (
-                                                SELECT
-                                                    staff_monthlySalary_data.remainLeave
-                                                FROM
-                                                    staff_monthlySalary_data
-                                                WHERE
-                                                    employeeId = staff_employee_data.employeeId
-                                                ORDER BY
-                                                    staff_monthlySalary_data.msStartDate
-                                                DESC
-                                            LIMIT 1
-                                            ) + staff_employee_data.maxLeave
+                                                COALESCE(
+                                                    (
+                                                    SELECT
+                                                        staff_monthlySalary_data.remainLeave
+                                                    FROM
+                                                        staff_monthlySalary_data
+                                                    WHERE
+                                                        employeeId = staff_employee_data.employeeId
+                                                    ORDER BY
+                                                        staff_monthlySalary_data.msStartDate
+                                                    DESC
+                                                LIMIT 1
+                                                ),
+                                                0
+                                                ) + staff_employee_data.maxLeave
                                             ),
                                             0
                                         ) - COALESCE(

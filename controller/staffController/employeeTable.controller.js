@@ -216,6 +216,7 @@ const getAdvanceDataById = (req, res) => {
                                                     advanceAmount,
                                                     remainAdvanceAmount,
                                                     advanceComment,
+                                                    advanceDate AS advanceSort,
                                                     DATE_FORMAT(advanceDate,'%d-%b-%Y') AS advanceDate,
                                                     DATE_FORMAT(advanceCreationDate,'%h:%i %p') AS givenTime
                                                 FROM
@@ -224,12 +225,12 @@ const getAdvanceDataById = (req, res) => {
                 if (req.query.startMonth && req.query.endMonth) {
                     sql_queries_getdetails = `${commanQuarryOfAdvance}
                                                 WHERE employeeId = '${employeeId}' AND DATE_FORMAT(advanceDate,'%Y-%m') BETWEEN '${startMonth}' AND '${endMonth}'
-                                                ORDER BY advanceDate DESC, advanceCreationDate DESC
+                                                ORDER BY advanceSort DESC, advanceCreationDate DESC
                                                 LIMIT ${limit}`;
                 } else {
                     sql_queries_getdetails = `${commanQuarryOfAdvance}
                                                 WHERE employeeId = '${employeeId}'
-                                                ORDER BY advanceDate DESC, advanceCreationDate DESC
+                                                ORDER BY advanceSort DESC, advanceCreationDate DESC
                                                 LIMIT ${limit}`;
                 }
                 pool.query(sql_queries_getdetails, (err, rows, fields) => {
@@ -292,6 +293,7 @@ const getFineDataById = (req, res) => {
                                                 fineAmount,
                                                 remainFineAmount,
                                                 fineStatus,
+                                                fineDate AS sortFine,
                                                 IF(fineStatus = 1, 'Consider', 'Ignore') AS fineStatusName,
                                                 CONCAT(COALESCE(reason,''),IF(reason != '' AND reduceFineReson != '',', ',''),COALESCE(reduceFineReson,'')) AS Reason,
                                                 DATE_FORMAT(fineDate, '%d-%b-%Y') AS fineDate,
@@ -302,22 +304,22 @@ const getFineDataById = (req, res) => {
                 if (req.query.startMonth && req.query.endMonth && req.query.fineStatus) {
                     sql_queries_getdetails = `${commanQuarryOfFine}
                                                 WHERE employeeId = '${employeeId}' AND fineStatus = ${fineStatus} AND DATE_FORMAT(fineDate,'%Y-%m') BETWEEN '${startMonth}' AND '${endMonth}'
-                                                ORDER BY fineDate DESC ,fineCreationDate DESC 
+                                                ORDER BY sortFine DESC ,fineCreationDate DESC 
                                                 LIMIT ${limit}`;
                 } else if (req.query.startMonth && req.query.endMonth) {
                     sql_queries_getdetails = `${commanQuarryOfFine}
                                                 WHERE employeeId = '${employeeId}' AND DATE_FORMAT(fineDate,'%Y-%m') BETWEEN '${startMonth}' AND '${endMonth}'
-                                                ORDER BY fineDate DESC ,fineCreationDate DESC 
+                                                ORDER BY sortFine DESC ,fineCreationDate DESC 
                                                 LIMIT ${limit}`;
                 } else if (req.query.fineStatus) {
                     sql_queries_getdetails = `${commanQuarryOfFine}
                                                 WHERE employeeId = '${employeeId}' AND fineStatus = ${fineStatus}
-                                                ORDER BY fineDate DESC ,fineCreationDate DESC 
+                                                ORDER BY sortFine DESC ,fineCreationDate DESC 
                                                 LIMIT ${limit}`;
                 } else {
                     sql_queries_getdetails = `${commanQuarryOfFine}
                                                 WHERE employeeId = '${employeeId}'
-                                                ORDER BY fineDate DESC ,fineCreationDate DESC 
+                                                ORDER BY sortFine DESC ,fineCreationDate DESC 
                                                 LIMIT ${limit}`;
                 }
                 console.log(sql_queries_getdetails)
@@ -375,6 +377,7 @@ const getBonusDataById = (req, res) => {
                                                 CONCAT(user_details.userFirstName,' ',user_details.userLastName) AS userName,
                                                 bonusAmount,
                                                 bonusComment,
+                                                bonusDate AS sortBonus,
                                                 DATE_FORMAT(bonusDate, '%d-%b-%Y') AS bonusDate,
                                                 DATE_FORMAT(bonusCreationDate, '%h:%i %p') AS givenTime
                                             FROM
@@ -383,12 +386,12 @@ const getBonusDataById = (req, res) => {
                 if (req.query.startMonth && req.query.endMonth) {
                     sql_queries_getdetails = `${commanQuarryOfBonus}
                                                 WHERE employeeId = '${employeeId}' AND DATE_FORMAT(bonusDate,'%Y-%m') BETWEEN '${startMonth}' AND '${endMonth}'
-                                                ORDER BY bonusDate DESC, bonusCreationDate DESC
+                                                ORDER BY sortBonus DESC, bonusCreationDate DESC
                                                 LIMIT ${limit}`;
                 } else {
                     sql_queries_getdetails = `${commanQuarryOfBonus}
                                                 WHERE employeeId = '${employeeId}'
-                                                ORDER BY bonusDate DESC, bonusCreationDate DESC
+                                                ORDER BY sortBonus DESC, bonusCreationDate DESC
                                                 LIMIT ${limit}`;
                 }
                 pool.query(sql_queries_getdetails, (err, rows, fields) => {
@@ -446,6 +449,7 @@ const getCreditDataById = (req, res) => {
                                                     creditAmount,
                                                     creditType,
                                                     creditComent,
+                                                    creditDate AS sortCredit,
                                           	        DATE_FORMAT(creditDate, '%d-%b-%Y') AS creditDate,
                                         	        DATE_FORMAT(creditCreationDate, '%h:%i %p') AS givenTime 
                                                 FROM
@@ -454,12 +458,12 @@ const getCreditDataById = (req, res) => {
                 if (req.query.startMonth && req.query.endMonth) {
                     sql_queries_getdetails = `${commanQuarryOfCreditData}
                                                 WHERE employeeId = '${employeeId}' AND DATE_FORMAT(creditDate,'%Y-%m') BETWEEN '${startMonth}' AND '${endMonth}'
-                                                ORDER BY creditDate DESC ,creditCreationDate DESC
+                                                ORDER BY sortCredit DESC ,creditCreationDate DESC
                                                 LIMIT ${limit}`;
                 } else {
                     sql_queries_getdetails = `${commanQuarryOfCreditData}
                                                 WHERE employeeId = '${employeeId}'
-                                                ORDER BY creditDate DESC ,creditCreationDate DESC
+                                                ORDER BY sortCredit DESC ,creditCreationDate DESC
                                                 LIMIT ${limit}`;
                 }
                 pool.query(sql_queries_getdetails, (err, rows, fields) => {
@@ -594,6 +598,7 @@ const getTransactionDataById = (req, res) => {
                                                     COALESCE(MAX(CASE WHEN salaryType = 'Fine Cut' THEN salaryAmount END),0) AS fineCut,
                                                     COALESCE(MAX(CASE WHEN salaryType = 'Salary Pay' THEN salaryAmount END),0) AS salaryPay,
                                                     salaryComment,
+                                                    salaryDate AS sortSalaryDate,
                                                     DATE_FORMAT(salaryDate,'%W, %d %M %Y') AS salaryDate,
                                                     DATE_FORMAT(salaryCreationDate,'%h:%i %p') AS salaryTime
                                                 FROM
@@ -603,13 +608,13 @@ const getTransactionDataById = (req, res) => {
                     sql_queries_getdetails = `${commanTransactionQuarry}
                                                 WHERE employeeId = '${employeeId}' AND DATE_FORMAT(staff_salary_data.salaryDate,'%Y-%m') BETWEEN '${startMonth}' AND '${endMonth}'
                                                 GROUP BY remainSalaryId
-                                                ORDER BY salaryDate DESC, salaryCreationDate DESC
+                                                ORDER BY sortSalaryDate DESC, salaryCreationDate DESC
                                                 LIMIT ${limit}`;
                 } else {
                     sql_queries_getdetails = `${commanTransactionQuarry}
                                                 WHERE employeeId = '${employeeId}' AND remainSalaryId LIKE '%` + searchNumber + `%'
                                                 GROUP BY remainSalaryId
-                                                ORDER BY salaryDate DESC, salaryCreationDate DESC
+                                                ORDER BY sortSalaryDate DESC, salaryCreationDate DESC
                                                 LIMIT ${limit}`;
                 }
                 console.log(sql_queries_getdetails);

@@ -261,6 +261,7 @@ const exportExcelSheetForAdvanceData = (req, res) => {
                                     advanceAmount,
                                     remainAdvanceAmount,
                                     advanceComment,
+                                    advanceDate AS sortAdvance,
                                     DATE_FORMAT(advanceDate,'%d-%b-%Y') AS advanceDate,
                                     DATE_FORMAT(advanceCreationDate,'%h:%i %p') AS givenTime
                                 FROM
@@ -269,11 +270,11 @@ const exportExcelSheetForAdvanceData = (req, res) => {
     if (req.query.startMonth && req.query.endMonth) {
         sql_queries_getdetails = `${commanQuarryOfAdvance}
                                     WHERE employeeId = '${employeeId}' AND DATE_FORMAT(advanceDate,'%Y-%m') BETWEEN '${startMonth}' AND '${endMonth}'
-                                    ORDER BY advanceDate DESC, advanceCreationDate DESC`;
+                                    ORDER BY sortAdvance DESC, advanceCreationDate DESC`;
     } else {
         sql_queries_getdetails = `${commanQuarryOfAdvance}
                                     WHERE employeeId = '${employeeId}'
-                                    ORDER BY advanceDate DESC, advanceCreationDate DESC`;
+                                    ORDER BY sortAdvance DESC, advanceCreationDate DESC`;
     }
 
     pool.query(sql_queries_getdetails, async (err, rows) => {
@@ -368,6 +369,7 @@ const exportExcelSheetForFineData = (req, res) => {
                                     fineAmount,
                                     remainFineAmount,
                                     fineStatus,
+                                    fineDate AS sortFine,
                                     IF(fineStatus = 1, 'Consider', 'Ignore') AS fineStatusName,
                                     CONCAT(COALESCE(reason,''),IF(reason != '' AND reduceFineReson != '',', ',''),COALESCE(reduceFineReson,'')) AS reason,
                                     DATE_FORMAT(fineDate, '%d-%b-%Y') AS fineDate,
@@ -378,19 +380,19 @@ const exportExcelSheetForFineData = (req, res) => {
     if (req.query.startMonth && req.query.endMonth && req.query.fineStatus) {
         sql_queries_getdetails = `${commanQuarryOfFine}
                                     WHERE employeeId = '${employeeId}' AND fineStatus = ${fineStatus} AND DATE_FORMAT(fineDate,'%Y-%m') BETWEEN '${startMonth}' AND '${endMonth}'
-                                    ORDER BY fineDate DESC ,fineCreationDate DESC`;
+                                    ORDER BY sortFine DESC ,fineCreationDate DESC`;
     } else if (req.query.startMonth && req.query.endMonth) {
         sql_queries_getdetails = `${commanQuarryOfFine}
                                     WHERE employeeId = '${employeeId}' AND DATE_FORMAT(fineDate,'%Y-%m') BETWEEN '${startMonth}' AND '${endMonth}'
-                                    ORDER BY fineDate DESC ,fineCreationDate DESC`;
+                                    ORDER BY sortFine DESC ,fineCreationDate DESC`;
     } else if (req.query.fineStatus) {
         sql_queries_getdetails = `${commanQuarryOfFine}
                                     WHERE employeeId = '${employeeId}' AND fineStatus = ${fineStatus}
-                                    ORDER BY fineDate DESC ,fineCreationDate DESC`;
+                                    ORDER BY sortFine DESC ,fineCreationDate DESC`;
     } else {
         sql_queries_getdetails = `${commanQuarryOfFine}
                                     WHERE employeeId = '${employeeId}'
-                                    ORDER BY fineDate DESC ,fineCreationDate DESC`;
+                                    ORDER BY sortFine DESC ,fineCreationDate DESC`;
     }
 
     pool.query(sql_queries_getdetails, async (err, rows) => {
@@ -484,6 +486,7 @@ const exportExcelSheetForBonusData = (req, res) => {
                                     CONCAT(user_details.userFirstName,' ',user_details.userLastName) AS userName,
                                     bonusAmount,
                                     bonusComment,
+                                    bonusDate AS sortBonus,
                                     DATE_FORMAT(bonusDate, '%d-%b-%Y') AS bonusDate,
                                     DATE_FORMAT(bonusCreationDate, '%h:%i %p') AS givenTime
                                 FROM
@@ -492,11 +495,11 @@ const exportExcelSheetForBonusData = (req, res) => {
     if (req.query.startMonth && req.query.endMonth) {
         sql_queries_getdetails = `${commanQuarryOfBonus}
                                     WHERE employeeId = '${employeeId}' AND DATE_FORMAT(bonusDate,'%Y-%m') BETWEEN '${startMonth}' AND '${endMonth}'
-                                    ORDER BY bonusDate DESC, bonusCreationDate DESC`;
+                                    ORDER BY sortBonus DESC, bonusCreationDate DESC`;
     } else {
         sql_queries_getdetails = `${commanQuarryOfBonus}
                                     WHERE employeeId = '${employeeId}'
-                                    ORDER BY bonusDate DESC, bonusCreationDate DESC`;
+                                    ORDER BY sortBonus DESC, bonusCreationDate DESC`;
     }
 
     pool.query(sql_queries_getdetails, async (err, rows) => {
@@ -588,6 +591,7 @@ const exportExcelSheetForCreditData = (req, res) => {
                                         creditAmount,
                                         creditType,
                                         creditComent,
+                                        creditDate AS sortCredit,
                                         DATE_FORMAT(creditDate, '%d-%b-%Y') AS creditDate,
                                         DATE_FORMAT(creditCreationDate, '%h:%i %p') AS givenTime 
                                     FROM
@@ -596,11 +600,11 @@ const exportExcelSheetForCreditData = (req, res) => {
     if (req.query.startMonth && req.query.endMonth) {
         sql_queries_getdetails = `${commanQuarryOfCreditData}
                                     WHERE employeeId = '${employeeId}' AND DATE_FORMAT(creditDate,'%Y-%m') BETWEEN '${startMonth}' AND '${endMonth}'
-                                    ORDER BY creditDate DESC ,creditCreationDate DESC`;
+                                    ORDER BY sortCredit DESC ,creditCreationDate DESC`;
     } else {
         sql_queries_getdetails = `${commanQuarryOfCreditData}
                                     WHERE employeeId = '${employeeId}'
-                                    ORDER BY creditDate DESC ,creditCreationDate DESC`;
+                                    ORDER BY sortCredit DESC ,creditCreationDate DESC`;
     }
 
     pool.query(sql_queries_getdetails, async (err, rows) => {
@@ -692,6 +696,7 @@ const exportExcelSheetForLeaveData = (req, res) => {
                                 	CONCAT(user_details.userFirstName,' ',user_details.userLastName) AS userName,
                                     numLeave,
                                     leaveReason,
+                                    leaveDate AS sortLeave,
                                     DATE_FORMAT(leaveDate,'%d-%m-%Y') AS dateLeave,
                                     DATE_FORMAT(leaveDate,'%W, %d %M %Y') AS leaveDate
                                 FROM
@@ -700,11 +705,11 @@ const exportExcelSheetForLeaveData = (req, res) => {
     if (req.query.startMonth && req.query.endMonth) {
         sql_queries_getdetails = `${commanQuarryOfLeave}
                                     WHERE employeeId = '${employeeId}' AND DATE_FORMAT(leaveDate,'%Y-%m') BETWEEN '${startMonth}' AND '${endMonth}'
-                                    ORDER BY leaveDate DESC`;
+                                    ORDER BY sortLeave DESC`;
     } else {
         sql_queries_getdetails = `${commanQuarryOfLeave}
                                     WHERE employeeId = '${employeeId}'
-                                    ORDER BY leaveDate DESC`;
+                                    ORDER BY sortLeave DESC`;
     }
 
     pool.query(sql_queries_getdetails, async (err, rows) => {
@@ -797,6 +802,7 @@ const exportExcelSheetForTransactionData = (req, res) => {
                                         COALESCE(MAX(CASE WHEN salaryType = 'Fine Cut' THEN salaryAmount END),0) AS fineCut,
                                         COALESCE(MAX(CASE WHEN salaryType = 'Salary Pay' THEN salaryAmount END),0) AS salaryPay,
                                         salaryComment,
+                                        salaryDate AS sortSalary,
                                         DATE_FORMAT(salaryDate,'%W, %d %M %Y') AS salaryDate,
                                         DATE_FORMAT(salaryCreationDate,'%h:%i %p') AS salaryTime
                                     FROM
@@ -806,12 +812,12 @@ const exportExcelSheetForTransactionData = (req, res) => {
         sql_queries_getdetails = `${commanTransactionQuarry}
                                     WHERE employeeId = '${employeeId}' AND DATE_FORMAT(staff_salary_data.salaryDate,'%Y-%m') BETWEEN '${startMonth}' AND '${endMonth}'
                                     GROUP BY remainSalaryId
-                                    ORDER BY salaryDate DESC, salaryCreationDate DESC`;
+                                    ORDER BY sortSalary DESC, salaryCreationDate DESC`;
     } else {
         sql_queries_getdetails = `${commanTransactionQuarry}
                                     WHERE employeeId = '${employeeId}'
                                     GROUP BY remainSalaryId
-                                    ORDER BY salaryDate DESC, salaryCreationDate DESC`;
+                                    ORDER BY sortSalary DESC, salaryCreationDate DESC`;
     }
 
     pool.query(sql_queries_getdetails, async (err, rows) => {
@@ -920,6 +926,7 @@ const exportExcelSheetForAllTransactionData = (req, res) => {
                                         COALESCE(MAX(CASE WHEN salaryType = 'Fine Cut' THEN salaryAmount END),0) AS fineCut,
                                         COALESCE(MAX(CASE WHEN salaryType = 'Salary Pay' THEN salaryAmount END),0) AS salaryPay,
                                         salaryComment,
+                                        salaryDate AS sortSalary,
                                         DATE_FORMAT(salaryDate,'%W, %d %M %Y') AS salaryDate,
                                         DATE_FORMAT(salaryCreationDate,'%h:%i %p') AS salaryTime
                                     FROM
@@ -930,13 +937,13 @@ const exportExcelSheetForAllTransactionData = (req, res) => {
         sql_queries_getdetails = `${commanTransactionQuarry}
                                                 WHERE staff_salary_data.salaryDate BETWEEN STR_TO_DATE('${startDate}','%b %d %Y') AND STR_TO_DATE('${endDate}','%b %d %Y')
                                                 GROUP BY remainSalaryId
-                                                ORDER BY salaryDate DESC, salaryCreationDate DESC`;
+                                                ORDER BY sortSalary DESC, salaryCreationDate DESC`;
     } else if (req.query.searchNumber) {
         console.log('hyy2');
         sql_queries_getdetails = `${commanTransactionQuarry}
                                                 WHERE remainSalaryId LIKE '%` + searchNumber + `%'
                                                 GROUP BY remainSalaryId
-                                                ORDER BY salaryDate DESC, salaryCreationDate DESC`;
+                                                ORDER BY sortSalary DESC, salaryCreationDate DESC`;
     } else {
         console.log('hyy3');
         sql_queries_getdetails = `${commanTransactionQuarry}
@@ -1045,6 +1052,7 @@ const exportExcelSheetForAllAdvanceData = (req, res) => {
                                         advanceAmount,
                                         remainAdvanceAmount,
                                         advanceComment,
+                                        advanceDate AS sortAdvance,
                                         DATE_FORMAT(advanceDate,'%d-%b-%Y') AS advanceDate,
                                         DATE_FORMAT(advanceCreationDate,'%h:%i %p') AS givenTime
                                     FROM
@@ -1054,11 +1062,11 @@ const exportExcelSheetForAllAdvanceData = (req, res) => {
     if (req.query.startDate && req.query.endDate) {
         sql_queries_getdetails = `${commanQuarryOfAdvance}
                                     WHERE advanceDate BETWEEN STR_TO_DATE('${startDate}','%b %d %Y') AND STR_TO_DATE('${endDate}','%b %d %Y')
-                                    ORDER BY advanceDate DESC, advanceCreationDate DESC`;
+                                    ORDER BY sortAdvance DESC, advanceCreationDate DESC`;
     } else {
         sql_queries_getdetails = `${commanQuarryOfAdvance}
                                     WHERE advanceDate BETWEEN STR_TO_DATE('${firstDay}','%b %d %Y') AND STR_TO_DATE('${lastDay}','%b %d %Y')
-                                    ORDER BY advanceDate DESC, advanceCreationDate DESC`;
+                                    ORDER BY sortAdvance DESC, advanceCreationDate DESC`;
     }
 
     pool.query(sql_queries_getdetails, async (err, rows) => {
@@ -1162,6 +1170,7 @@ const exportExcelSheetForAllFineData = (req, res) => {
                                     IF(fineStatus = 1, 'Consider', 'Ignore') AS fineStatusName,
                                     reason,
                                     reduceFineReson,
+                                    fineDate AS sortFine,
                                     DATE_FORMAT(fineDate, '%d-%b-%Y') AS fineDate,
                                     DATE_FORMAT(fineCreationDate, '%h:%i %p') AS givenTime
                                 FROM
@@ -1171,19 +1180,19 @@ const exportExcelSheetForAllFineData = (req, res) => {
     if (req.query.startDate && req.query.endDate && req.query.fineStatus) {
         sql_queries_getdetails = `${commanQuarryOfFine}
                                     WHERE fineStatus = ${fineStatus} AND fineDate BETWEEN STR_TO_DATE('${startDate}','%b %d %Y') AND STR_TO_DATE('${endDate}','%b %d %Y')
-                                    ORDER BY fineDate DESC ,fineCreationDate DESC`;
+                                    ORDER BY sortFine DESC ,fineCreationDate DESC`;
     } else if (req.query.startDate && req.query.endDate) {
         sql_queries_getdetails = `${commanQuarryOfFine}
                                     WHERE fineDate BETWEEN STR_TO_DATE('${startDate}','%b %d %Y') AND STR_TO_DATE('${endDate}','%b %d %Y')
-                                    ORDER BY fineDate DESC ,fineCreationDate DESC`;
+                                    ORDER BY sortFine DESC ,fineCreationDate DESC`;
     } else if (req.query.fineStatus) {
         sql_queries_getdetails = `${commanQuarryOfFine}
                                     WHERE fineStatus = ${fineStatus}
-                                    ORDER BY fineDate DESC ,fineCreationDate DESC`;
+                                    ORDER BY sortFine DESC ,fineCreationDate DESC`;
     } else {
         sql_queries_getdetails = `${commanQuarryOfFine}
                                     WHERE fineDate BETWEEN STR_TO_DATE('${firstDay}','%b %d %Y') AND STR_TO_DATE('${lastDay}','%b %d %Y')
-                                    ORDER BY fineDate DESC ,fineCreationDate DESC`;
+                                    ORDER BY sortFine DESC ,fineCreationDate DESC`;
     }
 
     pool.query(sql_queries_getdetails, async (err, rows) => {
@@ -1282,6 +1291,7 @@ const exportExcelSheetForAllBonusData = (req, res) => {
                                     sed.employeeNickName AS employeeName,
                                     bonusAmount,
                                     bonusComment,
+                                    bonusDate AS sortBonus,
                                     DATE_FORMAT(bonusDate, '%d-%b-%Y') AS bonusDate,
                                     DATE_FORMAT(bonusCreationDate, '%h:%i %p') AS givenTime
                                 FROM
@@ -1291,11 +1301,11 @@ const exportExcelSheetForAllBonusData = (req, res) => {
     if (req.query.startDate && req.query.endDate) {
         sql_queries_getdetails = `${commanQuarryOfBonus}
                                     WHERE bonusDate BETWEEN STR_TO_DATE('${startDate}','%b %d %Y') AND STR_TO_DATE('${endDate}','%b %d %Y')
-                                    ORDER BY bonusDate DESC, bonusCreationDate DESC`;
+                                    ORDER BY sortBonus DESC, bonusCreationDate DESC`;
     } else {
         sql_queries_getdetails = `${commanQuarryOfBonus}
                                     WHERE bonusDate BETWEEN STR_TO_DATE('${firstDay}','%b %d %Y') AND STR_TO_DATE('${lastDay}','%b %d %Y')
-                                    ORDER BY bonusDate DESC, bonusCreationDate DESC`;
+                                    ORDER BY sortBonus DESC, bonusCreationDate DESC`;
     }
 
     pool.query(sql_queries_getdetails, async (err, rows) => {
@@ -1392,6 +1402,7 @@ const exportExcelSheetForAllCreditData = (req, res) => {
                                         creditAmount,
                                         creditType,
                                         creditComent,
+                                        creditDate AS sortCredit,
                                         DATE_FORMAT(creditDate, '%d-%b-%Y') AS creditDate,
                                         DATE_FORMAT(creditCreationDate, '%h:%i %p') AS givenTime 
                                     FROM
@@ -1401,11 +1412,11 @@ const exportExcelSheetForAllCreditData = (req, res) => {
     if (req.query.startDate && req.query.endDate) {
         sql_queries_getdetails = `${commanQuarryOfCreditData}
                                     WHERE creditDate BETWEEN STR_TO_DATE('${startDate}','%b %d %Y') AND STR_TO_DATE('${endDate}','%b %d %Y')
-                                    ORDER BY creditDate DESC ,creditCreationDate DESC`;
+                                    ORDER BY sortCredit DESC ,creditCreationDate DESC`;
     } else {
         sql_queries_getdetails = `${commanQuarryOfCreditData}
                                     WHERE creditDate BETWEEN STR_TO_DATE('${firstDay}','%b %d %Y') AND STR_TO_DATE('${lastDay}','%b %d %Y')
-                                    ORDER BY creditDate DESC ,creditCreationDate DESC`;
+                                    ORDER BY sortCredit DESC ,creditCreationDate DESC`;
     }
 
     pool.query(sql_queries_getdetails, async (err, rows) => {
@@ -1500,6 +1511,7 @@ const exportExcelSheetForAllLeaveData = (req, res) => {
                                     sed.employeeNickName AS employeeName,
                                     numLeave,
                                     leaveReason,
+                                    leaveDate AS sortLeave,
                                     DATE_FORMAT(leaveDate,'%d-%m-%Y') dateLeave,
                                     DATE_FORMAT(leaveDate,'%W, %d %M %Y') leaveDate
                                 FROM
@@ -1509,11 +1521,11 @@ const exportExcelSheetForAllLeaveData = (req, res) => {
     if (req.query.startDate && req.query.endDate) {
         sql_queries_getdetails = `${commanQuarryOfLeave}
                                     WHERE leaveDate BETWEEN STR_TO_DATE('${startDate}','%b %d %Y') AND STR_TO_DATE('${endDate}','%b %d %Y')
-                                    ORDER BY leaveDate DESC`;
+                                    ORDER BY sortLeave DESC`;
     } else {
         sql_queries_getdetails = `${commanQuarryOfLeave}
                                     WHERE leaveDate = CURDATE()
-                                    ORDER BY leaveDate DESC`;
+                                    ORDER BY sortLeave DESC`;
     }
 
     pool.query(sql_queries_getdetails, async (err, rows) => {

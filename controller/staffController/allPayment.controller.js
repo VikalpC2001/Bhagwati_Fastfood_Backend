@@ -42,6 +42,7 @@ const getAllEmployeeTransactionData = (req, res) => {
                                                     COALESCE(MAX(CASE WHEN salaryType = 'Fine Cut' THEN salaryAmount END),0) AS fineCut,
                                                     COALESCE(MAX(CASE WHEN salaryType = 'Salary Pay' THEN salaryAmount END),0) AS salaryPay,
                                                     salaryComment,
+                                                    salaryDate AS sortSalaryDate,
                                                     DATE_FORMAT(salaryDate,'%W, %d %M %Y') AS salaryDate,
                                                     DATE_FORMAT(salaryCreationDate,'%h:%i %p') AS salaryTime
                                                 FROM
@@ -52,21 +53,21 @@ const getAllEmployeeTransactionData = (req, res) => {
                     sql_queries_getdetails = `${commanTransactionQuarry}
                                                 WHERE staff_salary_data.salaryDate BETWEEN STR_TO_DATE('${startDate}','%b %d %Y') AND STR_TO_DATE('${endDate}','%b %d %Y')
                                                 GROUP BY remainSalaryId
-                                                ORDER BY salaryDate DESC, salaryCreationDate DESC
+                                                ORDER BY sortSalaryDate DESC, salaryCreationDate DESC
                                                 LIMIT ${limit}`;
                 } else if (req.query.searchNumber) {
                     console.log('hyy2');
                     sql_queries_getdetails = `${commanTransactionQuarry}
                                                 WHERE remainSalaryId LIKE '%` + searchNumber + `%'
                                                 GROUP BY remainSalaryId
-                                                ORDER BY salaryDate DESC, salaryCreationDate DESC
+                                                ORDER BY sortSalaryDate DESC, salaryCreationDate DESC
                                                 LIMIT ${limit}`;
                 } else {
                     console.log('hyy3');
                     sql_queries_getdetails = `${commanTransactionQuarry}
                                                 WHERE staff_salary_data.salaryDate BETWEEN STR_TO_DATE('${firstDay}','%b %d %Y') AND STR_TO_DATE('${lastDay}','%b %d %Y')
                                                 GROUP BY remainSalaryId
-                                                ORDER BY salaryDate DESC, salaryCreationDate DESC
+                                                ORDER BY sortSalaryDate DESC, salaryCreationDate DESC
                                                 LIMIT ${limit}`
                 }
                 pool.query(sql_queries_getdetails, (err, rows, fields) => {
@@ -120,6 +121,7 @@ const getAllEmployeeLeaveData = (req, res) => {
                                                 sed.employeeNickName AS employeeName,
                                                 numLeave,
                                                 leaveReason,
+                                                leaveDate AS sortLeaveDate,
                                                 DATE_FORMAT(leaveDate,'%d-%m-%Y') dateLeave,
                                                 DATE_FORMAT(leaveDate,'%W, %d %M %Y') leaveDate
                                             FROM
@@ -129,12 +131,12 @@ const getAllEmployeeLeaveData = (req, res) => {
                 if (req.query.startDate && req.query.endDate) {
                     sql_queries_getdetails = `${commanQuarryOfLeave}
                                                 WHERE leaveDate BETWEEN STR_TO_DATE('${startDate}','%b %d %Y') AND STR_TO_DATE('${endDate}','%b %d %Y')
-                                                ORDER BY leaveDate DESC, leaveCreationDate DESC
+                                                ORDER BY sortLeaveDate DESC, leaveCreationDate DESC
                                                 LIMIT ${limit}`;
                 } else {
                     sql_queries_getdetails = `${commanQuarryOfLeave}
                                                 WHERE leaveDate = CURDATE()
-                                                ORDER BY leaveDate DESC, leaveCreationDate DESC
+                                                ORDER BY sortLeaveDate DESC, leaveCreationDate DESC
                                                 LIMIT ${limit}`;
                 }
 
@@ -194,6 +196,7 @@ const getAllEmployeeBonusData = (req, res) => {
                                                 sed.employeeNickName AS employeeName,
                                                 bonusAmount,
                                                 bonusComment,
+                                                bonusDate AS sortBonusDate,
                                                 DATE_FORMAT(bonusDate, '%d-%b-%Y') AS bonusDate,
                                                 DATE_FORMAT(bonusCreationDate, '%h:%i %p') AS givenTime
                                             FROM
@@ -203,12 +206,12 @@ const getAllEmployeeBonusData = (req, res) => {
                 if (req.query.startDate && req.query.endDate) {
                     sql_queries_getdetails = `${commanQuarryOfBonus}
                                                 WHERE bonusDate BETWEEN STR_TO_DATE('${startDate}','%b %d %Y') AND STR_TO_DATE('${endDate}','%b %d %Y')
-                                                ORDER BY bonusDate DESC, bonusCreationDate DESC
+                                                ORDER BY sortBonusDate DESC, bonusCreationDate DESC
                                                 LIMIT ${limit}`;
                 } else {
                     sql_queries_getdetails = `${commanQuarryOfBonus}
                                                 WHERE bonusDate BETWEEN STR_TO_DATE('${firstDay}','%b %d %Y') AND STR_TO_DATE('${lastDay}','%b %d %Y')
-                                                ORDER BY bonusDate DESC, bonusCreationDate DESC
+                                                ORDER BY sortBonusDate DESC, bonusCreationDate DESC
                                                 LIMIT ${limit}`;
                 }
                 console.log(sql_queries_getdetails)
@@ -270,6 +273,7 @@ const getAllEmployeeCreditData = (req, res) => {
                                                     creditAmount,
                                                     creditType,
                                                     creditComent,
+                                                    creditDate AS sortCredit,
                                           	        DATE_FORMAT(creditDate, '%d-%b-%Y') AS creditDate,
                                         	        DATE_FORMAT(creditCreationDate, '%h:%i %p') AS givenTime 
                                                 FROM
@@ -279,12 +283,12 @@ const getAllEmployeeCreditData = (req, res) => {
                 if (req.query.startDate && req.query.endDate) {
                     sql_queries_getdetails = `${commanQuarryOfCreditData}
                                                 WHERE creditDate BETWEEN STR_TO_DATE('${startDate}','%b %d %Y') AND STR_TO_DATE('${endDate}','%b %d %Y')
-                                                ORDER BY creditDate DESC ,creditCreationDate DESC
+                                                ORDER BY sortCredit DESC ,creditCreationDate DESC
                                                 LIMIT ${limit}`;
                 } else {
                     sql_queries_getdetails = `${commanQuarryOfCreditData}
                                                 WHERE creditDate BETWEEN STR_TO_DATE('${firstDay}','%b %d %Y') AND STR_TO_DATE('${lastDay}','%b %d %Y')
-                                                ORDER BY creditDate DESC ,creditCreationDate DESC
+                                                ORDER BY sortCredit DESC ,creditCreationDate DESC
                                                 LIMIT ${limit}`;
                 }
                 pool.query(sql_queries_getdetails, (err, rows, fields) => {
@@ -353,6 +357,7 @@ const getAllEmployeeFineData = (req, res) => {
                                                 IF(fineStatus = 1, 'Consider', 'Ignore') AS fineStatusName,
                                                 reason,
                                                 reduceFineReson,
+                                                fineDate AS sortFine,
                                                 DATE_FORMAT(fineDate, '%d-%b-%Y') AS fineDate,
                                                 DATE_FORMAT(fineCreationDate, '%h:%i %p') AS givenTime
                                             FROM
@@ -362,22 +367,22 @@ const getAllEmployeeFineData = (req, res) => {
                 if (req.query.startDate && req.query.endDate && req.query.fineStatus) {
                     sql_queries_getdetails = `${commanQuarryOfFine}
                                                 WHERE fineStatus = ${fineStatus} AND fineDate BETWEEN STR_TO_DATE('${startDate}','%b %d %Y') AND STR_TO_DATE('${endDate}','%b %d %Y')
-                                                ORDER BY fineDate DESC ,fineCreationDate DESC 
+                                                ORDER BY sortFine DESC ,fineCreationDate DESC 
                                                 LIMIT ${limit}`;
                 } else if (req.query.startDate && req.query.endDate) {
                     sql_queries_getdetails = `${commanQuarryOfFine}
                                                 WHERE fineDate BETWEEN STR_TO_DATE('${startDate}','%b %d %Y') AND STR_TO_DATE('${endDate}','%b %d %Y')
-                                                ORDER BY fineDate DESC ,fineCreationDate DESC 
+                                                ORDER BY sortFine DESC ,fineCreationDate DESC 
                                                 LIMIT ${limit}`;
                 } else if (req.query.fineStatus) {
                     sql_queries_getdetails = `${commanQuarryOfFine}
                                                 WHERE fineStatus = ${fineStatus}
-                                                ORDER BY fineDate DESC ,fineCreationDate DESC 
+                                                ORDER BY sortFine DESC ,fineCreationDate DESC 
                                                 LIMIT ${limit}`;
                 } else {
                     sql_queries_getdetails = `${commanQuarryOfFine}
                                                 WHERE fineDate BETWEEN STR_TO_DATE('${firstDay}','%b %d %Y') AND STR_TO_DATE('${lastDay}','%b %d %Y')
-                                                ORDER BY fineDate DESC ,fineCreationDate DESC 
+                                                ORDER BY sortFine DESC ,fineCreationDate DESC 
                                                 LIMIT ${limit}`;
                 }
                 console.log(sql_queries_getdetails)
@@ -439,6 +444,7 @@ const getAllEmployeeAdvanceData = (req, res) => {
                                                     advanceAmount,
                                                     remainAdvanceAmount,
                                                     advanceComment,
+                                                    advanceDate AS sortAdvance,
                                                     DATE_FORMAT(advanceDate,'%d-%b-%Y') AS advanceDate,
                                                     DATE_FORMAT(advanceCreationDate,'%h:%i %p') AS givenTime
                                                 FROM
@@ -448,12 +454,12 @@ const getAllEmployeeAdvanceData = (req, res) => {
                 if (req.query.startDate && req.query.endDate) {
                     sql_queries_getdetails = `${commanQuarryOfAdvance}
                                                 WHERE advanceDate BETWEEN STR_TO_DATE('${startDate}','%b %d %Y') AND STR_TO_DATE('${endDate}','%b %d %Y')
-                                                ORDER BY advanceDate DESC, advanceCreationDate DESC
+                                                ORDER BY sortAdvance DESC, advanceCreationDate DESC
                                                 LIMIT ${limit}`;
                 } else {
                     sql_queries_getdetails = `${commanQuarryOfAdvance}
                                                 WHERE advanceDate BETWEEN STR_TO_DATE('${firstDay}','%b %d %Y') AND STR_TO_DATE('${lastDay}','%b %d %Y')
-                                                ORDER BY advanceDate DESC, advanceCreationDate DESC
+                                                ORDER BY sortAdvance DESC, advanceCreationDate DESC
                                                 LIMIT ${limit}`;
                 }
                 console.log(sql_queries_getdetails)
@@ -602,6 +608,7 @@ const getAllEmployeeHolidayData = (req, res) => {
                                                 CONCAT(user_details.userFirstName,' ',user_details.userLastName) AS userName,
                                                 numLeave,
                                                 holidayReason,
+                                                holidayDate AS sortHoliday,
                                                 DATE_FORMAT(holidayDate,'%d-%m-%Y') AS holidayLeaveDate,
                                                 DATE_FORMAT(holidayDate,'%W, %d %M %Y') AS holidayDate
                                             FROM
@@ -610,12 +617,12 @@ const getAllEmployeeHolidayData = (req, res) => {
                 if (req.query.startDate && req.query.endDate) {
                     sql_queries_getdetails = `${commanQuarryOfLeave}
                                                 WHERE holidayDate BETWEEN STR_TO_DATE('${startDate}','%b %d %Y') AND STR_TO_DATE('${endDate}','%b %d %Y')
-                                                ORDER BY holidayDate DESC, holidayCreationDate DESC
+                                                ORDER BY sortHoliday DESC, holidayCreationDate DESC
                                                 LIMIT ${limit}`;
                 } else {
                     sql_queries_getdetails = `${commanQuarryOfLeave}
                                                 WHERE holidayDate BETWEEN STR_TO_DATE('${firstDayOfYear}','%b %d %Y') AND STR_TO_DATE('${lastDayOfYear}','%b %d %Y')
-                                                ORDER BY holidayDate DESC, holidayCreationDate DESC
+                                                ORDER BY sortHoliday DESC, holidayCreationDate DESC
                                                 LIMIT ${limit}`;
                 }
 

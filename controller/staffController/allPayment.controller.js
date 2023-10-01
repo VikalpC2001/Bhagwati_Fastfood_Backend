@@ -56,14 +56,12 @@ const getAllEmployeeTransactionData = (req, res) => {
                                                 ORDER BY sortSalaryDate DESC, salaryCreationDate DESC
                                                 LIMIT ${limit}`;
                 } else if (req.query.searchNumber) {
-                    console.log('hyy2');
                     sql_queries_getdetails = `${commanTransactionQuarry}
                                                 WHERE remainSalaryId LIKE '%` + searchNumber + `%'
                                                 GROUP BY remainSalaryId
                                                 ORDER BY sortSalaryDate DESC, salaryCreationDate DESC
                                                 LIMIT ${limit}`;
                 } else {
-                    console.log('hyy3');
                     sql_queries_getdetails = `${commanTransactionQuarry}
                                                 WHERE staff_salary_data.salaryDate BETWEEN STR_TO_DATE('${firstDay}','%b %d %Y') AND STR_TO_DATE('${lastDay}','%b %d %Y')
                                                 GROUP BY remainSalaryId
@@ -145,9 +143,6 @@ const getAllEmployeeLeaveData = (req, res) => {
                         console.error("An error occurd in SQL Queery", err);
                         return res.status(500).send('Database Error');
                     } else {
-                        console.log(rows);
-                        console.log(numRows);
-                        console.log("Total Page :-", numPages);
                         if (numRows === 0) {
                             const rows = [{
                                 'msg': 'No Data Found'
@@ -214,15 +209,11 @@ const getAllEmployeeBonusData = (req, res) => {
                                                 ORDER BY sortBonusDate DESC, bonusCreationDate DESC
                                                 LIMIT ${limit}`;
                 }
-                console.log(sql_queries_getdetails)
                 pool.query(sql_queries_getdetails, (err, rows, fields) => {
                     if (err) {
                         console.error("An error occurd in SQL Queery", err);
                         return res.status(500).send('Database Error');
                     } else {
-                        console.log(rows);
-                        console.log(numRows);
-                        console.log("Total Page :-", numPages);
                         if (numRows === 0) {
                             const rows = [{
                                 'msg': 'No Data Found'
@@ -296,9 +287,6 @@ const getAllEmployeeCreditData = (req, res) => {
                         console.error("An error occurd in SQL Queery", err);
                         return res.status(500).send('Database Error');
                     } else {
-                        console.log(rows);
-                        console.log(numRows);
-                        console.log("Total Page :-", numPages);
                         if (numRows === 0) {
                             const rows = [{
                                 'msg': 'No Data Found'
@@ -385,15 +373,11 @@ const getAllEmployeeFineData = (req, res) => {
                                                 ORDER BY sortFine DESC ,fineCreationDate DESC 
                                                 LIMIT ${limit}`;
                 }
-                console.log(sql_queries_getdetails)
                 pool.query(sql_queries_getdetails, (err, rows, fields) => {
                     if (err) {
                         console.error("An error occurd in SQL Queery", err);
                         return res.status(500).send('Database Error');
                     } else {
-                        console.log(rows);
-                        console.log(numRows);
-                        console.log("Total Page :-", numPages);
                         if (numRows === 0) {
                             const rows = [{
                                 'msg': 'No Data Found'
@@ -462,15 +446,11 @@ const getAllEmployeeAdvanceData = (req, res) => {
                                                 ORDER BY sortAdvance DESC, advanceCreationDate DESC
                                                 LIMIT ${limit}`;
                 }
-                console.log(sql_queries_getdetails)
                 pool.query(sql_queries_getdetails, (err, rows, fields) => {
                     if (err) {
                         console.error("An error occurd in SQL Queery", err);
                         return res.status(500).send('Database Error');
                     } else {
-                        console.log(rows);
-                        console.log(numRows);
-                        console.log("Total Page :-", numPages);
                         if (numRows === 0) {
                             const rows = [{
                                 'msg': 'No Data Found'

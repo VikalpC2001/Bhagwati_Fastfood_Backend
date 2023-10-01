@@ -160,15 +160,11 @@ const getEmployeeMonthlySalaryById = (req, res) => {
                                                 ORDER BY smsd.msStartDate DESC 
                                                 LIMIT ${limit}`;
                 }
-                console.log(sql_queries_getdetails);
                 pool.query(sql_queries_getdetails, (err, rows, fields) => {
                     if (err) {
                         console.error("An error occurd in SQL Queery", err);
                         return res.status(500).send('Database Error');
                     } else {
-                        console.log(rows);
-                        console.log(numRows);
-                        console.log("Total Page :-", numPages);
                         if (numRows === 0) {
                             const rows = [{
                                 'msg': 'No Data Found'
@@ -238,9 +234,6 @@ const getAdvanceDataById = (req, res) => {
                         console.error("An error occurd in SQL Queery", err);
                         return res.status(500).send('Database Error');
                     } else {
-                        console.log(rows);
-                        console.log(numRows);
-                        console.log("Total Page :-", numPages);
                         if (numRows === 0) {
                             const rows = [{
                                 'msg': 'No Data Found'
@@ -322,15 +315,11 @@ const getFineDataById = (req, res) => {
                                                 ORDER BY sortFine DESC ,fineCreationDate DESC 
                                                 LIMIT ${limit}`;
                 }
-                console.log(sql_queries_getdetails)
                 pool.query(sql_queries_getdetails, (err, rows, fields) => {
                     if (err) {
                         console.error("An error occurd in SQL Queery", err);
                         return res.status(500).send('Database Error');
                     } else {
-                        console.log(rows);
-                        console.log(numRows);
-                        console.log("Total Page :-", numPages);
                         if (numRows === 0) {
                             const rows = [{
                                 'msg': 'No Data Found'
@@ -399,9 +388,6 @@ const getBonusDataById = (req, res) => {
                         console.error("An error occurd in SQL Queery", err);
                         return res.status(500).send('Database Error');
                     } else {
-                        console.log(rows);
-                        console.log(numRows);
-                        console.log("Total Page :-", numPages);
                         if (numRows === 0) {
                             const rows = [{
                                 'msg': 'No Data Found'
@@ -717,7 +703,6 @@ const getCutSalaryDataById = (req, res) => {
                                                     WHERE salaryId IN (SELECT COALESCE(salaryId,null) FROM staff_salary_data WHERE staff_salary_data.remainSalaryId = '${remainSalaryId}');
                                                     SELECT remainSalaryAmt, remainAdvanceAmt, remainFineAmt FROM staff_remainSalaryHistory_data
                                                     WHERE remainSalaryId = '${remainSalaryId}'`;
-                    console.log(sql_queries_getCutSalaryData)
                     pool.query(sql_queries_getCutSalaryData, (err, data) => {
                         if (err) {
                             console.error("An error occurd in SQL Queery", err);

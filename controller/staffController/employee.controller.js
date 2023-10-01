@@ -1355,7 +1355,6 @@ const getEmployeeData = (req, res) => {
                             ) AS smsddate
                             ON
                                 sed.employeeId = smsddate.employeeId`;
-        console.log(sql_common_query);
         if (req.query.categoryId) {
             sql_query_getEmployee = `${sql_common_query}
                                      WHERE sed.category = '${categoryId}' AND sed.employeeStatus = 1
@@ -1365,7 +1364,6 @@ const getEmployeeData = (req, res) => {
                                      WHERE sed.employeeStatus = ${employeeStatus}
                                      ORDER BY sed.employeeFirstName`;
         }
-        console.log(sql_query_getEmployee);
         if (!req.query.categoryId) {
             sql_query_getEmployeeIds = `SELECT employeeId FROM staff_employee_data WHERE employeeStatus = 1 AND MONTH(CURDATE()) != MONTH(salaryCalculationDate)`;
             pool.query(sql_query_getEmployeeIds, (err, data) => {
@@ -1399,7 +1397,6 @@ const getEmployeeData = (req, res) => {
                         });
                 } else {
                     pool.query(sql_query_getEmployee, (err, data) => {
-                        console.log('???');
                         if (err) {
                             console.error('An error occurred in SQL Query', err);
                             return res.status(500).send('Database Error');
@@ -1471,7 +1468,7 @@ const getMidMonthInActiveSalaryOfEmployee = (req, res) => {
                                             sed.employeeId = msld.employeeId
                                             WHERE
                                             sed.employeeId = '${employeeId}';`;
-        console.log(sql_querry_calculateMidSalary);
+        // console.log(sql_querry_calculateMidSalary);
         pool.query(sql_querry_calculateMidSalary, (err, data) => {
             if (err) {
                 console.error("An error occurd in SQL Queery", err);

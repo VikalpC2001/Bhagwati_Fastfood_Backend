@@ -117,6 +117,7 @@ const getAllEmployeeLeaveData = (req, res) => {
                                             	CONCAT(user_details.userFirstName,' ',user_details.userLastName) AS userName,
                                                 sed.employeeId,
                                                 sed.employeeNickName AS employeeName,
+                                                CONCAT(scd.staffCategoryName,' (',sed.designation,')') AS employeeCategory,
                                                 numLeave,
                                                 leaveReason,
                                                 leaveDate AS sortLeaveDate,
@@ -125,7 +126,8 @@ const getAllEmployeeLeaveData = (req, res) => {
                                             FROM
                                                 staff_leave_data
                                             LEFT JOIN user_details ON user_details.userId = staff_leave_data.userId
-                                            INNER JOIN staff_employee_data AS sed ON sed.employeeId = staff_leave_data.employeeId`;
+                                            INNER JOIN staff_employee_data AS sed ON sed.employeeId = staff_leave_data.employeeId
+                                            LEFT JOIN staff_category_data AS scd ON scd.staffCategoryId = sed.category`;
                 if (req.query.startDate && req.query.endDate) {
                     sql_queries_getdetails = `${commanQuarryOfLeave}
                                                 WHERE leaveDate BETWEEN STR_TO_DATE('${startDate}','%b %d %Y') AND STR_TO_DATE('${endDate}','%b %d %Y')

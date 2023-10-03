@@ -7,7 +7,7 @@ const { protect } = require("../../middlewares/authMiddlewares.js");
 const employeeController = require("../../controller/staffController/employee.controller.js");
 
 router.post('/addEmployeedetails', protect, employeeController.addEmployeedetails);
-router.get('/getImagebyName', protect, employeeController.getImagebyName);
+router.get('/getImagebyName', employeeController.getImagebyName);
 router.delete('/removeEmployeeDetails', protect, employeeController.removeEmployeeDetails);
 router.post('/updateEmployeeDetails', protect, employeeController.updateEmployeeDetails);
 router.get('/fillEmployeeDetails', protect, employeeController.fillEmployeeDetails);

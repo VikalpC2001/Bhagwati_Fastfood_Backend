@@ -994,6 +994,66 @@ const getPresentDaysByEmployeeId = (req, res) => {
     }
 }
 
+const getSalaryIncreaseHistoryById = (req, res) => {
+    try {
+        const employeeId = req.query.employeeId;
+        const page = req.query.page;
+        const numPerPage = req.query.numPerPage;
+        const skip = (page - 1) * numPerPage;
+        const limit = skip + ',' + numPerPage;
+
+        sql_querry_getCountdetails = `SELECT count(*) as numRows FROM salary_history_data WHERE employeeId = '${employeeId}'`;
+        pool.query(sql_querry_getCountdetails, (err, rows, fields) => {
+            if (err) {
+                console.error("An error occurd in SQL Queery", err);
+                return res.status(500).send('Database Error');
+            } else {
+                const numRows = rows[0].numRows;
+                const numPages = Math.ceil(numRows / numPerPage);
+
+                sql_queries_getdetails = `SELECT
+                                            historyId,
+                                            salary,
+                                            CONCAT(
+                                                'Salary From ',
+                                                DATE_FORMAT(startDate, '%W, %d %M %Y'),
+                                                ' TO ',
+                                                CASE
+                                                    WHEN endDate = startDate THEN DATE_FORMAT(CURRENT_DATE(), '%W, %d %M %Y')
+                                                    ELSE DATE_FORMAT(endDate, '%W, %d %M %Y')
+                                                END
+                                            ) AS salaryPeriod
+                                        FROM
+                                            salary_history_data
+                                        WHERE employeeId = '${employeeId}'
+                                        ORDER BY historyCreationDate DESC 
+                                        LIMIT ${limit}`;
+                pool.query(sql_queries_getdetails, (err, rows, fields) => {
+                    if (err) {
+                        console.error("An error occurd in SQL Queery", err);
+                        return res.status(500).send('Database Error');
+                    } else {
+                        console.log(rows);
+                        console.log(numRows);
+                        console.log("Total Page :-", numPages);
+                        if (numRows === 0) {
+                            const rows = [{
+                                'msg': 'No Data Found'
+                            }]
+                            return res.status(200).send({ rows, numRows });
+                        } else {
+                            return res.status(200).send({ rows, numRows });
+                        }
+                    }
+                });
+            }
+        })
+    } catch (error) {
+        console.error('An error occurd', error);
+        res.status(500).send('Internal Server Error');
+    }
+}
+
 module.exports = {
     getEmployeeMonthlySalaryById,
     getAdvanceDataById,
@@ -1005,5 +1065,6 @@ module.exports = {
     getCutSalaryDataById,
     getAllPaymentStatisticsCountById,
     getCutCreditDataById,
-    getPresentDaysByEmployeeId
+    getPresentDaysByEmployeeId,
+    getSalaryIncreaseHistoryById
 }

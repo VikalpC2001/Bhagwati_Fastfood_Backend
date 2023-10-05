@@ -1365,7 +1365,7 @@ const getEmployeeData = (req, res) => {
                                      ORDER BY sed.employeeFirstName`;
         }
         if (!req.query.categoryId) {
-            sql_query_getEmployeeIds = `SELECT employeeId FROM staff_employee_data WHERE employeeStatus = 1 AND MONTH(CURDATE()) != MONTH(salaryCalculationDate)`;
+            sql_query_getEmployeeIds = `SELECT employeeId FROM staff_employee_data WHERE employeeStatus = 1 AND DATE_FORMAT(CURDATE(),'%Y-%m') != DATE_FORMAT(salaryCalculationDate,'%Y-%m')`;
             pool.query(sql_query_getEmployeeIds, (err, data) => {
                 if (err) {
                     console.error("An error occurd in SQL Queery", err);
@@ -1709,7 +1709,8 @@ const ddlForEmployeeList = (req, res) => {
                                             FROM
                                                 staff_employee_data
                                             WHERE
-                                                employeeStatus = 1`;
+                                                employeeStatus = 1
+                                            ORDER BY employeeNickName`;
         pool.query(sql_querry_getEmployeeData, (err, data) => {
             if (err) {
                 console.error("An error occurd in SQL Queery", err);

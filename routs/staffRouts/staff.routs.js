@@ -70,6 +70,7 @@ router.get('/getCutSalaryDataById', protect, employeeTableController.getCutSalar
 router.get('/getAllPaymentStatisticsCountById', protect, employeeTableController.getAllPaymentStatisticsCountById);
 router.get('/getCutCreditDataById', protect, employeeTableController.getCutCreditDataById);
 router.get('/getPresentDaysByEmployeeId', protect, employeeTableController.getPresentDaysByEmployeeId);
+router.get('/getSalaryIncreaseHistoryById', protect, employeeTableController.getSalaryIncreaseHistoryById);
 
 // Export Table Data Routs
 

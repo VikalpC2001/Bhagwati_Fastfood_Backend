@@ -959,6 +959,8 @@ const updateStockOutTransaction = async (req, res) => {
                                         })
                                     })
                                 })
+                            } else if (req.body.productQty == 0) {
+                                return res.status(401).send('Please Delete Transaction');
                             } else if (prevoiusQuantity > req.body.productQty) {
                                 sql_get_sowsoid = `SELECT
                                                     inventory_stockIn_data.stockInId,
@@ -1037,7 +1039,7 @@ const updateStockOutTransaction = async (req, res) => {
                                             desiredQuantity -= availableSpace;
                                         }
                                     }
-
+                                    const updatedStockInData = StockInData;
                                     console.log("Updated StockInData:", StockInData);
                                     console.log("Total Cost of Filling: ", totalCost);
 
@@ -1045,10 +1047,47 @@ const updateStockOutTransaction = async (req, res) => {
                                     const stockOutPrice = Number(totalofStockOutPrice).toFixed(2);
 
                                     const sopq = StockInData.filter((obj) => {
-                                        if (obj.stockInQuantity != obj.productQty) {
-                                            return obj;
-                                        }
+                                        return obj;
                                     })
+                                    const sowsiId = StockInData.map((obj) => {
+                                        return obj.stockInId;
+                                    })
+                                    const remainingStockByIds = sowsiId.map(stockInId => {
+                                        const stockIn = junoJson.find(item => item.stockInId === stockInId);
+                                        return stockIn ? stockIn.productQty : undefined;
+                                    });
+
+                                    const remainingStockByIds1 = sowsiId.map(stockInId => {
+                                        const stockIn = updatedStockInData.find(item => item.stockInId === stockInId);
+                                        return stockIn ? stockIn.remainingStock : undefined;
+                                    });
+
+                                    console.log('orignalStockInData', remainingStockByIds);
+                                    console.log('stockInData', remainingStockByIds1);
+
+                                    const remainStockCutQty = remainingStockByIds.map((value, index) => value - remainingStockByIds1[index]);
+
+                                    console.log(';;;;;;;;', junoJson)
+                                    console.log('???????', updatedStockInData);
+                                    console.log(">?>?>?<<<<.,,,", sowsiId);
+                                    console.log("RRRRR", remainStockCutQty);
+
+                                    const idsToDelete = sowsiId.map(item => `'${item}'`).join(',');
+                                    console.log('jgjgjjgjgjg', idsToDelete);
+
+                                    const filteredId = sowsiId.filter((_, index) => remainStockCutQty[index] !== 0);
+                                    const filteredQty = remainStockCutQty.filter(qtyValue => qtyValue !== 0);
+
+                                    console.log('Id Mate Jovu', filteredId);
+                                    console.log('Qty Mate Jovu', filteredQty);
+
+                                    const combinedData = filteredId.map((id, index) => `('${stockOutId}','${id}',ROUND(${filteredQty[index]},2))`);
+
+                                    // Join the array elements into a single string
+                                    const stockOutWiseStockInId = combinedData.join(',');
+
+                                    // Output the resulting string
+                                    console.log(stockOutWiseStockInId);
 
                                     function generateUpdateQuery(data) {
                                         let query = 'UPDATE inventory_stockIn_data\nSET remainingQty = CASE\n';
@@ -1061,13 +1100,15 @@ const updateStockOutTransaction = async (req, res) => {
                                         query += '    ELSE remainingQty\nEND\n';
 
                                         const stockInIds = data.map((item) => `'${item.stockInId}'`).join(', ');
-                                        query += `WHERE stockInId IN (${stockInIds});`;
+                                        query += `WHERE stockInId IN (${stockInIds})`;
 
                                         return query;
                                     }
 
                                     console.log(generateUpdateQuery(sopq))
-                                    const sql_qurey_updatedRemainQty = generateUpdateQuery(sopq);
+                                    const sql_qurey_updatedRemainQty = `${generateUpdateQuery(sopq)};
+                                                                        DELETE FROM inventory_stockOutwiseStockInId_data WHERE stockOutId = '${stockOutId}';
+                                                                        INSERT INTO inventory_stockOutwiseStockInId_data (stockOutId, stockInId, cutProductQty) VALUES ${stockOutWiseStockInId}`;
                                     pool.query(sql_qurey_updatedRemainQty, (err, data) => {
                                         if (err) {
                                             console.error("An error occurd in SQL Queery", err);

@@ -224,12 +224,13 @@ const updateStaffCategory = (req, res) => {
 const getStaffCategoryWithEmployeeNumber = (req, res) => {
     try {
         sql_querry_getStaffcategorywithempNum = `SELECT '' AS staffCategoryId, "All" AS staffCategoryName, COALESCE(COUNT(employeeId),0) AS numberOfEmployee FROM staff_employee_data WHERE employeeStatus = 1;
-                                                 SELECT staffCategoryId, staffCategoryName, COALESCE(num,0) As numberOfEmployee  FROM staff_category_data AS scd
+                                                SELECT staffCategoryId, staffCategoryName, COALESCE(num,0) As numberOfEmployee  FROM staff_category_data AS scd
                                                     LEFT JOIN (
                                                     	SELECT COUNT(employeeId) AS num,staff_employee_data.category FROM staff_employee_data
                                                         WHERE staff_employee_data.employeeStatus = 1
                                                         GROUP BY category
-                                                    ) AS sed ON scd.staffCategoryId = sed.category;
+                                                    ) AS sed ON scd.staffCategoryId = sed.category
+                                                ORDER BY staffCategoryName;
                                                 SELECT '9999' AS staffCategoryId, "InActive List" AS staffCategoryName, COALESCE(COUNT(employeeId),0) AS numberOfEmployee FROM staff_employee_data WHERE employeeStatus = 0`;
         pool.query(sql_querry_getStaffcategorywithempNum, (err, data) => {
             if (err) {

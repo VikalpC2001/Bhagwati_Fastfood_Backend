@@ -822,7 +822,8 @@ const updateStockOutTransaction = async (req, res) => {
                             return res.status(500).send('No Change');
                         }
 
-                        sql_querry_getStockIndetail = `SELECT stockInId, productId, productQty, productPrice AS stockInPrice, remainingQty AS stockInQuantity FROM inventory_stockIn_data WHERE productId = '${productId}' AND remainingQty != 0 ORDER BY stockInDate ASC`;
+                        sql_querry_getStockIndetail = `SELECT stockInId, productId, productQty, productPrice AS stockInPrice, remainingQty AS stockInQuantity FROM inventory_stockIn_data WHERE productId = '${productId}' AND remainingQty != 0 ORDER BY stockInDate ASC;
+                                                       SELECT stockInId FROM inventory_stockOutwiseStockInId_data WHERE stockOutId = '${stockOutId}'`;
                         pool.query(sql_querry_getStockIndetail, (err, data) => {
                             if (err) {
                                 console.error("An error occurd in SQL Queery", err);
@@ -831,8 +832,10 @@ const updateStockOutTransaction = async (req, res) => {
                             console.log(">>>???", prevoiusQuantity);
                             console.log(">>>", req.body.productQty);
                             if (prevoiusQuantity < req.body.productQty) {
-                                const stockInData = Object.values(JSON.parse(JSON.stringify(data)));
-                                console.log(">>>", Object.values(JSON.parse(JSON.stringify(data))));
+                                const orignalStockInData = Object.values(JSON.parse(JSON.stringify(data[0])));
+                                const stockInData = Object.values(JSON.parse(JSON.stringify(data[0])));
+                                const oldIdsArray = Object.values(JSON.parse(JSON.stringify(data[1])));
+                                console.log(">>>", Object.values(JSON.parse(JSON.stringify(data[1]))));
                                 console.log("::::::::", req.body.productQty - prevoiusQuantity);
                                 const stockOutData = [
                                     { productId: req.body.productId, stockOutQuantity: req.body.productQty - prevoiusQuantity }
@@ -887,6 +890,96 @@ const updateStockOutTransaction = async (req, res) => {
                                         return obj;
                                     }
                                 })
+
+                                const sowsiId = sopq.map((obj) => {
+                                    if (obj.stockInQuantity != obj.productQty) {
+                                        return obj.stockInId;
+                                    }
+                                });
+
+                                const oldId = oldIdsArray.map((obj) => {
+                                    return obj.stockInId;
+                                });
+
+                                const similarStockInIds = sowsiId.filter(id => oldId.includes(id));
+
+                                const removeSameId = sowsiId.filter(id => !similarStockInIds.includes(id));
+
+                                console.log('jojojojojo', removeSameId);
+
+                                if (similarStockInIds.length != 0) {
+                                    const remainingStockByIds = similarStockInIds.map(stockInId => {
+                                        const stockIn = orignalStockInData.find(item => item.stockInId === stockInId);
+                                        return stockIn ? stockIn.stockInQuantity : undefined;
+                                    });
+
+                                    const remainingStockByIds1 = similarStockInIds.map(stockInId => {
+                                        const stockIn = stockInData.find(item => item.stockInId === stockInId);
+                                        return stockIn ? stockIn.stockInQuantity : undefined;
+                                    });
+
+                                    console.log('orignalStockInData', remainingStockByIds);
+                                    console.log('stockInData', remainingStockByIds1);
+
+                                    const remainStockCutQty = remainingStockByIds.map((value, index) => value - remainingStockByIds1[index]);
+
+                                    console.log(';;;;;;;;', stockInData)
+                                    console.log('???????', orignalStockInData);
+                                    console.log(">?>?>?<<<<.,,,", sowsiId);
+                                    console.log(">?>?>?<<<<.,,,", oldId);
+                                    console.log('same id', similarStockInIds);
+                                    console.log("RRRRR", remainStockCutQty);
+                                    sql_qurey_updateExistingId = `UPDATE inventory_stockOutwiseStockInId_data SET cutProductQty = cutProductQty + ${remainStockCutQty[0]} WHERE stockOutId = '${stockOutId}' AND stockInId = '${similarStockInIds[0]}'`;
+                                    pool.query(sql_qurey_updateExistingId, (err, result) => {
+                                        if (err) {
+                                            console.error("An error occurd in SQL Queery", err);
+                                            return res.status(500).send('Database Error');
+                                        }
+                                        console.log('Existing Data Updated SuccessFully');
+                                    })
+                                }
+
+                                if (removeSameId.length != 0) {
+                                    const remainingStockByIds = removeSameId.map(stockInId => {
+                                        const stockIn = orignalStockInData.find(item => item.stockInId === stockInId);
+                                        return stockIn ? stockIn.stockInQuantity : undefined;
+                                    });
+
+                                    const remainingStockByIds1 = removeSameId.map(stockInId => {
+                                        const stockIn = stockInData.find(item => item.stockInId === stockInId);
+                                        return stockIn ? stockIn.stockInQuantity : undefined;
+                                    });
+
+                                    console.log('orignalStockInData', remainingStockByIds);
+                                    console.log('stockInData', remainingStockByIds1);
+
+                                    const remainStockCutQty = remainingStockByIds.map((value, index) => value - remainingStockByIds1[index]);
+
+                                    console.log(';;;;;;;;', stockInData)
+                                    console.log('???????', orignalStockInData);
+                                    console.log(">?>?>?<<<<.,,,", sowsiId);
+                                    console.log(">?>?>?<<<<.,,,", oldId);
+                                    console.log('same id', similarStockInIds);
+                                    console.log("RRRRR", remainStockCutQty);
+
+                                    // Use map to combine the arrays and format them
+                                    const combinedData = removeSameId.map((id, index) => `('${stockOutId}','${id}',ROUND(${remainStockCutQty[index]},2))`);
+
+                                    // Join the array elements into a single string
+                                    const stockOutWiseStockInId = combinedData.join(',');
+
+                                    // Output the resulting string
+                                    console.log(stockOutWiseStockInId);
+
+                                    sql_querry_addsowsiId = `INSERT INTO inventory_stockOutwiseStockInId_data (stockOutId, stockInId, cutProductQty) VALUES ${stockOutWiseStockInId}`;
+                                    pool.query(sql_querry_addsowsiId, (err, data) => {
+                                        if (err) {
+                                            console.error("An error occurd in SQL Queery", err);
+                                            return res.status(500).send('Database Error');
+                                        }
+                                        console.log("Data Added Successfully");
+                                    })
+                                }
 
                                 function generateUpdateQuery(data) {
                                     let query = 'UPDATE inventory_stockIn_data\nSET remainingQty = CASE\n';

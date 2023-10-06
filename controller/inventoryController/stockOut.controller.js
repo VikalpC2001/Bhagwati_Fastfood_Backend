@@ -1827,6 +1827,31 @@ const categoryWisedUsedPrice = (req, res) => {
     })
 };
 
+const getAllStockOutTransaction = (req, res) => {
+    try {
+        sql_queries_getAllData = `SELECT
+                                    productId,
+                                    productQty,
+                                    productUnit,
+                                    stockOutCategory,
+                                    stockOutComment,
+                                    DATE_FORMAT(stockOutDate,'%m/%d/%Y') AS outDate
+                                FROM
+                                    inventory_stockOut_data
+                                ORDER by stockOutDate ASC, stockOutCreationDate ASC`;
+        pool.query(sql_queries_getAllData, (err, data) => {
+            if (err) {
+                console.error("An error occurd in SQL Queery", err);
+                return res.status(500).send('Database Error');
+            }
+            return res.status(200).send(data);
+        })
+    } catch (error) {
+        console.error('An error occurd', error);
+        res.status(500).json('Internal Server Error');
+    }
+}
+
 module.exports = {
     addStockOutDetails,
     removeStockOutTransaction,
@@ -1838,5 +1863,6 @@ module.exports = {
     getUpdateStockOutList,
     getUpdateStockOutListById,
     categoryWisedUsed,
-    categoryWisedUsedPrice
+    categoryWisedUsedPrice,
+    getAllStockOutTransaction
 }

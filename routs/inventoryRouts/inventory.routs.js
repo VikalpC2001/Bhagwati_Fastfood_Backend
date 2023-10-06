@@ -66,6 +66,7 @@ router.get('/getUpdateStockOutList', protect, stockOutController.getUpdateStockO
 router.get('/getUpdateStockOutListById', protect, stockOutController.getUpdateStockOutListById);
 router.get('/categoryWisedUsed', stockOutController.categoryWisedUsed);
 router.get('/categoryWisedUsedPrice', stockOutController.categoryWisedUsedPrice);
+router.get('/getAllStockOutTransaction', stockOutController.getAllStockOutTransaction);
 
 // Supplier Transaction Routs
 

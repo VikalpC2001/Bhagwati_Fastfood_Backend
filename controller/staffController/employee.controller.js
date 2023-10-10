@@ -851,7 +851,7 @@ const addEmployeedetails = (req, res) => {
                                                                                 ${data.employeeOtherMobileNumber ? `'${data.employeeOtherMobileNumber}'` : null},
                                                                                 '${data.presentAddress}',
                                                                                 '${data.homeAddress}',
-                                                                                '${data.adharCardNum}',
+                                                                                ${data.adharCardNum ? `'${data.adharCardNum}'` : null},
                                                                                 '${data.category}',
                                                                                 '${data.designation}',
                                                                                 ${data.salary},
@@ -1048,8 +1048,8 @@ const updateEmployeeDetails = (req, res) => {
                     employeeStatus: req.body.employeeStatus,
                 };
                 if (!data.employeeFirstName || !data.employeeLastName || !data.employeeGender || !data.employeeNickName ||
-                    !data.employeeMobileNumber || !data.employeeOtherMobileNumber || !data.presentAddress ||
-                    !data.homeAddress || !data.adharCardNum || !data.category || !data.designation ||
+                    !data.employeeMobileNumber || !data.presentAddress ||
+                    !data.homeAddress || !data.category || !data.designation ||
                     !data.salary || !data.maxLeave || !data.employeeStatus) {
                     return res.status(400).send("Please Fill all the feilds");
                 }
@@ -1111,7 +1111,7 @@ const updateEmployeeDetails = (req, res) => {
                                                     employeeOtherMobileNumber = ${data.employeeOtherMobileNumber ? `'${data.employeeOtherMobileNumber}'` : null},
                                                     presentAddress = '${data.presentAddress}',
                                                     homeAddress = '${data.homeAddress}',
-                                                    adharCardNum = '${data.adharCardNum}',
+                                                    adharCardNum = ${data.adharCardNum ? `'${data.adharCardNum}'` : null},
                                                     category = '${data.category}',
                                                     designation ='${data.designation}',
                                                     salary = ${data.salary},

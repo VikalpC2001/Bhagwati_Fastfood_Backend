@@ -85,7 +85,7 @@ const authUser = async (req, res) => {
                     userName: data[0].userFirstName + " " + data[0].userLastName,
                     token: generateToken({ id: data[0].userId, rights: data[0].userRights }),
                 });
-                console.log("??", generateToken({ id: data[0].userId, rights: data[0].userRights }), new Date());
+                console.log("??", generateToken({ id: data[0].userId, rights: data[0].userRights }), new Date().toLocaleString());
             }
             else {
                 res.status(400);

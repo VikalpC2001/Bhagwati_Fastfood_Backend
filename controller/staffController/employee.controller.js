@@ -1424,9 +1424,9 @@ const getMidMonthInActiveSalaryOfEmployee = (req, res) => {
     try {
         const employeeId = req.query.employeeId;
         sql_querry_calculateMidSalary = `SELECT
-                                                ceil(salary / DAY(LAST_DAY(CURRENT_DATE)) * DATEDIFF(CURDATE(), employeeJoiningDate)) AS daySalary,
-                                                ceil(salary / DAY(LAST_DAY(CURRENT_DATE)) * COALESCE(sld.numLeave, 0)) AS currentMonthLeaveSalary,
-                                                ceil(salary / DAY(LAST_DAY(CURRENT_DATE)) * COALESCE(msld.remainLeave, 0)) AS remainLeaveSalary,
+                                                (FLOOR(salary / DAY(LAST_DAY(CURRENT_DATE))) * (DATEDIFF(CURDATE(), employeeJoiningDate))) AS daySalary,
+                                                (CEIL(salary / DAY(LAST_DAY(CURRENT_DATE))) * (COALESCE(sld.numLeave, 0))) AS currentMonthLeaveSalary,
+                                                (CEIL(salary / DAY(LAST_DAY(CURRENT_DATE))) * (COALESCE(msld.remainLeave, 0))) AS remainLeaveSalary,
                                                 CONCAT(DATE_FORMAT(sed.employeeJoiningDate, '%d-%b-%Y'), ' - ', DATE_FORMAT(DATE_SUB(CURDATE(), INTERVAL 1 DAY), '%d-%b-%Y')) AS dateOfPayment
                                             FROM
                                                 staff_employee_data AS sed

@@ -1516,6 +1516,7 @@ const getEmployeeDetailsById = (req, res) => {
                                         salary,
                                         FLOOR(salary / DAY(LAST_DAY(CURRENT_DATE))) AS perDaySalary,
                                         maxLeave,
+                                        DATE_FORMAT(employeeStaticJoiningDate, '%d-%b-%Y') AS employeeStaticJoiningDate,
                                         DATE_FORMAT(employeeJoiningDate, '%d-%b-%Y') AS employeeJoiningDate,
                                         DATE_FORMAT(
                                             employeeLastPaymentDate,

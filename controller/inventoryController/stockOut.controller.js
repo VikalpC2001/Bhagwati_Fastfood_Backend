@@ -1418,276 +1418,169 @@ const getUpdateStockOutListById = (req, res) => {
     }
 }
 
-const categoryWcisedUsed = (req, res) => {
-    sql_queries_getdetails = `SET @sql = NULL;
-                            SELECT
-                            GROUP_CONCAT(DISTINCT
-                                CONCAT(
-                                'COALESCE(MAX(CASE WHEN so.productId = ''',
-                                p.productId,
-                                ''' THEN so.usedQty END), 0) AS ',
-                                QUOTE(p.productName)
-                            )
-                            ) INTO @sql
-                            FROM inventory_product_data p;
-                                
-                            SET @sql = CONCAT(
-                                'SELECT c.stockOutCategoryId, c.stockOutCategoryName, ', @sql, '
-                               FROM inventory_stockOutCategory_data c
-                               LEFT JOIN(
-                                    SELECT so.stockOutCategory, so.productId, SUM(so.productQty) AS usedQty
-                                 FROM inventory_stockOut_data so
-                                 GROUP BY so.stockOutCategory, so.productId
-                                ) so ON c.stockOutCategoryId = so.stockOutCategory
-                               GROUP BY c.stockOutCategoryId, c.stockOutCategoryName'
-                            );
-                            
-                            PREPARE stmt FROM @sql;
-                            EXECUTE stmt;
-                            DEALLOCATE PREPARE stmt;`;
-    pool.query(sql_queries_getdetails, (err, data) => {
-        if (err) {
-            console.error("An error occurd in SQL Queery", err);
-            return res.status(500).send('Database Error');;
+// Get Stockout Data By CategoryId
+
+const getStockOutDataByCategory = (req, res) => {
+    try {
+        const page = req.query.page;
+        const numPerPage = req.query.numPerPage;
+        const skip = (page - 1) * numPerPage;
+        const limit = skip + ',' + numPerPage;
+        const data = {
+            startDate: (req.query.startDate ? req.query.startDate : '').slice(4, 15),
+            endDate: (req.query.endDate ? req.query.endDate : '').slice(4, 15),
+            categoryId: req.query.categoryId
         }
-        return res.status(200).send(data[4]);
-    })
+        if (req.query.startDate && req.query.endDate) {
+            sql_querry_getCountdetails = `SELECT count(*) as numRows FROM inventory_stockOut_data WHERE inventory_stockOut_data.stockOutCategory = '${data.categoryId}' AND inventory_stockOut_data.stockOutDate BETWEEN STR_TO_DATE('${data.startDate}','%b %d %Y') AND STR_TO_DATE('${data.endDate}','%b %d %Y')`;
+        } else {
+            sql_querry_getCountdetails = `SELECT count(*) as numRows FROM inventory_stockOut_data WHERE inventory_stockOut_data.stockOutCategory = '${data.categoryId}' AND inventory_stockOut_data.stockOutDate >= DATE_SUB(CURDATE(), INTERVAL 1 MONTH) AND inventory_stockOut_data.stockOutDate <= CURDATE()`;
+        }
+        pool.query(sql_querry_getCountdetails, (err, rows, fields) => {
+            if (err) {
+                console.error("An error occurd in SQL Queery", err);
+                return res.status(500).send('Database Error');
+            } else {
+                const numRows = rows[0].numRows;
+                const numPages = Math.ceil(numRows / numPerPage);
+                const commonQuery1 = `SELECT stockOutId, user_details.userName AS outBy, CONCAT(user_details.userFirstName,' ',user_details.userLastName) AS userName,inventory_product_data.productName AS productName, CONCAT(productQty,' ',productUnit) AS Quantity, ROUND(stockOutPrice) AS stockOutPrice, inventory_stockOutCategory_data.stockOutCategoryName AS stockOutCategoryName, stockOutComment, DATE_FORMAT(stockOutDate,'%d-%m-%Y') AS dateStockOut, DATE_FORMAT(stockOutCreationDate, '%h:%i:%s %p') AS stockOutTime 
+                                                FROM inventory_stockOut_data
+                                                INNER JOIN user_details ON user_details.userId = inventory_stockOut_data.userId
+                                                INNER JOIN inventory_product_data ON inventory_product_data.productId = inventory_stockOut_data.productId
+                                                INNER JOIN inventory_stockOutCategory_data ON inventory_stockOutCategory_data.stockOutCategoryId = inventory_stockOut_data.stockOutCategory`;
+                const commonQuery2 = `SELECT ROUND(SUM(stockOutPrice)) AS totalStockOutPrice FROM inventory_stockOut_data`;
+                if (req.query.startDate && req.query.endDate) {
+
+                    sql_queries_getdetails = `${commonQuery1}
+                                                WHERE inventory_stockOut_data.stockOutCategory = '${data.categoryId}' AND inventory_stockOut_data.stockOutDate BETWEEN STR_TO_DATE('${data.startDate}','%b %d %Y') AND STR_TO_DATE('${data.endDate}','%b %d %Y')
+                                                ORDER BY inventory_stockOut_data.stockOutDate DESC, inventory_stockOut_data.stockOutCreationDate DESC LIMIT ${limit};
+                                                ${commonQuery2}
+                                                WHERE inventory_stockOut_data.stockOutCategory = '${data.categoryId}' AND inventory_stockOut_data.stockOutDate BETWEEN STR_TO_DATE('${data.startDate}','%b %d %Y') AND STR_TO_DATE('${data.endDate}','%b %d %Y')`;
+
+                } else {
+                    sql_queries_getdetails = `${commonQuery1}
+                                                WHERE inventory_stockOut_data.stockOutCategory = '${data.categoryId}' AND inventory_stockOut_data.stockOutDate >= DATE_SUB(CURDATE(), INTERVAL 1 MONTH) AND inventory_stockOut_data.stockOutDate <= CURDATE()
+                                                ORDER BY inventory_stockOut_data.stockOutDate DESC, inventory_stockOut_data.stockOutCreationDate DESC LIMIT ${limit};
+                                                ${commonQuery2}
+                                                WHERE inventory_stockOut_data.stockOutCategory = '${data.categoryId}' AND inventory_stockOut_data.stockOutDate >= DATE_SUB(CURDATE(), INTERVAL 1 MONTH) AND inventory_stockOut_data.stockOutDate <= CURDATE()`;
+                }
+                pool.query(sql_queries_getdetails, (err, rows, fields) => {
+                    if (err) {
+                        console.error("An error occurd in SQL Queery", err);
+                        return res.status(500).send('Database Error');;
+                    } else {
+                        if (numRows === 0) {
+                            const rows = [{
+                                'msg': 'No Data Found'
+                            }]
+                            return res.status(200).send({ rows, numRows });
+                        } else {
+                            return res.status(200).send({ rows: rows[0], numRows, totalStockOutPrice: rows[1][0].totalStockOutPrice });
+                        }
+                    }
+                });
+            }
+        })
+
+    } catch (error) {
+        console.error('An error occurd', error);
+        res.status(500).json('Internal Server Error');
+    }
 }
 
-const categoryWisedUsed = (req, res) => {
+// Export Excel For Category Wise Used Product
 
-    var date = new Date(), y = date.getFullYear(), m = (date.getMonth() - 1);
-    var firstDay = new Date(y, m, 1).toString().slice(4, 15);
-    var lastDay = new Date(y, m + 1, 0).toString().slice(4, 15);
-
-    const data = {
-        startDate: req.query.startDate,
-        endDate: req.query.endDate
-    }
-
-    sql_queries_getdetails = `SET @sql = NULL;
-                                    SELECT
-                                        GROUP_CONCAT(DISTINCT
-                                            CONCAT(
-                                                'COALESCE(MAX(CASE WHEN so.productId = ''',
-                                                p.productId,
-                                                ''' THEN so.usedQty END), 0) AS ',
-                                                QUOTE(CONCAT(p.productName,' (',p.minProductUnit,')'))
-                                            )
-                                        ) INTO @sql
-                                    FROM inventory_product_data p;
-                                            
-                                    -- Define your date range here
-                                    SET @startDate = '${data.startDate}';
-                                    SET @endDate = '${data.endDate}';
-                                            
-                                    SET @sql = CONCAT(
-                                        'SELECT c.stockOutCategoryName AS "stockout Category", ', @sql, '
-                                        FROM inventory_stockOutCategory_data c
-                                        LEFT JOIN(
-                                            SELECT so.stockOutCategory, so.productId, SUM(so.productQty) AS usedQty
-                                            FROM inventory_stockOut_data so
-                                            WHERE so.stockOutDate BETWEEN ? AND ? -- Apply the date range filter here
-                                            GROUP BY so.stockOutCategory, so.productId
-                                        ) so ON c.stockOutCategoryId = so.stockOutCategory
-                                        GROUP BY c.stockOutCategoryId, c.stockOutCategoryName'
-                                    );
-                                    PREPARE stmt FROM @sql;
-                                    EXECUTE stmt USING @startDate, @endDate; -- Pass the date range as parameters
-                                    DEALLOCATE PREPARE stmt;`;
-
-    pool.query(sql_queries_getdetails, async (err, rows) => {
-        if (err) return res.status(404).send(err);
-        // console.log("::::::::::;;;;;;;;;;;;", rows[6])
-        const workbook = new excelJS.Workbook();
-        const worksheet = workbook.addWorksheet('Stock Out Data');
-
-        const abs = rows[6];
-        const headerName = rows[6][0];
-        console.log("><><>", Object.keys(headerName).map(key => key.toUpperCase()));
-        const headersName = Object.keys(headerName).map(key => key.toUpperCase());
-        // Create the headers row
-        const headersRow = headersName;
-        console.log('headName', headersRow);
-        worksheet.addRow(headersRow);
-
-        // Populate the worksheet with data
-        abs.forEach((row) => {
-            const dataRow = [...Object.values(row)];
-            worksheet.addRow(dataRow);
-        });
-
-        // Calculate the total for each column
-        const totalRow = [];
-        worksheet.columns.forEach((column) => {
-            let columnTotal = 0;
-            column.eachCell({ includeEmpty: true }, (cell, rowNumber) => {
-                // Skip the header row
-                if (rowNumber !== 1) {
-                    const value = parseFloat(cell.value) || 0;
-                    columnTotal += value;
-                }
-            });
-            totalRow.push(columnTotal);
-        });
-        totalRow[0] = "Total";
-        // Add the total row to the worksheet
-        const totalRowCell = worksheet.addRow(totalRow);
-        totalRowCell.eachCell((cell) => {
-            cell.font = { bold: true, color: { theme: 12 } }; // Set the font of the total row cells to bold
-        });
-
-        totalRowCell.fill = {
-            type: 'pattern',
-            pattern: 'solid',
-            fgColor: { argb: 'FFC6EFCE' },
-        };
-
-        worksheet.getRow(1).eachCell((cell) => {
-            cell.font = { bold: true, size: 11 }
-            cell.alignment = { vertical: 'middle', horizontal: 'center', wrapText: true };
-            height = 300
-        });
-
-        // worksheet.views = [
-        //     {
-        //         state: 'frozen',
-        //         xSplit: 1, // Number of columns to freeze (in this case, the first column)
-        //         ySplit: 1, // Number of rows to freeze (0 means no rows are frozen)
-        //         topLeftCell: 'B1', // Cell reference indicating the top-left visible cell after freezing
-        //     },
-        // ];
-
-        worksheet.columns.forEach((column) => {
-            let maxLength = 0;
-            column.eachCell({ includeEmpty: true }, (cell) => {
-                const columnLength = cell.value ? String(cell.value).length : 0;
-                if (columnLength > maxLength) {
-                    maxLength = columnLength;
-                }
-            });
-            column.width = maxLength < 10 ? 12 : maxLength;
-        });
-
-        worksheet.getColumn(1).eachCell((cell) => {
-            cell.font = { bold: true };
-        });
-
-        worksheet.eachRow((row) => {
-            row.eachCell((cell) => {
-                cell.alignment = { horizontal: 'center', vertical: 'middle' };
-                row.height = 20
-                cell.border = {
-                    top: { style: 'thin' },
-                    left: { style: 'thin' },
-                    bottom: { style: 'thin' },
-                    right: { style: 'thin' },
-                };
-            });
-        });
-
-
-        // Create a new worksheet for transposed data
-        const transposedWorksheet = workbook.addWorksheet('Transposed Data');
-
-        // Transpose the data from the original worksheet to the transposed worksheet
-        for (let row = 1; row <= worksheet.rowCount; row++) {
-            for (let col = 1; col <= worksheet.columnCount; col++) {
-                const cell = worksheet.getCell(row, col);
-                const transposedCell = transposedWorksheet.getCell(col, row);
-                transposedCell.value = cell.value;
-                transposedCell.style = Object.assign({}, cell.style); // Copy cell styles
-            }
-        }
-
-        transposedWorksheet.columns.forEach((column) => {
-            let maxLength = 0;
-            column.eachCell({ includeEmpty: true }, (cell) => {
-                const columnLength = cell.value ? String(cell.value).length : 0;
-                if (columnLength > maxLength) {
-                    maxLength = columnLength;
-                }
-            });
-            column.width = maxLength < 10 ? 12 : maxLength;
-        });
-
-        transposedWorksheet.eachRow((row) => {
-            row.eachCell((cell) => {
-                cell.alignment = { horizontal: 'center', vertical: 'middle' };
-                row.height = 20
-            });
-        });
-
-        try {
-            const data = await workbook.xlsx.writeBuffer()
-            var fileName = new Date().toString().slice(4, 15) + ".xlsx";
-            console.log(">>>", fileName);
-            // res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
-            // res.addHeader(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename="+ fileName)
-            res.contentType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
-            res.type = 'blob';
-            res.send(data)
-            // res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
-            // res.setHeader("Content-Disposition", "attachment; filename=" + "Report.xlsx");
-            // workbook.xlsx.write(res)
-            // .then((data)=>{
-            //     res.end();
-            //         console.log('File write done........');
-            //     });
-        } catch (err) {
-            throw new Error(err);
-        }
-    })
-};
-
-const categoryWisedUsedPrice = (req, res) => {
+const exportCategoryWisedProductUsedData = (req, res) => {
 
     var date = new Date(), y = date.getFullYear(), m = (date.getMonth());
     var firstDay = new Date(y, m, 1).toString().slice(4, 15);
     var lastDay = new Date(y, m + 1, 0).toString().slice(4, 15);
 
-
     const data = {
-        startDate: req.query.startDate,
-        endDate: req.query.endDate,
+        startDate: req && req.query.startDate ? req.query.startDate : firstDay,
+        endDate: req && req.query.endDate ? req.query.endDate : lastDay,
     }
 
-    sql_queries_getdetails = `SET @sql = NULL;
-                                    SELECT
-                                        GROUP_CONCAT(DISTINCT
-                                            CONCAT(
-                                                'COALESCE(MAX(CASE WHEN so.productId = ''',
-                                                p.productId,
-                                                ''' THEN so.usedQty END), 0) AS ',
-                                                QUOTE(CONCAT(p.productName,' (',p.minProductUnit,')'))
-                                            )
-                                        ) INTO @sql
-                                    FROM inventory_product_data p;
-                                            
-                                    -- Define your date range here
-                                    SET @startDate = '${data.startDate}';
-                                    SET @endDate = '${data.endDate}';
-                                            
-                                    SET @sql = CONCAT(
-                                        'SELECT c.stockOutCategoryName AS "stockout Category", ', @sql, '
-                                        FROM inventory_stockOutCategory_data c
-                                        LEFT JOIN(
-                                            SELECT so.stockOutCategory, so.productId, SUM(so.stockOutPrice) AS usedQty
-                                            FROM inventory_stockOut_data so
-                                            WHERE so.stockOutDate BETWEEN ? AND ? -- Apply the date range filter here
-                                            GROUP BY so.stockOutCategory, so.productId
-                                        ) so ON c.stockOutCategoryId = so.stockOutCategory
-                                        GROUP BY c.stockOutCategoryId, c.stockOutCategoryName'
-                                    );
-                                    PREPARE stmt FROM @sql;
-                                    EXECUTE stmt USING @startDate, @endDate; -- Pass the date range as parameters
-                                    DEALLOCATE PREPARE stmt;`;
+    console.log(">/>/>/>/>", data.startDate, data.endDate);
+
+    sql_queries_getdetails = `-- Generate dynamic columns for the pivot table
+                            SET @sql = NULL;
+                            SELECT GROUP_CONCAT(
+                                DISTINCT
+                                CONCAT(
+                                    'COALESCE(MAX(CASE WHEN so.productId = ''', p.productId,
+                                    ''' THEN so.usedQty END), 0) AS ',
+                                    QUOTE(CONCAT(p.productName, ' (', p.minProductUnit, ')'))
+                                )
+                            ) INTO @sql
+                            FROM inventory_product_data p;
+                                
+                            -- Define your date range here
+                            SET @startDate = STR_TO_DATE('${data.startDate}','%b %d %Y');
+                            SET @endDate = STR_TO_DATE('${data.endDate}','%b %d %Y');
+                                
+                            -- Generate the dynamic SQL statement for the pivot table
+                            SET @dynamicSQL = CONCAT('
+                                SELECT c.stockOutCategoryName AS "stockout Category", ', @sql, ', COALESCE(SUM(so.usedQty), 0) AS "Total"
+                                FROM inventory_stockOutCategory_data c
+                                LEFT JOIN (
+                                    SELECT so.stockOutCategory, so.productId, SUM(so.productQty) AS usedQty
+                                    FROM inventory_stockOut_data so
+                                    WHERE so.stockOutDate BETWEEN ? AND ? -- Apply the date range filter here
+                                    GROUP BY so.stockOutCategory, so.productId
+                                ) so ON c.stockOutCategoryId = so.stockOutCategory
+                                GROUP BY c.stockOutCategoryId, c.stockOutCategoryName
+                            ');
+                                
+                            -- Prepare and execute the dynamic SQL statement
+                            PREPARE stmt FROM @dynamicSQL;
+                            EXECUTE stmt USING @startDate, @endDate; -- Pass the date range as parameters
+                            DEALLOCATE PREPARE stmt;
+                            -- Generate dynamic columns for the pivot table
+                            SET @sql = NULL;
+                            SELECT GROUP_CONCAT(
+                                DISTINCT
+                                CONCAT(
+                                    'COALESCE(MAX(CASE WHEN so.productId = ''', p.productId,
+                                    ''' THEN so.usedQty END), 0) AS ',
+                                    QUOTE(CONCAT(p.productName, ' (', 'Rs.', ')'))
+                                )
+                            ) INTO @sql
+                            FROM inventory_product_data p;
+                                
+                            -- Define your date range here
+                            SET @startDate = STR_TO_DATE('${data.startDate}','%b %d %Y');
+                            SET @endDate = STR_TO_DATE('${data.endDate}','%b %d %Y');
+                                
+                            -- Generate the dynamic SQL statement for the pivot table
+                            SET @dynamicSQL = CONCAT('
+                                SELECT c.stockOutCategoryName AS "stockout Category", ', @sql, ', COALESCE(SUM(so.usedQty), 0) AS "Total"
+                                FROM inventory_stockOutCategory_data c
+                                LEFT JOIN (
+                                    SELECT so.stockOutCategory, so.productId, SUM(so.stockOutPrice) AS usedQty
+                                    FROM inventory_stockOut_data so
+                                    WHERE so.stockOutDate BETWEEN ? AND ? -- Apply the date range filter here
+                                    GROUP BY so.stockOutCategory, so.productId
+                                ) so ON c.stockOutCategoryId = so.stockOutCategory
+                                GROUP BY c.stockOutCategoryId, c.stockOutCategoryName
+                            ');
+                                
+                            -- Prepare and execute the dynamic SQL statement
+                            PREPARE stmt FROM @dynamicSQL;
+                            EXECUTE stmt USING @startDate, @endDate; -- Pass the date range as parameters
+                            DEALLOCATE PREPARE stmt;`;
 
     pool.query(sql_queries_getdetails, async (err, rows) => {
         if (err) return res.status(404).send(err);
         console.log("::::::::::;;;;;;;;;;;;", rows[1])
         const workbook = new excelJS.Workbook();
-        const worksheet = workbook.addWorksheet('Stock Out Data');
+        const worksheet = workbook.addWorksheet('Stock Out Used Qty Transpoted');
+        const priceWorkSheet = workbook.addWorksheet('Stock Out Used Price Transpoted');
+        const transposedWorksheet = workbook.addWorksheet('Stock Out Used Qty');
+        const transposedpriceWorkSheetPrice = workbook.addWorksheet('Stock Out Used Price');
+
+        workbook.getWorksheet(1).state = 'veryHidden';
+        workbook.getWorksheet(2).state = 'veryHidden';
 
         const abs = rows[6];
         const headerName = rows[6][0];
@@ -1706,7 +1599,7 @@ const categoryWisedUsedPrice = (req, res) => {
 
         // Calculate the total for each column
         const totalRow = [];
-        worksheet.columns.forEach((column) => {
+        worksheet.columns.forEach((column, columnIndex) => {
             let columnTotal = 0;
             column.eachCell({ includeEmpty: true }, (cell, rowNumber) => {
                 // Skip the header row
@@ -1716,7 +1609,23 @@ const categoryWisedUsedPrice = (req, res) => {
                 }
             });
             totalRow.push(columnTotal);
+            // Check if it's the last column and apply styling
+            if (columnIndex === worksheet.columns.length - 1) {
+                // Example styling to highlight the last column
+                column.eachCell((cell) => {
+                    cell.fill = {
+                        type: 'pattern',
+                        pattern: 'solid',
+                        fgColor: { argb: 'FFC6EFCE' }, // Red fill color
+                    };
+                    cell.font = {
+                        bold: true,
+                        size: 12, // Set the font size
+                    };
+                });
+            }
         });
+
         totalRow[0] = "Total";
         // Add the total row to the worksheet
         const totalRowCell = worksheet.addRow(totalRow);
@@ -1735,15 +1644,6 @@ const categoryWisedUsedPrice = (req, res) => {
             cell.alignment = { vertical: 'middle', horizontal: 'center', wrapText: true };
             height = 300
         });
-
-        // worksheet.views = [
-        //     {
-        //         state: 'frozen',
-        //         xSplit: 1, // Number of columns to freeze (in this case, the first column)
-        //         ySplit: 1, // Number of rows to freeze (0 means no rows are frozen)
-        //         topLeftCell: 'B1', // Cell reference indicating the top-left visible cell after freezing
-        //     },
-        // ];
 
         worksheet.columns.forEach((column) => {
             let maxLength = 0;
@@ -1774,9 +1674,6 @@ const categoryWisedUsedPrice = (req, res) => {
         });
 
 
-        // Create a new worksheet for transposed data
-        const transposedWorksheet = workbook.addWorksheet('Transposed Data');
-
         // Transpose the data from the original worksheet to the transposed worksheet
         for (let row = 1; row <= worksheet.rowCount; row++) {
             for (let col = 1; col <= worksheet.columnCount; col++) {
@@ -1805,27 +1702,139 @@ const categoryWisedUsedPrice = (req, res) => {
             });
         });
 
+        const absPrice = rows[14];
+        const headerNamePrice = rows[14][0];
+        console.log(rows[14]);
+        // console.log("><><>", Object.keys(headerNamePrice).map(key => key.toUpperCase()));
+        const headersNamePrice = Object.keys(headerNamePrice).map(key => key.toUpperCase());
+        // Create the headers row
+        const headersRowPrice = headersNamePrice;
+        console.log('headName', headersRowPrice);
+        priceWorkSheet.addRow(headersRowPrice);
+
+        // Populate the priceWorkSheet with data
+        absPrice.forEach((row) => {
+            const dataRow = [...Object.values(row)];
+            priceWorkSheet.addRow(dataRow);
+        });
+
+        // Calculate the total for each column
+        const totalRowPrice = [];
+        priceWorkSheet.columns.forEach((column, columnIndex) => {
+            let columnTotal = 0;
+            column.eachCell({ includeEmpty: true }, (cell, rowNumber) => {
+                // Skip the header row
+                if (rowNumber !== 1) {
+                    const value = parseFloat(cell.value) || 0;
+                    columnTotal += value;
+                }
+            });
+            totalRowPrice.push(columnTotal);
+            // Check if it's the last column and apply styling
+            if (columnIndex === worksheet.columns.length - 1) {
+                // Example styling to highlight the last column
+                column.eachCell((cell) => {
+                    cell.fill = {
+                        type: 'pattern',
+                        pattern: 'solid',
+                        fgColor: { argb: 'FFC6EFCE' }, // Red fill color
+                    };
+                    cell.font = {
+                        bold: true,
+                        size: 12, // Set the font size
+                    };
+                });
+            }
+        });
+
+        totalRowPrice[0] = "Total";
+        // Add the total row to the priceWorkSheet
+        const totalRowPriceCellPrice = priceWorkSheet.addRow(totalRowPrice);
+        totalRowPriceCellPrice.eachCell((cell) => {
+            cell.font = { bold: true, color: { theme: 12 } }; // Set the font of the total row cells to bold
+        });
+
+        totalRowPriceCellPrice.fill = {
+            type: 'pattern',
+            pattern: 'solid',
+            fgColor: { argb: 'FFC6EFCE' },
+        };
+
+        priceWorkSheet.getRow(1).eachCell((cell) => {
+            cell.font = { bold: true, size: 11 }
+            cell.alignment = { vertical: 'middle', horizontal: 'center', wrapText: true };
+            height = 300
+        });
+
+        priceWorkSheet.columns.forEach((column) => {
+            let maxLength = 0;
+            column.eachCell({ includeEmpty: true }, (cell) => {
+                const columnLength = cell.value ? String(cell.value).length : 0;
+                if (columnLength > maxLength) {
+                    maxLength = columnLength;
+                }
+            });
+            column.width = maxLength < 10 ? 12 : maxLength;
+        });
+
+        priceWorkSheet.getColumn(1).eachCell((cell) => {
+            cell.font = { bold: true };
+        });
+
+        priceWorkSheet.eachRow((row) => {
+            row.eachCell((cell) => {
+                cell.alignment = { horizontal: 'center', vertical: 'middle' };
+                row.height = 20
+                cell.border = {
+                    top: { style: 'thin' },
+                    left: { style: 'thin' },
+                    bottom: { style: 'thin' },
+                    right: { style: 'thin' },
+                };
+            });
+        });
+
+        // Transpose the data from the original priceWorkSheet to the transposed priceWorkSheet
+        for (let row = 1; row <= priceWorkSheet.rowCount; row++) {
+            for (let col = 1; col <= priceWorkSheet.columnCount; col++) {
+                const cell = priceWorkSheet.getCell(row, col);
+                const transposedCell = transposedpriceWorkSheetPrice.getCell(col, row);
+                transposedCell.value = cell.value;
+                transposedCell.style = Object.assign({}, cell.style); // Copy cell styles
+            }
+        }
+
+        transposedpriceWorkSheetPrice.columns.forEach((column) => {
+            let maxLength = 0;
+            column.eachCell({ includeEmpty: true }, (cell) => {
+                const columnLength = cell.value ? String(cell.value).length : 0;
+                if (columnLength > maxLength) {
+                    maxLength = columnLength;
+                }
+            });
+            column.width = maxLength < 10 ? 12 : maxLength;
+        });
+
+        transposedpriceWorkSheetPrice.eachRow((row) => {
+            row.eachCell((cell) => {
+                cell.alignment = { horizontal: 'center', vertical: 'middle' };
+                row.height = 20
+            });
+        });
+
         try {
             const data = await workbook.xlsx.writeBuffer()
             var fileName = new Date().toString().slice(4, 15) + ".xlsx";
-            console.log(">>>", fileName);
-            // res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
-            // res.addHeader(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename="+ fileName)
             res.contentType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
             res.type = 'blob';
             res.send(data)
-            // res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
-            // res.setHeader("Content-Disposition", "attachment; filename=" + "Report.xlsx");
-            // workbook.xlsx.write(res)
-            // .then((data)=>{
-            //     res.end();
-            //         console.log('File write done........');
-            //     });
         } catch (err) {
             throw new Error(err);
         }
     })
 };
+
+// To Get All Stock Out Data For Add
 
 const getAllStockOutTransaction = (req, res) => {
     try {
@@ -1852,6 +1861,134 @@ const getAllStockOutTransaction = (req, res) => {
     }
 }
 
+// Export Excel For Stock Out Data By Category Id
+
+const exportExcelSheetForStockOutDataByCategoryId = (req, res) => {
+    const currentDate = new Date();
+    const FirestDate = currentDate.setMonth(currentDate.getMonth() - 1);
+    console.log(FirestDate, currentDate);
+    var firstDay = new Date().toString().slice(4, 15);
+    var lastDay = new Date(FirestDate).toString().slice(4, 15);
+    console.log(firstDay, lastDay);
+    const data = {
+        startDate: (req.query.startDate ? req.query.startDate : '').slice(4, 15),
+        endDate: (req.query.endDate ? req.query.endDate : '').slice(4, 15),
+        categoryId: req.query.categoryId
+    }
+
+    const commonQuery1 = `SELECT
+                            stockOutId,
+                            CONCAT(
+                                user_details.userFirstName,
+                                ' ',
+                                user_details.userLastName
+                            ) AS outBy,
+                            UPPER(inventory_product_data.productName) AS productName,
+                            productQty,
+                            productUnit,
+                            ROUND(stockOutPrice) AS stockOutPrice,
+                            inventory_stockOutCategory_data.stockOutCategoryName AS stockOutCategoryName,
+                            stockOutComment,
+                            DATE_FORMAT(stockOutDate, '%d-%m-%Y') AS stockOutDate,
+                             DATE_FORMAT(stockOutCreationDate, '%h:%i:%s %p') AS stockOutTime
+                        FROM inventory_stockOut_data
+                        INNER JOIN user_details ON user_details.userId = inventory_stockOut_data.userId
+                        INNER JOIN inventory_product_data ON inventory_product_data.productId = inventory_stockOut_data.productId
+                        INNER JOIN inventory_stockOutCategory_data ON inventory_stockOutCategory_data.stockOutCategoryId = inventory_stockOut_data.stockOutCategory`;
+    if (req.query.startDate && req.query.endDate) {
+
+        sql_queries_getdetails = `${commonQuery1}
+                                                WHERE inventory_stockOut_data.stockOutCategory = '${data.categoryId}' AND inventory_stockOut_data.stockOutDate BETWEEN STR_TO_DATE('${data.startDate}','%b %d %Y') AND STR_TO_DATE('${data.endDate}','%b %d %Y')
+                                                ORDER BY inventory_stockOut_data.stockOutDate DESC, inventory_stockOut_data.stockOutCreationDate DESC`;
+
+    } else {
+        sql_queries_getdetails = `${commonQuery1}
+                                                WHERE inventory_stockOut_data.stockOutCategory = '${data.categoryId}' AND inventory_stockOut_data.stockOutDate >= DATE_SUB(CURDATE(), INTERVAL 1 MONTH) AND inventory_stockOut_data.stockOutDate <= CURDATE()
+                                                ORDER BY inventory_stockOut_data.stockOutDate DESC, inventory_stockOut_data.stockOutCreationDate DESC`;
+    }
+
+    pool.query(sql_queries_getdetails, async (err, rows) => {
+        if (err) return res.status(404).send(err);
+        const workbook = new excelJS.Workbook();  // Create a new workbook
+        const worksheet = workbook.addWorksheet("Bonus List"); // New Worksheet
+
+        if (req.query.startDate && req.query.endDate) {
+            worksheet.mergeCells('A1', 'I1');
+            worksheet.getCell('A1').value = `Stock Out For ${rows[0].stockOutCategoryName.toUpperCase()}  :-  From ${data.startDate} To ${data.endDate}`;
+        } else {
+            worksheet.mergeCells('A1', 'I1');
+            worksheet.getCell('A1').value = `Stock Out For ${rows[0].stockOutCategoryName.toUpperCase()}  :-  From ${lastDay} To ${firstDay}`;
+        }
+
+        /*Column headers*/
+        worksheet.getRow(2).values = ['S no.', 'Out By', 'Product', 'Quantity', 'Unit', 'StockOut Price', 'Comment', 'Date', 'Time'];
+
+        // Column for data in excel. key must match data key
+        worksheet.columns = [
+            { key: "s_no", width: 10, },
+            { key: "outBy", width: 20 },
+            { key: "productName", width: 30 },
+            { key: "productQty", width: 10 },
+            { key: "productUnit", width: 10 },
+            { key: "stockOutPrice", width: 20 },
+            { key: "stockOutComment", width: 30 },
+            { key: "stockOutDate", width: 20 },
+            { key: "stockOutTime", width: 20 }
+        ]
+        //Looping through User data
+        const arr = rows
+        console.log(">>>", arr);
+        let counter = 1;
+        arr.forEach((user) => {
+            user.s_no = counter;
+            worksheet.addRow(user); // Add data in worksheet
+            counter++;
+        });
+        // Making first line in excel bold
+        worksheet.getRow(1).eachCell((cell) => {
+            cell.font = { bold: true, size: 13 }
+            cell.alignment = { vertical: 'middle', horizontal: 'center', wrapText: true };
+            height = 200
+        });
+        worksheet.getRow(2).eachCell((cell) => {
+            cell.font = { bold: true, size: 13 }
+            cell.alignment = { vertical: 'middle', horizontal: 'center', wrapText: true };
+        });
+        worksheet.getRow(1).height = 30;
+        worksheet.getRow(2).height = 20;
+
+        worksheet.getRow(arr.length + 3).values = [
+            'Total:',
+            '',
+            '',
+            '',
+            '',
+            { formula: `SUM(F3:F${arr.length + 2})` }
+        ];
+        worksheet.getRow(arr.length + 3).eachCell((cell) => {
+            cell.font = { bold: true, size: 14 }
+            cell.alignment = { vertical: 'middle', horizontal: 'center', wrapText: true };
+        })
+
+        worksheet.eachRow((row) => {
+            row.eachCell((cell) => {
+                cell.alignment = { horizontal: 'center', vertical: 'middle' };
+                row.height = 20
+            });
+        });
+        try {
+            const data = await workbook.xlsx.writeBuffer()
+            var fileName = new Date().toString().slice(4, 15) + ".xlsx";
+            console.log(">>>", fileName);
+            res.contentType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+            res.type = 'blob';
+            res.send(data)
+        } catch (err) {
+            throw new Error(err);
+        }
+    })
+};
+
 module.exports = {
     addStockOutDetails,
     removeStockOutTransaction,
@@ -1862,7 +1999,8 @@ module.exports = {
     getCategoryWiseUsedByProduct,
     getUpdateStockOutList,
     getUpdateStockOutListById,
-    categoryWisedUsed,
-    categoryWisedUsedPrice,
-    getAllStockOutTransaction
+    exportCategoryWisedProductUsedData,
+    getAllStockOutTransaction,
+    getStockOutDataByCategory,
+    exportExcelSheetForStockOutDataByCategoryId
 }

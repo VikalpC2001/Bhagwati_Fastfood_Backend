@@ -50,6 +50,7 @@ router.get('/getCategoryList', protect, stockOutCategoryController.getCategoryLi
 router.post('/addstockOutCategory', protect, stockOutCategoryController.addstockOutCategory);
 router.delete('/removeStockOutCategory', protect, stockOutCategoryController.removeStockOutCategory);
 router.post('/updateStockOutCategory', protect, stockOutCategoryController.updateStockOutCategory);
+router.get('/exportPdfForInventoryCategoryData', protect, stockOutCategoryController.exportPdfForInventoryCategoryData);
 
 // StockOut Routs
 
@@ -64,9 +65,10 @@ router.get('/exportExcelSheetForStockout', protect, stockOutController.exportExc
 router.get('/getCategoryWiseUsedByProduct', protect, stockOutController.getCategoryWiseUsedByProduct);
 router.get('/getUpdateStockOutList', protect, stockOutController.getUpdateStockOutList);
 router.get('/getUpdateStockOutListById', protect, stockOutController.getUpdateStockOutListById);
-router.get('/categoryWisedUsed', stockOutController.categoryWisedUsed);
-router.get('/categoryWisedUsedPrice', stockOutController.categoryWisedUsedPrice);
+router.get('/exportCategoryWisedProductUsedData', stockOutController.exportCategoryWisedProductUsedData);
 router.get('/getAllStockOutTransaction', stockOutController.getAllStockOutTransaction);
+router.get('/getStockOutDataByCategory', stockOutController.getStockOutDataByCategory);
+router.get('/exportExcelSheetForStockOutDataByCategoryId', stockOutController.exportExcelSheetForStockOutDataByCategoryId);
 
 // Supplier Transaction Routs
 

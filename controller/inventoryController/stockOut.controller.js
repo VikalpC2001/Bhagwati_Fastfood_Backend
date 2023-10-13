@@ -1497,8 +1497,8 @@ const exportCategoryWisedProductUsedData = (req, res) => {
     var lastDay = new Date(y, m + 1, 0).toString().slice(4, 15);
 
     const data = {
-        startDate: req && req.query.startDate ? req.query.startDate : firstDay,
-        endDate: req && req.query.endDate ? req.query.endDate : lastDay,
+        startDate: req && req.query.startDate ? (req.query.startDate).slice(4, 15) : firstDay,
+        endDate: req && req.query.endDate ? (req.query.endDate).slice(4, 15) : lastDay,
     }
 
     console.log(">/>/>/>/>", data.startDate, data.endDate);

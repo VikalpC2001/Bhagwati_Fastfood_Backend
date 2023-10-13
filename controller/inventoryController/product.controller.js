@@ -45,7 +45,7 @@ const getProductCountDetailsById = (req, res) => {
                                                    ),2) AS total_quantity,
                                                    ROUND(SUM(
                                                        inventory_stockOut_data.stockOutPrice
-                                                   ),2) AS total_soPrice
+                                                   )) AS total_soPrice
                                                FROM
                                                    inventory_stockOut_data
                                                GROUP BY
@@ -96,7 +96,7 @@ const getProductCountDetailsById = (req, res) => {
                     totalUsed: data[1][0].used,
                     totalUsedPrice: data[1][0].totalUsedPrice,
                     remainingStock: data[2][0].remainingStock,
-                    remainUsedPrice: data[2][0].remainPrice,
+                    remainUsedPrice: data[2][0].remainingStock != 0 ? data[2][0].remainPrice : 0,
                     lastPrice: data[2][0].lastPrice,
                     minProductQty: data[2][0].minProductQty
                 }

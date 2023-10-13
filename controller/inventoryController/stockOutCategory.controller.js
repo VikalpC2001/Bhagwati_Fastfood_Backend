@@ -298,14 +298,12 @@ const exportPdfForInventoryCategoryData = (req, res) => {
 
         if (req.query.startDate && req.query.endDate) {
             sql_queries_getCategoryTable = `SELECT
-                                                iscd.stockOutCategoryId,
-                                                iscd.stockOutCategoryName,
-                                                COALESCE(ROUND(socd.categoryStockOutPrice), 0) AS outPrice,
-                                                ROUND(total.totalCategoryStockOutPrice) AS totalCategoryStockOutPrice,
+                                               iscd.stockOutCategoryName AS "Category Name",
+                                                COALESCE(ROUND(socd.categoryStockOutPrice),0) AS "Out Price",
                                                 CONCAT(
                                                     ROUND(COALESCE(ROUND(socd.categoryStockOutPrice), 0) / total.totalCategoryStockOutPrice * 100),
                                                     ' %'
-                                                ) AS percentage
+                                                ) AS "Out Ratio(%)"
                                             FROM
                                                 inventory_stockOutCategory_data AS iscd
                                             LEFT JOIN (

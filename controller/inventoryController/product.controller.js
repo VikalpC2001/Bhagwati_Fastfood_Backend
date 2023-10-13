@@ -45,7 +45,7 @@ const getProductCountDetailsById = (req, res) => {
                                                    ),2) AS total_quantity,
                                                    ROUND(SUM(
                                                        inventory_stockOut_data.stockOutPrice
-                                                   )) AS total_soPrice
+                                                   ),2) AS total_soPrice
                                                FROM
                                                    inventory_stockOut_data
                                                GROUP BY
@@ -518,7 +518,7 @@ const getProductDetailsTable = (req, res) => {
                                             ),2) AS total_quantity,
                                             ROUND(SUM(
                                                 inventory_stockIn_data.totalPrice
-                                            )) AS total_siPrice
+                                            ),2) AS total_siPrice
                                         FROM
                                             inventory_stockIn_data
                                         GROUP BY
@@ -534,7 +534,7 @@ const getProductDetailsTable = (req, res) => {
                                             ),2) AS total_quantity,
                                             ROUND(SUM(
                                                 inventory_stockOut_data.stockOutPrice
-                                            )) AS total_soPrice
+                                            ),2) AS total_soPrice
                                         FROM
                                             inventory_stockOut_data
                                         GROUP BY

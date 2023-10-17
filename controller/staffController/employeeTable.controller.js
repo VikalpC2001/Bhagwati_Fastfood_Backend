@@ -935,7 +935,7 @@ const getPresentDaysByEmployeeId = (req, res) => {
                                 FROM
                                     staff_employee_data AS sed
                                 WHERE
-                                    sed.employeeId = 'employee_1697110216046' AND sed.employeeStatus = 1;
+                                    sed.employeeId = '${employeeId}' AND sed.employeeStatus = 1;
                                 SELECT
                                     SUM(
                                       DATEDIFF(
@@ -980,7 +980,7 @@ const getPresentDaysByEmployeeId = (req, res) => {
             const alertDay = data && data[2][0].daysOfSalaryAlert ? data[2][0].daysOfSalaryAlert : 0;
             const totalPresentDays = daysOfSalary + currentMonthPresentDays;
             const days = totalPresentDays;
-            console.log(days, totalPresentDays)
+            console.log(days, totalPresentDays, data[1].currentMonthPresentDays)
             const totalPresentDaysInword = convertDaysToYearsMonthsDays(days);
             return res.status(200).send({
                 totalPresentDaysInword: totalPresentDaysInword ? `${totalPresentDaysInword}` : '0 days',

@@ -61,7 +61,7 @@ const addAmountOfSFA = (req, res) => {
             const decoded = jwt.verify(token, process.env.JWT_SECRET);
             const userId = decoded.id.id;
             const userRights = decoded.id.rights;
-            if (userRights == 1) {
+            if (userRights == 1 || userRights == 2) {
                 const uid1 = new Date();
                 const salaryId = String("salary_" + uid1.getTime());
                 const cutFine = String("cutFine_" + uid1.getTime());

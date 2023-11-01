@@ -39,7 +39,7 @@ const getEmployeeMonthlySalaryById = (req, res) => {
                                         smsd.totalSalary,
                                         smsd.remainSalary,
                                         smsd.maxLeave,
-                                        COALESCE(FLOOR(e.salary / DAY(msEndDate)),0) AS perDaySalary,
+                                        COALESCE(FLOOR(e.salary / DAY(LAST_DAY(msEndDate))),0) AS perDaySalary,
                                         DATE_FORMAT(msStartDate, '%d-%m-%Y') AS startDate,
                                         DATE_FORMAT(smsd.msStartDate, '%M %Y') AS salaryMonth,
                                         CONCAT(
@@ -141,7 +141,7 @@ const getEmployeeMonthlySalaryById = (req, res) => {
                                     ) ELSE 0
                                     END
                                     ) *(
-                                        COALESCE(FLOOR(e.salary / 30),
+                                        COALESCE(FLOOR(e.salary / DAY(LAST_DAY(msEndDate))),
                                         0)
                                     ) AS deductionSalaryOfLeave
                                     FROM
@@ -160,6 +160,7 @@ const getEmployeeMonthlySalaryById = (req, res) => {
                                                 ORDER BY smsd.msStartDate DESC 
                                                 LIMIT ${limit}`;
                 }
+                console.log(sql_queries_getdetails);
                 pool.query(sql_queries_getdetails, (err, rows, fields) => {
                     if (err) {
                         console.error("An error occurd in SQL Queery", err);
@@ -177,7 +178,6 @@ const getEmployeeMonthlySalaryById = (req, res) => {
                 });
             }
         })
-
     } catch (error) {
         console.error('An error occurd', error);
         res.status(500).send('Internal Server Error');

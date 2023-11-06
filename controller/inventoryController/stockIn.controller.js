@@ -295,7 +295,6 @@ const exportExcelSheetForStockin = (req, res) => {
 
 const addStockInDetails = async (req, res) => {
     try {
-
         let token;
         token = req.headers.authorization.split(" ")[1];
         if (token) {
@@ -304,9 +303,6 @@ const addStockInDetails = async (req, res) => {
             const uid1 = new Date();
             const stockInId = String("stockIn_" + uid1.getTime());
             console.log("...", stockInId);
-            const num = 330000.232;
-            const roundedNum = Number(num.toFixed(2));
-            console.log(roundedNum);
             const data = {
                 productId: req.body.productId,
                 productQty: req.body.productQty,

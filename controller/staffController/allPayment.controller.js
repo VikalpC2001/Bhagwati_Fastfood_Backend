@@ -34,6 +34,7 @@ const getAllEmployeeTransactionData = (req, res) => {
                                                     RIGHT(remainSalaryId,10) AS trasactionId,
                                                     user_details.userName AS givenBy,
                                                     CONCAT(user_details.userFirstName,' ',user_details.userLastName) AS userName,
+                                                    sed.employeeId AS employeeId,
                                                     sed.employeeNickName AS employeeName,
                                                     COALESCE(MAX(CASE WHEN salaryType = 'Advance Cut' THEN salaryId END),null) AS cutAdvanceId,
                                                     COALESCE(MAX(CASE WHEN salaryType = 'Fine Cut' THEN salaryId END),null) AS cutFineId,

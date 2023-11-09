@@ -12,13 +12,9 @@ const getBankTransactionById = (req, res) => {
         const limit = skip + ',' + numPerPage;
 
         sql_querry_getCountdetails = `SELECT count(*) AS numRows FROM (
-                                              SELECT transactionId, fromId, toId, creditAmount AS amount, creditComment AS comment, creditDate AS transactionDate, creditCreationDate AS transactionDateTime
-                                              FROM credit_transaction_data 
-                                              WHERE toId = '${bankId}'
+                                              SELECT * FROM credit_transaction_data WHERE toId = '${bankId}'
                                               UNION ALL
-                                              SELECT transactionId, fromId, toId, debitAmount AS amount, debitComment AS comment, debitDate AS transactionDate, debitCreationDate AS transactionDateTime
-                                              FROM debit_transaction_data
-                                              WHERE fromId = '${bankId}'
+                                              SELECT * FROM debit_transaction_data WHERE fromId = '${bankId}'
                                           ) AS combined_data`;
         pool.query(sql_querry_getCountdetails, (err, rows, fields) => {
             if (err) {
@@ -27,14 +23,12 @@ const getBankTransactionById = (req, res) => {
             } else {
                 const numRows = rows[0].numRows;
                 const numPages = Math.ceil(numRows / numPerPage);
-
-
-                sql_queries_getdetails = `SELECT *
-                                            FROM (
-                                                SELECT
+                const commonQueryForCredit = ` SELECT
                                                     ctd.transactionId,
-                                                    COALESCE(isd.sourceName, bd.bankDisplayName) AS "from",
-                                                    bd.bankDisplayName AS "to",
+                                                    user_details.userName AS enterBy,
+                                            	    CONCAT(user_details.userFirstName,' ',user_details.userLastName) AS userName,
+                                                    COALESCE(isd.sourceName, bd.bankDisplayName) AS fromId,
+                                                    bd.bankDisplayName AS toID,
                                                     ctd.creditAmount AS amount,
                                                     "CREDIT" AS transactionType,
                                                     ctd.creditComment AS comment,
@@ -45,12 +39,14 @@ const getBankTransactionById = (req, res) => {
                                                 FROM credit_transaction_data AS ctd
                                                 LEFT JOIN incomeSource_data AS isd ON isd.sourceId = ctd.fromId
                                                 LEFT JOIN bank_data AS bd ON bd.bankId = ctd.toId
-                                                WHERE ctd.toId = '${bankId}'
-                                                UNION ALL
-                                                SELECT
+                                                LEFT JOIN user_details ON user_details.userId = ctd.userId
+                                                WHERE ctd.toId = '${bankId}'`;
+                const commonQueryForDebit = `SELECT
                                                     dtd.transactionId,
-                                                    bd.bankDisplayName AS "from",
-                                                    COALESCE(escd.subCategoryName, bd.bankDisplayName) AS "to",
+                                                    user_details.userName AS enterBy,
+                                            	    CONCAT(user_details.userFirstName,' ',user_details.userLastName) AS userName,
+                                                    bd.bankDisplayName AS fromId,
+                                                    COALESCE(escd.subCategoryName, bd.bankDisplayName) AS toId,
                                                     dtd.debitAmount AS amount,
                                                     "DEBIT" AS transactionType,
                                                     dtd.debitComment AS comment,
@@ -61,7 +57,13 @@ const getBankTransactionById = (req, res) => {
                                                 FROM debit_transaction_data AS dtd
                                                 LEFT JOIN bank_data AS bd ON bd.bankId = dtd.fromId
                                                 LEFT JOIN expense_subcategory_data AS escd ON escd.subCategoryId = dtd.toId
-                                                WHERE dtd.fromId = '${bankId}'
+                                                LEFT JOIN user_details ON user_details.userId = dtd.userId
+                                                 WHERE dtd.fromId = '${bankId}'`;
+                sql_queries_getdetails = `SELECT transactionId, enterBy, userName, fromId, toId, amount, transactionType, comment, displayTransactionDate, displayTransactionDateTime 
+                                            FROM (
+                                               ${commonQueryForCredit}
+                                                UNION ALL
+                                               ${commonQueryForDebit}
                                             ) AS combined_data
                                             ORDER BY transactionDate, transactionDateTime
                                             LIMIT ${limit}`;

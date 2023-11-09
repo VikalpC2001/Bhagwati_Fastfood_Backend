@@ -1,6 +1,64 @@
 const pool = require('../../database');
 const jwt = require("jsonwebtoken");
 
+// Get Expense List
+const getExpenseTransactionData = (req, res) => {
+    try {
+        const page = req.query.page;
+        const numPerPage = req.query.numPerPage;
+        const skip = (page - 1) * numPerPage;
+        const limit = skip + ',' + numPerPage;
+
+        sql_querry_getCountdetails = `SELECT count(*) AS numRows FROM expense_data`;
+        pool.query(sql_querry_getCountdetails, (err, rows, fields) => {
+            if (err) {
+                console.error("An error occurd in SQL Queery", err);
+                return res.status(500).send('Database Error');
+            } else {
+                const numRows = rows[0].numRows;
+                const numPages = Math.ceil(numRows / numPerPage);
+                sql_queries_getdetails = `SELECT
+                                              expenseId,
+                                              transactionId,
+                                              user_details.userName AS enterBy,
+                                              CONCAT(user_details.userFirstName,' ',user_details.userLastName) AS userName,
+                                              bank_data.bankName AS moneySource,
+                                              expense_category_data.categoryName AS mainCategory,
+                                              expense_subcategory_data.subCategoryName AS subCategory,
+                                              expenseAmount,
+                                              expenseComment,
+                                              DATE_FORMAT(expenseDate, '%a, %b %d, %Y') AS expenseDate,
+                                              DATE_FORMAT(expenseCreationDate, '%h:%i %p') AS expenseTime
+                                          FROM 
+                                              expense_data
+                                          LEFT JOIN bank_data ON bank_data.bankId = expense_data.moneySourceId
+                                          LEFT JOIN user_details ON user_details.userId = expense_data.userId
+                                          LEFT JOIN expense_category_data ON expense_category_data.categoryId = expense_data.categoryId
+                                          LEFT JOIN expense_subcategory_data ON expense_subcategory_data.subCategoryId = expense_data.subcategoryId
+                                          ORDER BY expense_data.expenseDate limit ${limit}`;
+                pool.query(sql_queries_getdetails, (err, rows, fields) => {
+                    if (err) {
+                        console.error("An error occurd in SQL Queery", err);
+                        return res.status(500).send('Database Error');
+                    } else {
+                        if (numRows === 0) {
+                            const rows = [{
+                                'msg': 'No Data Found'
+                            }]
+                            return res.status(200).send({ rows, numRows });
+                        } else {
+                            return res.status(200).send({ rows, numRows });
+                        }
+                    }
+                });
+            }
+        })
+    } catch (error) {
+        console.error('An error occurd', error);
+        res.status(500).send('Internal Server Error');
+    }
+}
+
 // Add Expense Data
 
 const addExpenseData = (req, res) => {
@@ -148,5 +206,6 @@ const updateExpenseData = (req, res) => {
 module.exports = {
     addExpenseData,
     removeExpenseData,
-    updateExpenseData
+    updateExpenseData,
+    getExpenseTransactionData
 }

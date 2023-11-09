@@ -55,7 +55,7 @@ const addBankData = (req, res) => {
             bankName: req.body.bankName.trim(),
             bankDisplayName: req.body.bankDisplayName.trim(),
             bankIconName: req.body.bankIconName.trim(),
-            bankShortForm: req.body.bankShortForm.trim(),
+            bankShortForm: req.body.bankShortForm ? req.body.bankShortForm.trim() : null,
             bankAccountNumber: req.body.bankAccountNumber ? req.body.bankAccountNumber.trim() : null,
             ifscCode: req.body.ifscCode ? req.body.ifscCode.trim() : null,
         }
@@ -71,7 +71,7 @@ const addBankData = (req, res) => {
                     return res.status(400).send('Bank is Already In Use');
                 } else {
                     const sql_querry_addDetails = `INSERT INTO bank_data(bankId, bankName, bankDisplayName, bankShortForm, bankIconName, bankAccountNumber, ifscCode)
-                                                   VALUES('${bankId}', '${data.bankName}', '${data.bankDisplayName}', '${data.bankShortForm}', '${data.bankIconName}', ${data.bankAccountNumber ? `'${data.bankAccountNumber}'` : null}, ${data.ifscCode ? `'${data.ifscCode}'` : null})`;
+                                                   VALUES('${bankId}', '${data.bankName}', '${data.bankDisplayName}', ${data.bankShortForm ? `'${data.bankShortForm}'` : null}, '${data.bankIconName}', ${data.bankAccountNumber ? `'${data.bankAccountNumber}'` : null}, ${data.ifscCode ? `'${data.ifscCode}'` : null})`;
                     pool.query(sql_querry_addDetails, (err, data) => {
                         if (err) {
                             console.error("An error occurd in SQL Queery", err);

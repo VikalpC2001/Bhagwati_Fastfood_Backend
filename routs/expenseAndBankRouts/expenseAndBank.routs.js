@@ -55,7 +55,7 @@ router.delete('/removeTransactionData', transactionController.removeTransactionD
 
 const expenseController = require("../../controller/expenseAndBankController/expense.controller.js");
 
-
+router.get('/getExpenseTransactionData', expenseController.getExpenseTransactionData);
 router.post('/addExpenseData', expenseController.addExpenseData);
 router.post('/updateExpenseData', expenseController.updateExpenseData);
 router.delete('/removeExpenseData', expenseController.removeExpenseData);

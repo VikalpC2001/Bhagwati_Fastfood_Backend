@@ -275,7 +275,23 @@ const getEmployeeStatisticsByCategoryId = (req, res) => {
                                                 WHERE staff_fine_data.employeeId IN (SELECT COALESCE(employeeId,null) FROM staff_employee_data WHERE category = '${categoryId}' AND employeeStatus = ${employeeStatus}) AND DATE_FORMAT(fineDate,'%Y-%m') BETWEEN '${startMonth}' AND '${endMonth}';
 
                                                 SELECT COALESCE(SUM(staff_bonus_data.bonusAmount),0) AS bonusAmount FROM staff_bonus_data
-                                                WHERE staff_bonus_data.employeeId IN (SELECT COALESCE(employeeId,null) FROM staff_employee_data WHERE category = '${categoryId}' AND employeeStatus = ${employeeStatus}) AND DATE_FORMAT(bonusDate,'%Y-%m') BETWEEN '${startMonth}' AND '${endMonth}'`;
+                                                WHERE staff_bonus_data.employeeId IN (SELECT COALESCE(employeeId,null) FROM staff_employee_data WHERE category = '${categoryId}' AND employeeStatus = ${employeeStatus}) AND DATE_FORMAT(bonusDate,'%Y-%m') BETWEEN '${startMonth}' AND '${endMonth}';
+                                                
+                                                SELECT COALESCE(SUM(paymentDue), 0) AS remainPaySalary
+                                                FROM (
+                                                    -- Your original query here
+                                                    SELECT
+                                                        sed.employeeId,
+                                                        COALESCE(SUM(smsd.remainSalary), 0) - COALESCE(SUM(sad.remainAdvanceAmount), 0) - COALESCE(SUM(sfd.remainFineAmount), 0) AS paymentDue
+                                                    FROM
+                                                        staff_employee_data AS sed
+                                                    LEFT JOIN staff_advance_data AS sad ON sed.employeeId = sad.employeeId AND sad.remainAdvanceAmount != 0
+                                                    LEFT JOIN staff_fine_data AS sfd ON sed.employeeId = sfd.employeeId AND sfd.remainFineAmount != 0 AND sfd.fineStatus = 1
+                                                    LEFT JOIN staff_monthlySalary_data AS smsd ON sed.employeeId = smsd.employeeId AND smsd.remainSalary != 0
+                                                    WHERE sed.employeeId IN (SELECT COALESCE(employeeId,null) FROM staff_employee_data WHERE category = '${categoryId}' AND employeeStatus = ${employeeStatus})
+                                                    GROUP BY sed.employeeId
+                                                    HAVING paymentDue > 0
+                                                ) AS subquery`;
         } else if (req.query.startMonth && req.query.endMonth && req.query.employeeStatus) {
             sql_querry_getEmployeeStatistics = `SELECT COALESCE(SUM(salary),0) AS totalSalary FROM staff_employee_data 
                                                 WHERE employeeStatus = ${employeeStatus};
@@ -296,7 +312,23 @@ const getEmployeeStatisticsByCategoryId = (req, res) => {
                                                 WHERE staff_fine_data.employeeId IN (SELECT COALESCE(employeeId,null) FROM staff_employee_data WHERE employeeStatus = ${employeeStatus}) AND DATE_FORMAT(fineDate,'%Y-%m') BETWEEN '${startMonth}' AND '${endMonth}';
 
                                                 SELECT COALESCE(SUM(staff_bonus_data.bonusAmount),0) AS bonusAmount FROM staff_bonus_data
-                                                WHERE staff_bonus_data.employeeId IN (SELECT COALESCE(employeeId,null) FROM staff_employee_data WHERE employeeStatus = ${employeeStatus}) AND DATE_FORMAT(bonusDate,'%Y-%m') BETWEEN '${startMonth}' AND '${endMonth}'`;
+                                                WHERE staff_bonus_data.employeeId IN (SELECT COALESCE(employeeId,null) FROM staff_employee_data WHERE employeeStatus = ${employeeStatus}) AND DATE_FORMAT(bonusDate,'%Y-%m') BETWEEN '${startMonth}' AND '${endMonth}';
+                                                
+                                                SELECT COALESCE(SUM(paymentDue), 0) AS remainPaySalary
+                                                FROM (
+                                                    -- Your original query here
+                                                    SELECT
+                                                        sed.employeeId,
+                                                        COALESCE(SUM(smsd.remainSalary), 0) - COALESCE(SUM(sad.remainAdvanceAmount), 0) - COALESCE(SUM(sfd.remainFineAmount), 0) AS paymentDue
+                                                    FROM
+                                                        staff_employee_data AS sed
+                                                    LEFT JOIN staff_advance_data AS sad ON sed.employeeId = sad.employeeId AND sad.remainAdvanceAmount != 0
+                                                    LEFT JOIN staff_fine_data AS sfd ON sed.employeeId = sfd.employeeId AND sfd.remainFineAmount != 0 AND sfd.fineStatus = 1
+                                                    LEFT JOIN staff_monthlySalary_data AS smsd ON sed.employeeId = smsd.employeeId AND smsd.remainSalary != 0
+                                                    WHERE employeeStatus = ${employeeStatus}
+                                                    GROUP BY sed.employeeId
+                                                    HAVING paymentDue > 0
+                                                ) AS subquery;`;
         } else if (req.query.categoryId) {
             sql_querry_getEmployeeStatistics = `SELECT COALESCE(SUM(salary),0) AS totalSalary FROM staff_employee_data 
                                                 WHERE employeeId IN (SELECT COALESCE(employeeId,null) FROM staff_employee_data WHERE category = '${categoryId}' AND employeeStatus = 1);
@@ -317,7 +349,23 @@ const getEmployeeStatisticsByCategoryId = (req, res) => {
                                                 WHERE staff_fine_data.employeeId IN (SELECT COALESCE(employeeId,null) FROM staff_employee_data WHERE category = '${categoryId}' AND employeeStatus = ${employeeStatus}) AND fineDate BETWEEN STR_TO_DATE('${firstDay}','%b %d %Y') AND STR_TO_DATE('${lastDay}','%b %d %Y');
 
                                                 SELECT COALESCE(SUM(staff_bonus_data.bonusAmount),0) AS bonusAmount FROM staff_bonus_data
-                                                WHERE staff_bonus_data.employeeId IN (SELECT COALESCE(employeeId,null) FROM staff_employee_data WHERE category = '${categoryId}' AND employeeStatus = ${employeeStatus}) AND bonusDate BETWEEN STR_TO_DATE('${firstDay}','%b %d %Y') AND STR_TO_DATE('${lastDay}','%b %d %Y')`;
+                                                WHERE staff_bonus_data.employeeId IN (SELECT COALESCE(employeeId,null) FROM staff_employee_data WHERE category = '${categoryId}' AND employeeStatus = ${employeeStatus}) AND bonusDate BETWEEN STR_TO_DATE('${firstDay}','%b %d %Y') AND STR_TO_DATE('${lastDay}','%b %d %Y');
+                                                
+                                                SELECT COALESCE(SUM(paymentDue), 0) AS remainPaySalary
+                                                FROM (
+                                                    -- Your original query here
+                                                    SELECT
+                                                        sed.employeeId,
+                                                        COALESCE(SUM(smsd.remainSalary), 0) - COALESCE(SUM(sad.remainAdvanceAmount), 0) - COALESCE(SUM(sfd.remainFineAmount), 0) AS paymentDue
+                                                    FROM
+                                                        staff_employee_data AS sed
+                                                    LEFT JOIN staff_advance_data AS sad ON sed.employeeId = sad.employeeId AND sad.remainAdvanceAmount != 0
+                                                    LEFT JOIN staff_fine_data AS sfd ON sed.employeeId = sfd.employeeId AND sfd.remainFineAmount != 0 AND sfd.fineStatus = 1
+                                                    LEFT JOIN staff_monthlySalary_data AS smsd ON sed.employeeId = smsd.employeeId AND smsd.remainSalary != 0
+                                                    WHERE sed.employeeId IN (SELECT COALESCE(employeeId,null) FROM staff_employee_data WHERE category = '${categoryId}' AND employeeStatus = 1)
+                                                    GROUP BY sed.employeeId
+                                                    HAVING paymentDue > 0
+                                                ) AS subquery`;
         } else {
             sql_querry_getEmployeeStatistics = `SELECT COALESCE(SUM(salary),0) AS totalSalary FROM staff_employee_data 
                                                 WHERE employeeStatus = ${employeeStatus};
@@ -338,7 +386,23 @@ const getEmployeeStatisticsByCategoryId = (req, res) => {
                                                 WHERE staff_fine_data.employeeId IN (SELECT COALESCE(employeeId,null) FROM staff_employee_data WHERE employeeStatus = ${employeeStatus}) AND fineDate BETWEEN STR_TO_DATE('${firstDay}','%b %d %Y') AND STR_TO_DATE('${lastDay}','%b %d %Y');
 
                                                 SELECT COALESCE(SUM(staff_bonus_data.bonusAmount),0) AS bonusAmount FROM staff_bonus_data
-                                                WHERE staff_bonus_data.employeeId IN (SELECT COALESCE(employeeId,null) FROM staff_employee_data WHERE employeeStatus = ${employeeStatus}) AND bonusDate BETWEEN STR_TO_DATE('${firstDay}','%b %d %Y') AND STR_TO_DATE('${lastDay}','%b %d %Y')`;
+                                                WHERE staff_bonus_data.employeeId IN (SELECT COALESCE(employeeId,null) FROM staff_employee_data WHERE employeeStatus = ${employeeStatus}) AND bonusDate BETWEEN STR_TO_DATE('${firstDay}','%b %d %Y') AND STR_TO_DATE('${lastDay}','%b %d %Y');
+                                                
+                                                SELECT COALESCE(SUM(paymentDue), 0) AS remainPaySalary
+                                                FROM (
+                                                    -- Your original query here
+                                                    SELECT
+                                                        sed.employeeId,
+                                                        COALESCE(SUM(smsd.remainSalary), 0) - COALESCE(SUM(sad.remainAdvanceAmount), 0) - COALESCE(SUM(sfd.remainFineAmount), 0) AS paymentDue
+                                                    FROM
+                                                        staff_employee_data AS sed
+                                                    LEFT JOIN staff_advance_data AS sad ON sed.employeeId = sad.employeeId AND sad.remainAdvanceAmount != 0
+                                                    LEFT JOIN staff_fine_data AS sfd ON sed.employeeId = sfd.employeeId AND sfd.remainFineAmount != 0 AND sfd.fineStatus = 1
+                                                    LEFT JOIN staff_monthlySalary_data AS smsd ON sed.employeeId = smsd.employeeId AND smsd.remainSalary != 0
+                                                    WHERE employeeStatus = ${employeeStatus}
+                                                    GROUP BY sed.employeeId
+                                                    HAVING paymentDue > 0
+                                                ) AS subquery`;
         }
         pool.query(sql_querry_getEmployeeStatistics, (err, data) => {
             if (err) {
@@ -356,6 +420,7 @@ const getEmployeeStatisticsByCategoryId = (req, res) => {
                 "totalConsiderFine": data[5][0].totalConsiderFine,
                 "totalIgnoreFine": data[5][0].totalIgnoreFine,
                 "bonusAmount": data[6][0].bonusAmount,
+                "remainPaySalary": data[7][0].remainPaySalary,
             }
             return res.status(200).send(staticsJson);
         })

@@ -340,7 +340,7 @@ const getEmployeeStatisticsByCategoryId = (req, res) => {
                                                     WHERE employeeStatus = ${employeeStatus}
                                                     GROUP BY sed.employeeId
                                                     HAVING paymentDue > 0
-                                                ) AS subquery;`;
+                                                ) AS subquery`;
         } else if (req.query.categoryId) {
             sql_querry_getEmployeeStatistics = `SELECT COALESCE(SUM(salary),0) AS totalSalary FROM staff_employee_data 
                                                 WHERE employeeId IN (SELECT COALESCE(employeeId,null) FROM staff_employee_data WHERE category = '${categoryId}' AND employeeStatus = 1);
@@ -425,7 +425,7 @@ const getEmployeeStatisticsByCategoryId = (req, res) => {
                                                 ) AS sfd ON sed.employeeId = sfd.employeeId
                                                 WHERE sed.employeeStatus = ${employeeStatus}
                                                 GROUP BY sed.employeeId
-                                                HAVING paymentDue > 0;
+                                                HAVING paymentDue > 0
                                                 ) AS subquery`;
         }
         pool.query(sql_querry_getEmployeeStatistics, (err, data) => {

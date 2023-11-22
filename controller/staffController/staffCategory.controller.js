@@ -281,13 +281,19 @@ const getEmployeeStatisticsByCategoryId = (req, res) => {
                                                 FROM (
                                                     -- Your original query here
                                                     SELECT
-                                                        sed.employeeId,
-                                                        COALESCE(SUM(smsd.remainSalary), 0) - COALESCE(SUM(sad.remainAdvanceAmount), 0) - COALESCE(SUM(sfd.remainFineAmount), 0) AS paymentDue
-                                                    FROM
-                                                        staff_employee_data AS sed
-                                                    LEFT JOIN staff_advance_data AS sad ON sed.employeeId = sad.employeeId AND sad.remainAdvanceAmount != 0
-                                                    LEFT JOIN staff_fine_data AS sfd ON sed.employeeId = sfd.employeeId AND sfd.remainFineAmount != 0 AND sfd.fineStatus = 1
-                                                    LEFT JOIN staff_monthlySalary_data AS smsd ON sed.employeeId = smsd.employeeId AND smsd.remainSalary != 0
+                                                    sed.employeeId,
+                                                    COALESCE(SUM(smsd.remainSalary), 0) - COALESCE(SUM(sad.remainAdvanceAmount), 0) - COALESCE(SUM(sfd.remainFineAmount), 0) AS paymentDue
+                                                FROM
+                                                    staff_employee_data AS sed
+                                                LEFT JOIN (
+                                                	SELECT staff_monthlySalary_data.employeeId,SUM(staff_monthlySalary_data.remainSalary) AS remainSalary FROM staff_monthlySalary_data GROUP BY staff_monthlySalary_data.employeeId
+                                                ) AS smsd ON sed.employeeId = smsd.employeeId
+                                                LEFT JOIN (
+                                                	SELECT staff_advance_data.employeeId,SUM(staff_advance_data.remainAdvanceAmount) AS remainAdvanceAmount FROM staff_advance_data GROUP BY staff_advance_data.employeeId
+                                                ) AS sad ON sed.employeeId = sad.employeeId
+                                                LEFT JOIN (
+                                                	SELECT staff_fine_data.employeeId,SUM(staff_fine_data.remainFineAmount) AS remainFineAmount FROM staff_fine_data WHERE staff_fine_data.fineStatus = 1 GROUP BY staff_fine_data.employeeId
+                                                ) AS sfd ON sed.employeeId = sfd.employeeId
                                                     WHERE sed.employeeId IN (SELECT COALESCE(employeeId,null) FROM staff_employee_data WHERE category = '${categoryId}' AND employeeStatus = ${employeeStatus})
                                                     GROUP BY sed.employeeId
                                                     HAVING paymentDue > 0
@@ -318,13 +324,19 @@ const getEmployeeStatisticsByCategoryId = (req, res) => {
                                                 FROM (
                                                     -- Your original query here
                                                     SELECT
-                                                        sed.employeeId,
-                                                        COALESCE(SUM(smsd.remainSalary), 0) - COALESCE(SUM(sad.remainAdvanceAmount), 0) - COALESCE(SUM(sfd.remainFineAmount), 0) AS paymentDue
-                                                    FROM
-                                                        staff_employee_data AS sed
-                                                    LEFT JOIN staff_advance_data AS sad ON sed.employeeId = sad.employeeId AND sad.remainAdvanceAmount != 0
-                                                    LEFT JOIN staff_fine_data AS sfd ON sed.employeeId = sfd.employeeId AND sfd.remainFineAmount != 0 AND sfd.fineStatus = 1
-                                                    LEFT JOIN staff_monthlySalary_data AS smsd ON sed.employeeId = smsd.employeeId AND smsd.remainSalary != 0
+                                                    sed.employeeId,
+                                                    COALESCE(SUM(smsd.remainSalary), 0) - COALESCE(SUM(sad.remainAdvanceAmount), 0) - COALESCE(SUM(sfd.remainFineAmount), 0) AS paymentDue
+                                                FROM
+                                                    staff_employee_data AS sed
+                                                LEFT JOIN (
+                                                	SELECT staff_monthlySalary_data.employeeId,SUM(staff_monthlySalary_data.remainSalary) AS remainSalary FROM staff_monthlySalary_data GROUP BY staff_monthlySalary_data.employeeId
+                                                ) AS smsd ON sed.employeeId = smsd.employeeId
+                                                LEFT JOIN (
+                                                	SELECT staff_advance_data.employeeId,SUM(staff_advance_data.remainAdvanceAmount) AS remainAdvanceAmount FROM staff_advance_data GROUP BY staff_advance_data.employeeId
+                                                ) AS sad ON sed.employeeId = sad.employeeId
+                                                LEFT JOIN (
+                                                	SELECT staff_fine_data.employeeId,SUM(staff_fine_data.remainFineAmount) AS remainFineAmount FROM staff_fine_data WHERE staff_fine_data.fineStatus = 1 GROUP BY staff_fine_data.employeeId
+                                                ) AS sfd ON sed.employeeId = sfd.employeeId
                                                     WHERE employeeStatus = ${employeeStatus}
                                                     GROUP BY sed.employeeId
                                                     HAVING paymentDue > 0
@@ -355,13 +367,19 @@ const getEmployeeStatisticsByCategoryId = (req, res) => {
                                                 FROM (
                                                     -- Your original query here
                                                     SELECT
-                                                        sed.employeeId,
-                                                        COALESCE(SUM(smsd.remainSalary), 0) - COALESCE(SUM(sad.remainAdvanceAmount), 0) - COALESCE(SUM(sfd.remainFineAmount), 0) AS paymentDue
-                                                    FROM
-                                                        staff_employee_data AS sed
-                                                    LEFT JOIN staff_advance_data AS sad ON sed.employeeId = sad.employeeId AND sad.remainAdvanceAmount != 0
-                                                    LEFT JOIN staff_fine_data AS sfd ON sed.employeeId = sfd.employeeId AND sfd.remainFineAmount != 0 AND sfd.fineStatus = 1
-                                                    LEFT JOIN staff_monthlySalary_data AS smsd ON sed.employeeId = smsd.employeeId AND smsd.remainSalary != 0
+                                                    sed.employeeId,
+                                                    COALESCE(SUM(smsd.remainSalary), 0) - COALESCE(SUM(sad.remainAdvanceAmount), 0) - COALESCE(SUM(sfd.remainFineAmount), 0) AS paymentDue
+                                                FROM
+                                                    staff_employee_data AS sed
+                                                LEFT JOIN (
+                                                	SELECT staff_monthlySalary_data.employeeId,SUM(staff_monthlySalary_data.remainSalary) AS remainSalary FROM staff_monthlySalary_data GROUP BY staff_monthlySalary_data.employeeId
+                                                ) AS smsd ON sed.employeeId = smsd.employeeId
+                                                LEFT JOIN (
+                                                	SELECT staff_advance_data.employeeId,SUM(staff_advance_data.remainAdvanceAmount) AS remainAdvanceAmount FROM staff_advance_data GROUP BY staff_advance_data.employeeId
+                                                ) AS sad ON sed.employeeId = sad.employeeId
+                                                LEFT JOIN (
+                                                	SELECT staff_fine_data.employeeId,SUM(staff_fine_data.remainFineAmount) AS remainFineAmount FROM staff_fine_data WHERE staff_fine_data.fineStatus = 1 GROUP BY staff_fine_data.employeeId
+                                                ) AS sfd ON sed.employeeId = sfd.employeeId
                                                     WHERE sed.employeeId IN (SELECT COALESCE(employeeId,null) FROM staff_employee_data WHERE category = '${categoryId}' AND employeeStatus = 1)
                                                     GROUP BY sed.employeeId
                                                     HAVING paymentDue > 0
@@ -391,17 +409,23 @@ const getEmployeeStatisticsByCategoryId = (req, res) => {
                                                 SELECT COALESCE(SUM(paymentDue), 0) AS remainPaySalary
                                                 FROM (
                                                     -- Your original query here
-                                                    SELECT
-                                                        sed.employeeId,
-                                                        COALESCE(SUM(smsd.remainSalary), 0) - COALESCE(SUM(sad.remainAdvanceAmount), 0) - COALESCE(SUM(sfd.remainFineAmount), 0) AS paymentDue
-                                                    FROM
-                                                        staff_employee_data AS sed
-                                                    LEFT JOIN staff_advance_data AS sad ON sed.employeeId = sad.employeeId AND sad.remainAdvanceAmount != 0
-                                                    LEFT JOIN staff_fine_data AS sfd ON sed.employeeId = sfd.employeeId AND sfd.remainFineAmount != 0 AND sfd.fineStatus = 1
-                                                    LEFT JOIN staff_monthlySalary_data AS smsd ON sed.employeeId = smsd.employeeId AND smsd.remainSalary != 0
-                                                    WHERE employeeStatus = ${employeeStatus}
-                                                    GROUP BY sed.employeeId
-                                                    HAVING paymentDue > 0
+                                                SELECT
+                                                    sed.employeeId,
+                                                    COALESCE(SUM(smsd.remainSalary), 0) - COALESCE(SUM(sad.remainAdvanceAmount), 0) - COALESCE(SUM(sfd.remainFineAmount), 0) AS paymentDue
+                                                FROM
+                                                    staff_employee_data AS sed
+                                                LEFT JOIN (
+                                                	SELECT staff_monthlySalary_data.employeeId,SUM(staff_monthlySalary_data.remainSalary) AS remainSalary FROM staff_monthlySalary_data GROUP BY staff_monthlySalary_data.employeeId
+                                                ) AS smsd ON sed.employeeId = smsd.employeeId
+                                                LEFT JOIN (
+                                                	SELECT staff_advance_data.employeeId,SUM(staff_advance_data.remainAdvanceAmount) AS remainAdvanceAmount FROM staff_advance_data GROUP BY staff_advance_data.employeeId
+                                                ) AS sad ON sed.employeeId = sad.employeeId
+                                                LEFT JOIN (
+                                                	SELECT staff_fine_data.employeeId,SUM(staff_fine_data.remainFineAmount) AS remainFineAmount FROM staff_fine_data WHERE staff_fine_data.fineStatus = 1 GROUP BY staff_fine_data.employeeId
+                                                ) AS sfd ON sed.employeeId = sfd.employeeId
+                                                WHERE sed.employeeStatus = ${employeeStatus}
+                                                GROUP BY sed.employeeId
+                                                HAVING paymentDue > 0;
                                                 ) AS subquery`;
         }
         pool.query(sql_querry_getEmployeeStatistics, (err, data) => {

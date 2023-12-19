@@ -691,19 +691,19 @@ const addSupplierTransactionDetails = async (req, res) => {
                 }
                 const remainingAmount = data[0].remainingAmount
                 console.log("./././", remainingAmount);
-                if (remainingAmount < paidAmount) {
-                    return res.status(400).send(`Remaining Amount is ₹ ${remainingAmount}. You can't pay more.`);
-                } else {
-                    const sql_querry_addTransaction = `INSERT INTO inventory_supplierTransaction_data (supplierTransactionId, UserId, supplierId, receivedBy, pendingAmount, paidAmount, transactionNote, transactionDate)  
-                                                       VALUES ('${supplierTransactionId}', '${userId}', '${supplierId}', '${receivedBy}', ${remainingAmount}, ${paidAmount}, NULLIF('${transactionNote}','null'), STR_TO_DATE('${transactionDate}','%b %d %Y'))`;
-                    pool.query(sql_querry_addTransaction, (err, data) => {
-                        if (err) {
-                            console.error("An error occurd in SQL Queery", err);
-                            return res.status(500).send('Database Error');
-                        }
-                        return res.status(200).send("Transaction Added Successfully");
-                    })
-                }
+                //     if (remainingAmount < paidAmount) {
+                //         return res.status(400).send(`Remaining Amount is ₹ ${remainingAmount}. You can't pay more.`);
+                //     } else {
+                const sql_querry_addTransaction = `INSERT INTO inventory_supplierTransaction_data (supplierTransactionId, UserId, supplierId, receivedBy, pendingAmount, paidAmount, transactionNote, transactionDate)  
+                                                   VALUES ('${supplierTransactionId}', '${userId}', '${supplierId}', '${receivedBy}', ${remainingAmount}, ${paidAmount}, NULLIF('${transactionNote}','null'), STR_TO_DATE('${transactionDate}','%b %d %Y'))`;
+                pool.query(sql_querry_addTransaction, (err, data) => {
+                    if (err) {
+                        console.error("An error occurd in SQL Queery", err);
+                        return res.status(500).send('Database Error');
+                    }
+                    return res.status(200).send("Transaction Added Successfully");
+                })
+                //     }
             })
         } else {
             res.status(401);

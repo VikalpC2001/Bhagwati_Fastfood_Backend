@@ -3049,7 +3049,7 @@ const removeCreditTransaction = (req, res) => {
                     if (creditType == 'Advance') {
                         sql_querry_getAdvanceData = `SELECT
                                                         staff_advance_data.advanceId,
-                                                        crWid.cutAmt AS advanceAmount,
+                                                        COALESCE(crWid.cutAmt,0) + COALESCE(staff_advance_data.remainAdvanceAmount,0) AS advanceAmount,
                                                         remainAdvanceAmount AS remainAdvance
                                                     FROM
                                                         staff_advance_data
@@ -3074,7 +3074,7 @@ const removeCreditTransaction = (req, res) => {
                                                                 creditId = '${creditId}'
                                                         )
                                                     ORDER BY
-                                                        advanceCreationDate ASC;`;
+                                                        staff_advance_data.advanceDate ASC, staff_advance_data.advanceCreationDate ASC;`;
                         pool.query(sql_querry_getAdvanceData, (err, data) => {
                             if (err) {
                                 console.error("An error occurd in SQL Queery", err);
@@ -3127,9 +3127,10 @@ const removeCreditTransaction = (req, res) => {
                             })
                         })
                     } else if (creditType == 'Fine') {
+                        console.log('ffffffffiiinnnee maa avyu');
                         sql_querry_getFineData = `SELECT
                                                     staff_fine_data.fineId,
-                                                    crWid.cutAmt AS fineAmount,
+                                                    COALESCE(crWid.cutAmt,0) + COALESCE(staff_fine_data.remainFineAmount,0) AS fineAmount,
                                                     remainFineAmount AS remainFine
                                                 FROM
                                                     staff_fine_data
@@ -3154,7 +3155,7 @@ const removeCreditTransaction = (req, res) => {
                                                         creditId = '${creditId}'
                                                 )
                                                 ORDER BY
-                                                    fineCreationDate ASC`;
+                                                    staff_fine_data.fineDate ASC, staff_fine_data.fineCreationDate ASC`;
                         pool.query(sql_querry_getFineData, (err, data) => {
                             if (err) {
                                 console.error("An error occurd in SQL Queery", err);

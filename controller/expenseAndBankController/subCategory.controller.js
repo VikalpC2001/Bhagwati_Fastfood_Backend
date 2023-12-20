@@ -179,7 +179,7 @@ const addSubCategory = (req, res) => {
         if (!data.categoryId || !data.subCategoryName) {
             return res.status(400).send("Please Fill All The Fields");
         } else {
-            req.body.subCategoryName = pool.query(`SELECT subCategoryName FROM expense_subcategory_data WHERE subCategoryName = '${data.subCategoryName}'`, function (err, row) {
+            req.body.subCategoryName = pool.query(`SELECT subCategoryName FROM expense_subcategory_data WHERE subCategoryName = '${data.subCategoryName}' AND categoryId = '${data.categoryId}'`, function (err, row) {
                 if (err) {
                     console.error("An error occurd in SQL Queery", err);
                     return res.status(500).send('Database Error');

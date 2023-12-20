@@ -107,7 +107,7 @@ const getBusinessReportDashBoard = (req, res) => {
                 expenseData: data[1],
                 openingBalanceAmt: data[2][0].openingBalanceAmt,
                 openingBalanceComment: data && data[3][0] ? data[3][0].balanceComment : '',
-                totalBusiness: cashAmtSum + debitAmtSum + onlineAmtSum,
+                totalBusiness: cashAmtSum + debitAmtSum,
                 totalCash: (cashAmtSum + debitAmtSum + onlineAmtSum) - debitAmtSum - onlineAmtSum,
                 totalDebit: debitAmtSum,
                 totalOnline: onlineAmtSum,

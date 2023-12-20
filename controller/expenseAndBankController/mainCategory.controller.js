@@ -269,7 +269,8 @@ const getMainCategoryDashboard = (req, res) => {
                                       FROM
                                           expense_category_data AS ecd
                                       LEFT JOIN expense_data AS ed ON ed.categoryId = ecd.categoryId AND ed.expenseDate BETWEEN STR_TO_DATE('${data.startDate}','%b %d %Y') AND STR_TO_DATE('${data.endDate}','%b %d %Y')
-                                      GROUP BY ecd.categoryId`;
+                                      GROUP BY ecd.categoryId
+                                      ORDER BY ecd.categoryName ASC`;
         } else {
             sql_query_getStaticsData = `SELECT
                                           ecd.categoryId,
@@ -279,7 +280,8 @@ const getMainCategoryDashboard = (req, res) => {
                                       FROM
                                           expense_category_data AS ecd
                                       LEFT JOIN expense_data AS ed ON ed.categoryId = ecd.categoryId AND ed.expenseDate = STR_TO_DATE('${currentDate}','%b %d %Y')
-                                      GROUP BY ecd.categoryId`;
+                                      GROUP BY ecd.categoryId
+                                      ORDER BY ecd.categoryName ASC`;
         }
         pool.query(sql_query_getStaticsData, (err, data) => {
             if (err) {

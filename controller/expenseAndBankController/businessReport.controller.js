@@ -146,11 +146,11 @@ const addBusinessReport = (req, res) => {
             const data = {
                 openingBalanceAmt: req.body.openingBalanceAmt ? req.body.openingBalanceAmt : 0,
                 openingBalanceComment: req.body.openingBalanceComment,
-                closingBalance: req.body.closingBalance,
+                closingBalance: req.body.closingBalance ? req.body.closingBalance : 0,
                 reportDate: req.body.reportDate ? new Date(req.body.reportDate).toString().slice(4, 15) : null,
             }
             console.log(businessReport, data.openingBalanceAmt, data.closingBalance, data.reportDate);
-            if (!businessReport || !data.closingBalance || !data.reportDate) {
+            if (!businessReport || !data.reportDate) {
                 return res.status(400).send("Please Fill All The Fields");
 
             } else {
@@ -316,11 +316,11 @@ const updateBusinessReport = (req, res) => {
             const datas = {
                 openingBalanceAmt: req.body.openingBalanceAmt ? req.body.openingBalanceAmt : 0,
                 openingBalanceComment: req.body.openingBalanceComment,
-                closingBalance: req.body.closingBalance,
+                closingBalance: req.body.closingBalance ? req.body.closingBalance : 0,
                 reportDate: req.body.reportDate ? new Date(req.body.reportDate).toString().slice(4, 15) : null,
             }
             console.log(businessReport, datas.openingBalanceAmt, datas.closingBalance, datas.reportDate);
-            if (!businessReport || !datas.closingBalance || !datas.reportDate) {
+            if (!businessReport || !datas.reportDate) {
                 return res.status(400).send("Please Fill All The Fields");
             } else {
                 const keys = Object.keys(businessReport);

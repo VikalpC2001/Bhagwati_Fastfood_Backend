@@ -30,7 +30,8 @@ const getBusinessReportDashBoard = (req, res) => {
                                         FROM
                                             expense_category_data AS ecd
                                         LEFT JOIN expense_data AS ed ON ed.categoryId = ecd.categoryId AND ed.moneySourceId = '${process.env.STATIC_WALLETID}' AND ed.expenseDate BETWEEN STR_TO_DATE('${data.startDate}','%b %d %Y') AND STR_TO_DATE('${data.endDate}','%b %d %Y')
-                                        GROUP BY ecd.categoryId;
+                                        GROUP BY ecd.categoryId
+                                        ORDER BY ecd.categoryName ASC;
                                      -- BALANCE AMOUNT
                                             SELECT SUM(balanceAmount) AS openingBalanceAmt FROM balance_data WHERE balanceDate BETWEEN STR_TO_DATE('${data.startDate}','%b %d %Y') AND STR_TO_DATE('${data.endDate}','%b %d %Y');
                                      -- BALANCE COMMENT
@@ -77,7 +78,8 @@ const getBusinessReportDashBoard = (req, res) => {
                                         FROM
                                             expense_category_data AS ecd
                                         LEFT JOIN expense_data AS ed ON ed.categoryId = ecd.categoryId AND ed.moneySourceId = '${process.env.STATIC_WALLETID}' AND ed.expenseDate = STR_TO_DATE('${currentDate}','%b %d %Y')
-                                        GROUP BY ecd.categoryId;
+                                        GROUP BY ecd.categoryId
+                                        ORDER BY ecd.categoryName ASC;;
                                      -- BALANCE AMOUNT
                                             SELECT SUM(balanceAmount) AS openingBalanceAmt FROM balance_data WHERE balanceDate = STR_TO_DATE('${currentDate}','%b %d %Y');
                                      -- BALANCE COMMENT

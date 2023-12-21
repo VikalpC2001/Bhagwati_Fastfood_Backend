@@ -103,14 +103,15 @@ const getBusinessReportDashBoard = (req, res) => {
             const cashAmtSum = data[0].filter(item => item.businessType === 'CASH').reduce((sum, item) => sum + item.businessAmt, 0);
             const debitAmtSum = data[0].filter(item => item.businessType === 'DEBIT').reduce((sum, item) => sum + item.businessAmt, 0);
             const onlineAmtSum = data[0].filter(item => item.businessType === 'ONLINE').reduce((sum, item) => sum + item.businessAmt, 0);
-            console.log(cashAmtSum, debitAmtSum, onlineAmtSum);
+            const dueAmtSum = data[0].filter(item => item.businessType === 'DUE').reduce((sum, item) => sum + item.businessAmt, 0);
+            console.log(cashAmtSum, debitAmtSum, onlineAmtSum, dueAmtSum);
             const combinedData = {
                 incomeSourceData: data[0],
                 expenseData: data[1],
                 openingBalanceAmt: data[2][0].openingBalanceAmt,
                 openingBalanceComment: data && data[3][0] ? data[3][0].balanceComment : '',
                 totalBusiness: cashAmtSum + debitAmtSum,
-                totalCash: (cashAmtSum + debitAmtSum + onlineAmtSum) - debitAmtSum - onlineAmtSum,
+                totalCash: cashAmtSum - (onlineAmtSum + dueAmtSum),
                 totalDebit: debitAmtSum,
                 totalOnline: onlineAmtSum,
                 closingBalance: data[4][0].closingBalance,
@@ -584,14 +585,15 @@ const exportExcelForBusinessReport = async (req, res) => {
             const cashAmtSum = data[0].filter(item => item.businessType === 'CASH').reduce((sum, item) => sum + item.businessAmt, 0);
             const debitAmtSum = data[0].filter(item => item.businessType === 'DEBIT').reduce((sum, item) => sum + item.businessAmt, 0);
             const onlineAmtSum = data[0].filter(item => item.businessType === 'ONLINE').reduce((sum, item) => sum + item.businessAmt, 0);
+            const dueAmtSum = data[0].filter(item => item.businessType === 'DUE').reduce((sum, item) => sum + item.businessAmt, 0);
             console.log(cashAmtSum, debitAmtSum, onlineAmtSum);
             const combinedData = {
                 incomeSourceData: data[0],
                 expenseData: data[1],
                 openingBalanceAmt: data[2][0].openingBalanceAmt,
                 openingBalanceComment: data && data[3][0] ? data[3][0].balanceComment : '',
-                totalBusiness: cashAmtSum + debitAmtSum + onlineAmtSum,
-                totalCash: (cashAmtSum + debitAmtSum + onlineAmtSum) - debitAmtSum - onlineAmtSum,
+                totalBusiness: cashAmtSum + debitAmtSum,
+                totalCash: cashAmtSum - (onlineAmtSum + dueAmtSum),
                 totalDebit: debitAmtSum,
                 totalOnline: onlineAmtSum,
                 closingBalance: data[4][0].closingBalance,
@@ -896,6 +898,7 @@ const exportPdfForBusinessReport = (req, res) => {
             const cashAmtSum = data[0].filter(item => item.businessType === 'CASH').reduce((sum, item) => sum + item.businessAmt, 0);
             const debitAmtSum = data[0].filter(item => item.businessType === 'DEBIT').reduce((sum, item) => sum + item.businessAmt, 0);
             const onlineAmtSum = data[0].filter(item => item.businessType === 'ONLINE').reduce((sum, item) => sum + item.businessAmt, 0);
+            const dueAmtSum = data[0].filter(item => item.businessType === 'DUE').reduce((sum, item) => sum + item.businessAmt, 0);
             console.log(cashAmtSum, debitAmtSum, onlineAmtSum);
             const combinedData = {
                 incomeSourceData: data[0],
@@ -915,7 +918,7 @@ const exportPdfForBusinessReport = (req, res) => {
                     },
                     {
                         key: 'Total Cash',
-                        value: (cashAmtSum + debitAmtSum + onlineAmtSum) - debitAmtSum - onlineAmtSum
+                        value: cashAmtSum - (onlineAmtSum + dueAmtSum),
                     },
                     {
                         key: 'Total Debit',

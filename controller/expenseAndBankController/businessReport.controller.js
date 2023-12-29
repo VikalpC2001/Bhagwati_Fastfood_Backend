@@ -172,7 +172,7 @@ const addBusinessReport = (req, res) => {
                         return res.status(400).send(`Business is Already Added On Date ${data.reportDate}`);
                     } else {
                         const sql_querry_addDetails = `INSERT INTO balance_data (balanceId, balanceAmount, balanceComment, balanceDate)
-                                                       VALUES('${balanceId}', ${data.openingBalanceAmt}, ${data.openingBalanceCommnet ? `'${data.openingBalanceCommnet}'` : null}, STR_TO_DATE('${data.reportDate}','%b %d %Y'));
+                                                       VALUES('${balanceId}', ${data.openingBalanceAmt}, ${data.openingBalanceComment ? `'${data.openingBalanceComment}'` : null}, STR_TO_DATE('${data.reportDate}','%b %d %Y'));
                                                        INSERT INTO business_report_data (brId, businessCategoryId, businessAmount, businessDate)
                                                        VALUES ${addBRdata}`;
                         pool.query(sql_querry_addDetails, (err, result) => {

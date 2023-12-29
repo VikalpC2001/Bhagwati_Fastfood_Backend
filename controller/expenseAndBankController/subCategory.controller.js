@@ -188,7 +188,7 @@ const addSubCategory = (req, res) => {
                     return res.status(400).send('Sub Category is Already In Use');
                 } else {
                     const sql_querry_addDetails = `INSERT INTO expense_subcategory_data(subCategoryId, categoryId, subCategoryName)
-                                                VALUES('${subCategoryId}', '${data.categoryId}', '${data.subCategoryName}')`;
+                                                   VALUES('${subCategoryId}', '${data.categoryId}', '${data.subCategoryName}')`;
                     pool.query(sql_querry_addDetails, (err, data) => {
                         if (err) {
                             console.error("An error occurd in SQL Queery", err);

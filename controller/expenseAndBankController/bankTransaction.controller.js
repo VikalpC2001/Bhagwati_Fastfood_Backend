@@ -497,7 +497,8 @@ const updateBankTransaction = (req, res) => {
                                                 debitAmount = ${data.transactionAmount},
                                                 debitComment = ${data.comment ? `'${data.comment}'` : null},
                                                 debitDate = STR_TO_DATE('${data.transactionDate}','%b %d %Y')
-                                            WHERE transactionId = '${transactionId}'`;
+                                            WHERE transactionId = '${transactionId}';
+                                            UPDATE transactionId_with_date SET transactionValue = ${data.transactionAmount} WHERE transactionId = '${transactionId}'`;
                     pool.query(sql_querry_updateData, (err, data) => {
                         if (err) {
                             console.error("An error occurd in SQL Queery", err);

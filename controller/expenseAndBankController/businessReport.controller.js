@@ -914,7 +914,7 @@ const exportPdfForBusinessReport = (req, res) => {
                     },
                     {
                         key: 'Total Business',
-                        value: cashAmtSum + debitAmtSum + onlineAmtSum
+                        value: cashAmtSum + debitAmtSum
                     },
                     {
                         key: 'Total Cash',

@@ -926,7 +926,6 @@ const addEmployeedetails = (req, res) => {
 // Remove Employee Api 
 
 const removeEmployeeDetails = async (req, res) => {
-
     try {
         const employeeId = req.query.employeeId.trim();
         req.query.stockOutCategoryId = pool.query(`SELECT employeeId, imageFilePath FROM staff_employee_data WHERE employeeId = '${employeeId}'`, (err, row) => {

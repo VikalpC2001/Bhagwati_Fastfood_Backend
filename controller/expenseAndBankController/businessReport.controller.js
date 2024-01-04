@@ -59,13 +59,18 @@ const getBusinessReportDashBoard = (req, res) => {
                                                 SELECT DATE(balanceDate) AS Date
                                                 FROM balance_data 
                                                 WHERE DATE(balanceDate) BETWEEN STR_TO_DATE('${data.startDate}','%b %d %Y') AND STR_TO_DATE('${data.endDate}','%b %d %Y')
+                                                GROUP BY balance_data.balanceDate
                                             ) AS date_list
                                             WHERE date_list.Date BETWEEN STR_TO_DATE('${data.startDate}','%b %d %Y') AND STR_TO_DATE('${data.endDate}','%b %d %Y');
                                     -- MISTAKE CREDIT DATE
                                             SELECT COALESCE(SUM(ctd.creditAmount),0) AS mistakeCredit FROM incomeSource_data AS isd
                                             LEFT JOIN credit_transaction_data AS ctd ON ctd.fromId = isd.sourceId AND ctd.creditDate BETWEEN STR_TO_DATE('${data.startDate}','%b %d %Y') AND STR_TO_DATE('${data.endDate}','%b %d %Y')
                                             WHERE isd.sourceId = '${process.env.STATIC_MISTAKE_CREDITID}'
-                                            GROUP by isd.sourceId`;
+                                            GROUP by isd.sourceId;
+                                    -- Wallet To Other Bank Debit Transaction
+                                            SELECT SUM(dtd.debitAmount) AS bankDebitAmt FROM debit_transaction_data AS dtd 
+                                            WHERE dtd.fromId = '${process.env.STATIC_WALLETID}' AND dtd.toId IN (SELECT COALESCE(bank_data.bankId,null) FROM bank_data WHERE NOT bank_data.bankId = '${process.env.STATIC_WALLETID}') 
+                                            AND dtd.debitDate BETWEEN STR_TO_DATE('${data.startDate}','%b %d %Y') AND STR_TO_DATE('${data.endDate}','%b %d %Y')`;
         } else {
             sql_querry_getDetails = `-- INCOME SOURCE DATA
                                         SELECT bcd.businessCategoryId, bcd.businessName, bcd.businessType, COALESCE(SUM(brd.businessAmount),0) AS businessAmt FROM business_category_data AS bcd
@@ -93,7 +98,11 @@ const getBusinessReportDashBoard = (req, res) => {
                                             SELECT COALESCE(SUM(ctd.creditAmount),0) AS mistakeCredit FROM incomeSource_data AS isd
                                             LEFT JOIN credit_transaction_data AS ctd ON ctd.fromId = isd.sourceId AND ctd.creditDate = STR_TO_DATE('${currentDate}','%b %d %Y')
                                             WHERE isd.sourceId = '${process.env.STATIC_MISTAKE_CREDITID}'
-                                            GROUP by isd.sourceId;`;
+                                            GROUP by isd.sourceId;
+                                     -- Wallet To Other Bank Debit Transaction
+                                            SELECT SUM(dtd.debitAmount) AS bankDebitAmt FROM debit_transaction_data AS dtd
+                                            WHERE dtd.fromId = '${process.env.STATIC_WALLETID}' AND dtd.toId IN (SELECT COALESCE(bank_data.bankId,null) FROM bank_data WHERE NOT bank_data.bankId = '${process.env.STATIC_WALLETID}') 
+                                            AND dtd.debitDate = STR_TO_DATE('${currentDate}','%b %d %Y')`;
         }
         pool.query(sql_querry_getDetails, (err, data) => {
             if (err) {
@@ -117,6 +126,7 @@ const getBusinessReportDashBoard = (req, res) => {
                 closingBalance: data[4][0].closingBalance,
                 mistakeCredit: data[5][0].mistakeCredit,
                 isData: data && (data[2][0].openingBalanceAmt || data[2][0].openingBalanceAmt == 0) ? true : false,
+                walletToOTherBankDebitAmt: data[6][0].bankDebitAmt
             }
             return res.status(200).send(combinedData);
         })

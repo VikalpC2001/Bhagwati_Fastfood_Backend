@@ -777,7 +777,7 @@ const exportExcelForBankTransactionById = (req, res) => {
             });
             worksheet.getRow(1).height = 30;
             worksheet.getRow(2).height = 20;
-            if (req.query.transactionType == 'CREDIT' || req.query.transactionType == 'DEBIT' || req.query.expenseId) {
+            if (req.query.transactionType == 'Credit' || req.query.transactionType == 'Debit' || req.query.expenseId) {
                 worksheet.getRow(arr.length + 3).values = [
                     'Total:',
                     '',
@@ -1092,7 +1092,7 @@ const exportPdfForBankTransactionById = (req, res) => {
                 } else {
                     tableHeading = `${result[2][0].bankDisplayName} Transaction From ${lastDay.trim()} To ${firstDay.trim()}`;
                 }
-                createPDF(res, abc, req.query.transactionType == 'CREDIT' || req.query.transactionType == 'DEBIT' || req.query.expenseId ? sumFooterArray : '', tableHeading)
+                createPDF(res, abc, (req.query.transactionType) == 'Credit' || req.query.transactionType == 'Debit' || req.query.expenseId ? sumFooterArray : '', tableHeading)
                     .then(() => {
                         console.log('PDF created successfully');
                         res.status(200);

@@ -253,7 +253,7 @@ const ddlToData = (req, res) => {
 
 const getBankStaticsById = (req, res) => {
     try {
-        const bankId = req.query.bankId;
+        const bankId = req && req.query.bankId ? req.query.bankId : null;
         if (!bankId) {
             return res.status(404).send('bankId Not Found');
         }

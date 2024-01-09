@@ -157,16 +157,19 @@ const getExpenseTransactionData = (req, res) => {
 const fillExpenseDataById = (req, res) => {
     try {
         const transactionId = req.query.transactionId;
-        sql_queries_getFillDetails = `SELECT moneySourceId AS toId, bank_data.bankName AS toName FROM expense_data
+        sql_queries_getFillDetails = `SELECT moneySourceId AS toId, bank_data.bankName AS toName, bank_data.availableBalance + COALESCE(SUM(dtd.debitAmount),0) - COALESCE(SUM(ctd.creditAmount),0) AS availableBalance FROM expense_data
                                       LEFT JOIN bank_data ON bank_data.bankId = expense_data.moneySourceId
-                                      WHERE transactionId = '${transactionId}';
+                                      LEFT JOIN credit_transaction_data AS ctd ON ctd.toId = bank_data.bankId AND ctd.creditDate > CURDATE()
+                                      LEFT JOIN debit_transaction_data AS dtd ON dtd.fromId = bank_data.bankId AND dtd.debitDate > CURDATE()
+                                      WHERE expense_data.transactionId = '${transactionId}';
                                       SELECT expense_data.categoryId AS categoryId, expense_category_data.categoryName AS categoryName FROM expense_data
                                       LEFT JOIN expense_category_data ON expense_category_data.categoryId = expense_data.categoryId
                                       WHERE transactionId = '${transactionId}';
                                       SELECT expense_data.subcategoryId AS subcategoryId, expense_subcategory_data.subCategoryName AS subCategoryName FROM expense_data
                                       LEFT JOIN expense_subcategory_data ON expense_subcategory_data.subCategoryId = expense_data.subcategoryId
                                       WHERE transactionId = '${transactionId}';
-                                `;
+                                      SELECT expenseAmount, expenseComment, expenseDate FROM expense_data
+                                      WHERE transactionId = '${transactionId}'`;
         pool.query(sql_queries_getFillDetails, (err, data) => {
             if (err) {
                 console.error("An error occurd in SQL Queery", err);
@@ -176,6 +179,7 @@ const fillExpenseDataById = (req, res) => {
                 "moneySource": data[0][0],
                 "mainCategory": data[1][0],
                 "subCategory": data[2][0],
+                ...data[3][0]
             }
             return res.status(200).send(jsons);
         })

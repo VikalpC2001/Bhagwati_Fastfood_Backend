@@ -69,7 +69,7 @@ const getStockInList = async (req, res) => {
                 if (req.query.supplierId && req.query.payType && req.query.startDate && req.query.endDate) {
                     sql_queries_getdetails = `${commanQuarry}
                                                 WHERE inventory_stockIn_data.supplierId = '${data.supplierId}' AND inventory_stockIn_data.stockInPaymentMethod = '${data.payType}' AND inventory_stockIn_data.stockInDate BETWEEN STR_TO_DATE('${data.startDate}','%b %d %Y') AND STR_TO_DATE('${data.endDate}','%b %d %Y')
-                                                ORDER BY inventory_stockIn_data.stockInDate DESC, inventory_stockIn_data.stockInCreationDate DESC`;
+                                                ORDER BY inventory_stockIn_data.stockInDate DESC, inventory_stockIn_data.stockInCreationDate DESC LIMIT ${limit}`;
                 } else if (req.query.supplierId && req.query.startDate && req.query.endDate) {
                     sql_queries_getdetails = `${commanQuarry}
                                                 WHERE inventory_stockIn_data.supplierId = '${data.supplierId}' AND inventory_stockIn_data.stockInDate BETWEEN STR_TO_DATE('${data.startDate}','%b %d %Y') AND STR_TO_DATE('${data.endDate}','%b %d %Y')

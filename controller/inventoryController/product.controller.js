@@ -17,7 +17,7 @@ const getProductCountDetailsById = (req, res) => {
         const sql_querry_StatickCCount = `SELECT
                                                p.minProductQty,
                                                COALESCE(si.total_quantity, 0) - COALESCE(so.total_quantity, 0) AS remainingStock,
-                                               COALESCE(siLu.productPrice, 0) AS lastPrice,
+                                               COALESCE(ROUND(siLu.productPrice,2), 0) AS lastPrice,
                                                COALESCE(si.total_siPrice, 0) - COALESCE(so.total_soPrice, 0) AS remainPrice
                                            FROM
                                                inventory_product_data AS p
@@ -207,7 +207,7 @@ const getProductList = (req, res) => {
                                                          p.minProductQty,
                                                          p.minProductUnit,
                                                          COALESCE(si.total_quantity, 0) - COALESCE(so.total_quantity, 0) AS remainingStock,
-                                                         COALESCE(siLu.productPrice, 0) AS lastPrice,
+                                                         COALESCE(ROUND(siLu.productPrice,2), 0) AS lastPrice,
                                                          COALESCE(siLu.productQty, 0) AS lastUpdatedQty,
                                                          COALESCE(
                                                              DATE_FORMAT(siLu.stockInDate, '%d-%m-%Y'),
@@ -432,7 +432,7 @@ const getProductDetailsTable = (req, res) => {
                                     p.minProductQty,
                                     p.minProductUnit,
                                     COALESCE(si.total_quantity, 0) - COALESCE(so.total_quantity, 0) AS remainingStock,
-                                    COALESCE(siLu.productPrice, 0) AS lastPrice,
+                                    COALESCE(ROUND(siLu.productPrice,2), 0) AS lastPrice,
                                     COALESCE(siLu.productQty, 0) AS lastUpdatedQty,
                                     COALESCE(
                                         DATE_FORMAT(siLu.stockInDate, '%d-%m-%Y'),
@@ -500,7 +500,7 @@ const getProductDetailsTable = (req, res) => {
                                         COALESCE(somw.totalStockOutPrice,0) AS totalStockOutPrice,
                                         COALESCE(si.total_siPrice, 0) - COALESCE(so.total_soPrice, 0) AS remainPrice,
                                         COALESCE(si.total_quantity, 0) - COALESCE(so.total_quantity, 0) AS remainingStock,
-                                        COALESCE(siLu.productPrice, 0) AS lastPrice,
+                                        COALESCE(ROUND(siLu.productPrice,2), 0) AS lastPrice,
                                         COALESCE(siLu.productQty, 0) AS lastUpdatedQty,
                                         COALESCE(
                                             DATE_FORMAT(siLu.stockInDate, '%d-%m-%Y'),
@@ -1047,7 +1047,7 @@ const exportExcelSheetForProductTable = (req, res) => {
                             COALESCE(somw.total_usedPrice,0) AS totalUsedPrice,
                             CONCAT(COALESCE(si.total_quantity, 0) - COALESCE(so.total_quantity, 0),' ',p.minProductUnit) AS remainingStock,
                             COALESCE(si.total_siPrice, 0) - COALESCE(so.total_soPrice, 0) AS remainPrice,
-                            COALESCE(siLu.productPrice, 0) AS lastPrice,
+                            COALESCE(ROUND(siLu.productPrice,2), 0) AS lastPrice,
                             CONCAT(COALESCE(siLu.productQty, 0),' ',p.minProductUnit) AS lastUpdatedQty,
                             COALESCE(
                                 DATE_FORMAT(siLu.stockInDate, '%d-%m-%Y'),

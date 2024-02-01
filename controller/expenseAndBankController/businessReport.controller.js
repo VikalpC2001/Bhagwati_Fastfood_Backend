@@ -632,7 +632,7 @@ const exportExcelForBusinessReport = async (req, res) => {
             // Add a merged cell for the header
             worksheet.mergeCells('A1:C1');
             const headerCell = worksheet.getCell('A1');
-            headerCell.value = `Business Report : ${req.query.startDate ? `From ${req.query.startDate} To ${req.query.endDate}` : currentDate}`;
+            headerCell.value = `Business Report : ${req.query.startDate ? `From ${req.query.startDate.slice(4, 15)} To ${req.query.endDate.slice(4, 15)}` : currentDate}`;
             headerCell.height = 30;
             headerCell.alignment = { vertical: 'middle', horizontal: 'center' };
             headerCell.font = { bold: true, size: 16 };
@@ -678,8 +678,8 @@ const exportExcelForBusinessReport = async (req, res) => {
             });
             worksheet.addRows([]);
             // Merge header cells for expense data (across columns A to C)
-            worksheet.mergeCells('A' + (combinedData.expenseData.length + 14) + ':B' + (combinedData.expenseData.length + 14));
-            const headerCell3 = worksheet.getCell('A' + (combinedData.expenseData.length + 14));
+            worksheet.mergeCells('A' + (combinedData.incomeSourceData.length + combinedData.expenseData.length + 10) + ':B' + (combinedData.incomeSourceData.length + combinedData.expenseData.length + 10));
+            const headerCell3 = worksheet.getCell('A' + (combinedData.incomeSourceData.length + combinedData.expenseData.length + 10));
             headerCell3.value = 'Statistics Data';
             headerCell3.height = 30;
             headerCell3.alignment = { vertical: 'middle', horizontal: 'center' };

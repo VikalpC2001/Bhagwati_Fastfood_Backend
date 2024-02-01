@@ -3275,17 +3275,26 @@ const updateEmployeeStatus = (req, res, next) => {
                     })
                 })
             } else {
-                sql_querry_updateActiveEmployeeStatus = `UPDATE staff_employee_data SET 
-                                                                    employeeJoiningDate = CURDATE(), 
-                                                                    employeeStatus = TRUE
-                                                        WHERE
+                sql_querry_updateActiveEmployeeStatusDate = `UPDATE staff_employee_data SET 
+                                                                    employeeJoiningDate = CURDATE()
+                                                            WHERE
                                                             employeeId = '${data.employeeId}'`;
-                pool.query(sql_querry_updateActiveEmployeeStatus, (err, result) => {
+                pool.query(sql_querry_updateActiveEmployeeStatusDate, (err, result) => {
                     if (err) {
                         console.error("An error occurd in SQL Queery", err);
                         return res.status(500).send('Database Error');
                     }
-                    return res.status(200).send('Employee Activated');
+                    sql_querry_updateActiveEmployeeStatus = `UPDATE staff_employee_data SET 
+                                                                    employeeStatus = TRUE
+                                                            WHERE
+                                                            employeeId = '${data.employeeId}'`;
+                    pool.query(sql_querry_updateActiveEmployeeStatus, (err, ref) => {
+                        if (err) {
+                            console.error("An error occurd in SQL Queery", err);
+                            return res.status(500).send('Database Error');
+                        }
+                        return res.status(200).send('Employee Activated');
+                    })
                 })
             }
         })

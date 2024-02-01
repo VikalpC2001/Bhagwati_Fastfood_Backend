@@ -413,12 +413,10 @@ const addStockOutDetails = async (req, res) => {
                                     }
                                 }
                             }
-
                             if (remainingQuantity <= 0) {
                                 break;
                             }
                         }
-
                         // Print updated stockInData
                         console.log("Updated stockInData:", stockInData);
                         console.log("Total Stock Out Price:", totalStockOutPrice);

@@ -52,7 +52,7 @@ const getStockInList = async (req, res) => {
                                           ) AS userName,
                                           UPPER(inventory_product_data.productName) AS productName,
                                           CONCAT(productQty, ' ', productUnit) AS Quantity,
-                                          productPrice,
+                                          ROUND(productPrice,2) AS productPrice,
                                           totalPrice,
                                           billNumber,
                                           inventory_supplier_data.supplierNickName AS supplier,
@@ -319,7 +319,7 @@ const addStockInDetails = async (req, res) => {
                 return res.status(400).send("Please Fill all the feilds");
             } else {
                 const sql_querry_addStockIn = `INSERT INTO inventory_stockIn_data (stockInId, userId, productId, productQty, productUnit, productPrice, totalPrice, billNumber, supplierId, stockInPaymentMethod, stockInComment, remainingQty, stockInDate)  
-                                                VALUES ('${stockInId}', '${userId}', '${data.productId}', ${data.productQty}, '${data.productUnit}', ${data.productPrice}, ${data.totalPrice}, NULLIF('${data.billNumber}','null'), '${data.supplierId}', '${data.stockInPaymentMethod}', NULLIF('${data.stockInComment}','null') ,${data.productQty}, STR_TO_DATE('${data.stockInDate}','%b %d %Y'))`;
+                                                VALUES ('${stockInId}', '${userId}', '${data.productId}', ${data.productQty}, '${data.productUnit}', ${data.totalPrice / data.productQty}, ${data.totalPrice}, NULLIF('${data.billNumber}','null'), '${data.supplierId}', '${data.stockInPaymentMethod}', NULLIF('${data.stockInComment}','null') ,${data.productQty}, STR_TO_DATE('${data.stockInDate}','%b %d %Y'))`;
                 pool.query(sql_querry_addStockIn, (err, data) => {
                     if (err) {
                         console.error("An error occurd in SQL Queery", err);
@@ -341,23 +341,27 @@ const addStockInDetails = async (req, res) => {
 // Remove StockIn API
 
 const removeStockInTransaction = async (req, res) => {
-
     try {
         const stockInId = req.query.stockInId
-        req.query.stockInId = pool.query(`SELECT stockInId FROM inventory_stockIn_data WHERE stockInId = '${stockInId}'`, (err, row) => {
+        req.query.stockInId = pool.query(`SELECT stockInId, productQty, remainingQty FROM inventory_stockIn_data WHERE stockInId = '${stockInId}'`, (err, row) => {
             if (err) {
                 console.error("An error occurd in SQL Queery", err);
                 return res.status(500).send('Database Error');
             }
-            if (row && row.length) {
-                const sql_querry_removedetails = `DELETE FROM inventory_stockIn_data WHERE stockInId = '${stockInId}'`;
-                pool.query(sql_querry_removedetails, (err, data) => {
-                    if (err) {
-                        console.error("An error occurd in SQL Queery", err);
-                        return res.status(500).send('Database Error');
-                    }
-                    return res.status(200).send("Transaction Deleted Successfully");
-                })
+            console.log('jay jojjojojo', row[0].stockInId, row[0].productQty, row[0].remainingQty);
+            if (row && row[0].stockInId.length) {
+                if (row[0].productQty == row[0].remainingQty) {
+                    const sql_querry_removedetails = `DELETE FROM inventory_stockIn_data WHERE stockInId = '${stockInId}'`;
+                    pool.query(sql_querry_removedetails, (err, data) => {
+                        if (err) {
+                            console.error("An error occurd in SQL Queery", err);
+                            return res.status(500).send('Database Error');
+                        }
+                        return res.status(200).send("Transaction Deleted Successfully");
+                    })
+                } else {
+                    return res.status(400).send("You Can Not Delete This Entry Because It is Already Used");
+                }
             } else {
                 return res.status(400).send('Transaction Not Found');
             }

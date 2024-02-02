@@ -279,8 +279,8 @@ const getBankStaticsById = (req, res) => {
                                          GROUP BY bd.bankId;
                                          SELECT COALESCE(SUM(creditAmount),0) AS creditAmt FROM credit_transaction_data WHERE toId = '${bankId}' AND creditDate >= DATE_SUB(CURDATE(), INTERVAL 1 MONTH) AND creditDate <= CURDATE();
                                          SELECT COALESCE(SUM(debitAmount),0) AS debitAmt FROM debit_transaction_data WHERE fromId = '${bankId}' AND debitDate >= DATE_SUB(CURDATE(), INTERVAL 1 MONTH) AND debitDate <= CURDATE();
-                                         SELECT COALESCE(SUM(debitAmount),0) AS expenseAmt FROM debit_transaction_data WHERE fromId = '${bankId}' AND toId IN (SELECT COALESCE(expense_subcategory_data.subCategoryId,null) FROM expense_subcategory_data) AND debitDate >= CURDATE() AND debitDate <= DATE_SUB(CURDATE(), INTERVAL 1 MONTH);
-                                         SELECT COALESCE(SUM(debitAmount),0) AS futureDebitAmt FROM debit_transaction_data WHERE fromId = '${bankId}' AND debitDate >= CURDATE() AND debitDate <= DATE_ADD(CURDATE(), INTERVAL 1 MONTH)`;
+                                         SELECT COALESCE(SUM(debitAmount),0) AS expenseAmt FROM debit_transaction_data WHERE fromId = '${bankId}' AND toId IN (SELECT COALESCE(expense_subcategory_data.subCategoryId,null) FROM expense_subcategory_data) AND debitDate >= DATE_SUB(CURDATE(), INTERVAL 1 MONTH) AND debitDate <= CURDATE();
+                                         SELECT COALESCE(SUM(debitAmount),0) AS futureDebitAmt FROM debit_transaction_data WHERE fromId = '${bankId}' AND debitDate > CURDATE() AND debitDate <= DATE_ADD(CURDATE(), INTERVAL 1 MONTH)`;
         }
         pool.query(sql_queries_getAllStatics, (err, data) => {
             if (err) {

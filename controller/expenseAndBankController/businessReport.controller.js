@@ -139,6 +139,93 @@ const getBusinessReportDashBoard = (req, res) => {
     }
 }
 
+// Get Business Report with Net Profit
+
+const getBusinessReportDashBoardwithNetProfit = (req, res) => {
+    try {
+        const now = new Date();
+        now.setDate(now.getHours() <= 4 ? now.getDate() - 1 : now.getDate());
+        const currentDate = now.toDateString().slice(4, 15);
+        console.log(currentDate);
+        const data = {
+            startDate: (req.query.startDate ? req.query.startDate : '').slice(4, 15),
+            endDate: (req.query.endDate ? req.query.endDate : '').slice(4, 15)
+        }
+        if (req.query.startDate && req.query.endDate) {
+            sql_querry_getDetails = `-- INCOME SOURCE DATA
+                                        SELECT bcd.businessCategoryId, bcd.businessName, bcd.businessType, COALESCE(SUM(brd.businessAmount),0) AS businessAmt FROM business_category_data AS bcd
+                                        LEFT JOIN business_report_data AS brd ON brd.businessCategoryId = bcd.businessCategoryId AND brd.businessDate BETWEEN STR_TO_DATE('${data.startDate}','%b %d %Y') AND STR_TO_DATE('${data.endDate}','%b %d %Y')
+                                        GROUP BY bcd.businessCategoryId ORDER BY bcd.businessName ASC;
+                                    -- EXPENSE DATA
+                                        SELECT
+                                            ecd.categoryName,
+                                            COALESCE(SUM(ed.expenseAmount), 0) AS expenseAmt
+                                        FROM
+                                            expense_category_data AS ecd
+                                        LEFT JOIN expense_data AS ed ON ed.categoryId = ecd.categoryId AND ed.expenseDate BETWEEN STR_TO_DATE('${data.startDate}','%b %d %Y') AND STR_TO_DATE('${data.endDate}','%b %d %Y')
+                                        GROUP BY ecd.categoryId
+                                        ORDER BY ecd.categoryName ASC;
+                                    -- MISTAKE CREDIT DATE
+                                            SELECT COALESCE(SUM(ctd.creditAmount),0) AS mistakeCredit FROM incomeSource_data AS isd
+                                            LEFT JOIN credit_transaction_data AS ctd ON ctd.fromId = isd.sourceId AND ctd.creditDate BETWEEN STR_TO_DATE('${data.startDate}','%b %d %Y') AND STR_TO_DATE('${data.endDate}','%b %d %Y')
+                                            WHERE isd.sourceId = '${process.env.STATIC_MISTAKE_CREDITID}'
+                                            GROUP by isd.sourceId;
+                                    -- BALANCE AMOUNT
+                                            SELECT SUM(balanceAmount) AS openingBalanceAmt FROM balance_data WHERE balanceDate BETWEEN STR_TO_DATE('${data.startDate}','%b %d %Y') AND STR_TO_DATE('${data.endDate}','%b %d %Y')`;
+        } else {
+            sql_querry_getDetails = `-- INCOME SOURCE DATA
+                                        SELECT bcd.businessCategoryId, bcd.businessName, bcd.businessType, COALESCE(SUM(brd.businessAmount),0) AS businessAmt FROM business_category_data AS bcd
+                                        LEFT JOIN business_report_data AS brd ON brd.businessCategoryId = bcd.businessCategoryId AND brd.businessDate = STR_TO_DATE('${currentDate}','%b %d %Y')
+                                        GROUP BY bcd.businessCategoryId ORDER BY bcd.businessName ASC;
+                                    -- EXPENSE DATA
+                                        SELECT
+                                            ecd.categoryName,
+                                            COALESCE(SUM(ed.expenseAmount), 0) AS expenseAmt
+                                        FROM
+                                            expense_category_data AS ecd
+                                        LEFT JOIN expense_data AS ed ON ed.categoryId = ecd.categoryId AND ed.expenseDate = STR_TO_DATE('${currentDate}','%b %d %Y')
+                                        GROUP BY ecd.categoryId
+                                        ORDER BY ecd.categoryName ASC;
+                                    -- MISTAKE CREDIT DATE
+                                            SELECT COALESCE(SUM(ctd.creditAmount),0) AS mistakeCredit FROM incomeSource_data AS isd
+                                            LEFT JOIN credit_transaction_data AS ctd ON ctd.fromId = isd.sourceId AND ctd.creditDate = STR_TO_DATE('${currentDate}','%b %d %Y')
+                                            WHERE isd.sourceId = '${process.env.STATIC_MISTAKE_CREDITID}'
+                                            GROUP by isd.sourceId;
+                                    -- BALANCE AMOUNT
+                                            SELECT SUM(balanceAmount) AS openingBalanceAmt FROM balance_data WHERE balanceDate = STR_TO_DATE('${currentDate}','%b %d %Y')`;
+        }
+        pool.query(sql_querry_getDetails, (err, data) => {
+            if (err) {
+                console.error("An error occurd in SQL Queery", err);
+                return res.status(500).send('Database Error');
+            }
+            const cashAmtSum = data[0].filter(item => item.businessType === 'CASH').reduce((sum, item) => sum + item.businessAmt, 0);
+            const debitAmtSum = data[0].filter(item => item.businessType === 'DEBIT').reduce((sum, item) => sum + item.businessAmt, 0);
+            const onlineAmtSum = data[0].filter(item => item.businessType === 'ONLINE').reduce((sum, item) => sum + item.businessAmt, 0);
+            const dueAmtSum = data[0].filter(item => item.businessType === 'DUE').reduce((sum, item) => sum + item.businessAmt, 0);
+            const totalExpense = data[1].reduce((total, expense) => total + expense.expenseAmt, 0);
+
+            console.log(cashAmtSum, debitAmtSum, onlineAmtSum, dueAmtSum);
+            const combinedData = {
+                incomeSourceData: data[0],
+                expenseData: data[1],
+                totalBusiness: cashAmtSum + debitAmtSum,
+                totalCash: cashAmtSum - (onlineAmtSum + dueAmtSum),
+                totalDebit: debitAmtSum,
+                totalOnline: onlineAmtSum,
+                mistakeCredit: data[2][0].mistakeCredit,
+                totalExpense: totalExpense,
+                NetProfit: cashAmtSum + debitAmtSum - totalExpense ? cashAmtSum + debitAmtSum - totalExpense : 0,
+                isData: data && (data[3][0].openingBalanceAmt || data[3][0].openingBalanceAmt == 0) ? true : false,
+            }
+            return res.status(200).send(combinedData);
+        })
+    } catch (error) {
+        console.error('An error occurd', error);
+        res.status(500).send('Internal Server Error');
+    }
+}
+
 // Add Business Report
 
 const addBusinessReport = (req, res) => {
@@ -748,7 +835,7 @@ async function createPDF(res, data, heading) {
         const expenseRows = data.expenseData.map(item => Object.values(item));
 
         // Convert Statics data to table format
-        const staticsColumns = ['Category Name', 'Expense Amount'];
+        const staticsColumns = ['Category Name', 'Amount'];
         const staticsRows = data.statistics.map(item => Object.values(item));
 
         // Set position for income table
@@ -998,7 +1085,305 @@ const exportPdfForBusinessReport = (req, res) => {
     }
 }
 
+// Export PDF For Business Report NET Profit
 
+const exportPdfForBusinessReportNet = (req, res) => {
+    try {
+        const now = new Date();
+        now.setDate(now.getHours() <= 4 ? now.getDate() - 1 : now.getDate());
+        const currentDate = now.toDateString().slice(4, 15);
+        console.log(currentDate);
+        const data = {
+            startDate: (req.query.startDate ? req.query.startDate : '').slice(4, 15),
+            endDate: (req.query.endDate ? req.query.endDate : '').slice(4, 15)
+        }
+        if (req.query.startDate && req.query.endDate) {
+            sql_querry_getDetails = `-- INCOME SOURCE DATA
+                                        SELECT bcd.businessName, COALESCE(SUM(brd.businessAmount),0) AS businessAmt, bcd.businessType FROM business_category_data AS bcd
+                                        LEFT JOIN business_report_data AS brd ON brd.businessCategoryId = bcd.businessCategoryId AND brd.businessDate BETWEEN STR_TO_DATE('${data.startDate}','%b %d %Y') AND STR_TO_DATE('${data.endDate}','%b %d %Y')
+                                        GROUP BY bcd.businessCategoryId ORDER BY bcd.businessName ASC;
+                                    -- EXPENSE DATA
+                                        SELECT
+                                            ecd.categoryName,
+                                            COALESCE(SUM(ed.expenseAmount), 0) AS expenseAmt
+                                        FROM
+                                            expense_category_data AS ecd
+                                        LEFT JOIN expense_data AS ed ON ed.categoryId = ecd.categoryId AND ed.expenseDate BETWEEN STR_TO_DATE('${data.startDate}','%b %d %Y') AND STR_TO_DATE('${data.endDate}','%b %d %Y')
+                                        GROUP BY ecd.categoryId;
+                                    -- MISTAKE CREDIT DATE
+                                            SELECT COALESCE(SUM(ctd.creditAmount),0) AS mistakeCredit FROM incomeSource_data AS isd
+                                            LEFT JOIN credit_transaction_data AS ctd ON ctd.fromId = isd.sourceId AND ctd.creditDate BETWEEN STR_TO_DATE('${data.startDate}','%b %d %Y') AND STR_TO_DATE('${data.endDate}','%b %d %Y')
+                                            WHERE isd.sourceId = '${process.env.STATIC_MISTAKE_CREDITID}'
+                                            GROUP by isd.sourceId;
+                                    -- BALANCE AMOUNT
+                                            SELECT SUM(balanceAmount) AS openingBalanceAmt FROM balance_data WHERE balanceDate BETWEEN STR_TO_DATE('${data.startDate}','%b %d %Y') AND STR_TO_DATE('${data.endDate}','%b %d %Y')`;
+        } else {
+            sql_querry_getDetails = `-- INCOME SOURCE DATA
+                                        SELECT bcd.businessName, COALESCE(SUM(brd.businessAmount),0) AS businessAmt, bcd.businessType FROM business_category_data AS bcd
+                                        LEFT JOIN business_report_data AS brd ON brd.businessCategoryId = bcd.businessCategoryId AND brd.businessDate = STR_TO_DATE('${currentDate}','%b %d %Y')
+                                        GROUP BY bcd.businessCategoryId ORDER BY bcd.businessName ASC;
+                                    -- EXPENSE DATA
+                                        SELECT
+                                            ecd.categoryName,
+                                            COALESCE(SUM(ed.expenseAmount), 0) AS expenseAmt
+                                        FROM
+                                            expense_category_data AS ecd
+                                        LEFT JOIN expense_data AS ed ON ed.categoryId = ecd.categoryId AND ed.expenseDate = STR_TO_DATE('${currentDate}','%b %d %Y')
+                                        GROUP BY ecd.categoryId;
+                                     -- MISTAKE CREDIT DATE
+                                            SELECT COALESCE(SUM(ctd.creditAmount),0) AS mistakeCredit FROM incomeSource_data AS isd
+                                            LEFT JOIN credit_transaction_data AS ctd ON ctd.fromId = isd.sourceId AND ctd.creditDate = STR_TO_DATE('${currentDate}','%b %d %Y')
+                                            WHERE isd.sourceId = '${process.env.STATIC_MISTAKE_CREDITID}'
+                                            GROUP by isd.sourceId;
+                                    -- BALANCE AMOUNT
+                                            SELECT SUM(balanceAmount) AS openingBalanceAmt FROM balance_data WHERE balanceDate = STR_TO_DATE('${currentDate}','%b %d %Y')`;
+        }
+        pool.query(sql_querry_getDetails, async (err, data) => {
+            if (err) {
+                console.error("An error occurd in SQL Queery", err);
+                return res.status(500).send('Database Error');
+            }
+            const cashAmtSum = data[0].filter(item => item.businessType === 'CASH').reduce((sum, item) => sum + item.businessAmt, 0);
+            const debitAmtSum = data[0].filter(item => item.businessType === 'DEBIT').reduce((sum, item) => sum + item.businessAmt, 0);
+            const onlineAmtSum = data[0].filter(item => item.businessType === 'ONLINE').reduce((sum, item) => sum + item.businessAmt, 0);
+            const dueAmtSum = data[0].filter(item => item.businessType === 'DUE').reduce((sum, item) => sum + item.businessAmt, 0);
+            const totalExpense = data[1].reduce((total, expense) => total + expense.expenseAmt, 0);
+
+            const combinedData = {
+                incomeSourceData: data[0],
+                expenseData: data[1],
+                statistics: [
+                    {
+                        key: 'Total Cash',
+                        value: cashAmtSum - (onlineAmtSum + dueAmtSum),
+                    },
+                    {
+                        key: 'Total Debit',
+                        value: debitAmtSum
+                    },
+                    {
+                        key: 'Total Online',
+                        value: onlineAmtSum,
+                    },
+                    {
+                        key: 'Mistake Credit',
+                        value: data[2][0].mistakeCredit,
+                    },
+                    {
+                        key: 'Total Business',
+                        value: cashAmtSum + debitAmtSum
+                    },
+                    {
+                        key: 'Total Expense',
+                        value: totalExpense
+                    },
+                    {
+                        key: 'Net Profit',
+                        value: cashAmtSum + debitAmtSum - totalExpense ? cashAmtSum + debitAmtSum - totalExpense : 0,
+                    },
+                ]
+            }
+            const startDate = (req.query.startDate ? req.query.startDate : '').slice(4, 15);
+            const endDate = (req.query.endDate ? req.query.endDate : '').slice(4, 15);
+            if (req.query.startDate && req.query.endDate) {
+                dateHeading = `From ${(startDate).trim()} To ${(endDate).trim()}`;
+            } else {
+                dateHeading = currentDate;
+            }
+            createPDF(res, combinedData, dateHeading)
+                .then(() => {
+                    console.log('PDF created successfully');
+                    res.status(200);
+                })
+                .catch((err) => {
+                    console.log(err);
+                    res.status(500).send('Error creating PDF');
+                });
+        });
+    } catch (error) {
+        console.error('An error occurd', error);
+        res.status(500).send('Internal Server Error');
+    }
+}
+
+// Export Excel For Business Report
+
+const exportExcelForBusinessReportNet = async (req, res) => {
+    try {
+        const now = new Date();
+        now.setDate(now.getHours() <= 4 ? now.getDate() - 1 : now.getDate());
+        const currentDate = now.toDateString().slice(4, 15);
+        console.log(currentDate);
+        const data = {
+            startDate: (req.query.startDate ? req.query.startDate : '').slice(4, 15),
+            endDate: (req.query.endDate ? req.query.endDate : '').slice(4, 15)
+        }
+        if (req.query.startDate && req.query.endDate) {
+            sql_querry_getDetails = `-- INCOME SOURCE DATA
+                                        SELECT bcd.businessName, COALESCE(SUM(brd.businessAmount),0) AS businessAmt, bcd.businessType FROM business_category_data AS bcd
+                                        LEFT JOIN business_report_data AS brd ON brd.businessCategoryId = bcd.businessCategoryId AND brd.businessDate BETWEEN STR_TO_DATE('${data.startDate}','%b %d %Y') AND STR_TO_DATE('${data.endDate}','%b %d %Y')
+                                        GROUP BY bcd.businessCategoryId ORDER BY bcd.businessName ASC;
+                                    -- EXPENSE DATA
+                                        SELECT
+                                            ecd.categoryName,
+                                            COALESCE(SUM(ed.expenseAmount), 0) AS expenseAmt
+                                        FROM
+                                            expense_category_data AS ecd
+                                        LEFT JOIN expense_data AS ed ON ed.categoryId = ecd.categoryId AND ed.expenseDate BETWEEN STR_TO_DATE('${data.startDate}','%b %d %Y') AND STR_TO_DATE('${data.endDate}','%b %d %Y')
+                                        GROUP BY ecd.categoryId;
+                                    -- MISTAKE CREDIT DATE
+                                            SELECT COALESCE(SUM(ctd.creditAmount),0) AS mistakeCredit FROM incomeSource_data AS isd
+                                            LEFT JOIN credit_transaction_data AS ctd ON ctd.fromId = isd.sourceId AND ctd.creditDate BETWEEN STR_TO_DATE('${data.startDate}','%b %d %Y') AND STR_TO_DATE('${data.endDate}','%b %d %Y')
+                                            WHERE isd.sourceId = '${process.env.STATIC_MISTAKE_CREDITID}'
+                                            GROUP by isd.sourceId;
+                                    -- BALANCE AMOUNT
+                                            SELECT SUM(balanceAmount) AS openingBalanceAmt FROM balance_data WHERE balanceDate BETWEEN STR_TO_DATE('${data.startDate}','%b %d %Y') AND STR_TO_DATE('${data.endDate}','%b %d %Y')`;
+        } else {
+            sql_querry_getDetails = `-- INCOME SOURCE DATA
+                                        SELECT bcd.businessName, COALESCE(SUM(brd.businessAmount),0) AS businessAmt, bcd.businessType FROM business_category_data AS bcd
+                                        LEFT JOIN business_report_data AS brd ON brd.businessCategoryId = bcd.businessCategoryId AND brd.businessDate = STR_TO_DATE('${currentDate}','%b %d %Y')
+                                        GROUP BY bcd.businessCategoryId ORDER BY bcd.businessName ASC;
+                                    -- EXPENSE DATA
+                                        SELECT
+                                            ecd.categoryName,
+                                            COALESCE(SUM(ed.expenseAmount), 0) AS expenseAmt
+                                        FROM
+                                            expense_category_data AS ecd
+                                        LEFT JOIN expense_data AS ed ON ed.categoryId = ecd.categoryId AND ed.expenseDate = STR_TO_DATE('${currentDate}','%b %d %Y')
+                                        GROUP BY ecd.categoryId;
+                                     -- MISTAKE CREDIT DATE
+                                            SELECT COALESCE(SUM(ctd.creditAmount),0) AS mistakeCredit FROM incomeSource_data AS isd
+                                            LEFT JOIN credit_transaction_data AS ctd ON ctd.fromId = isd.sourceId AND ctd.creditDate = STR_TO_DATE('${currentDate}','%b %d %Y')
+                                            WHERE isd.sourceId = '${process.env.STATIC_MISTAKE_CREDITID}'
+                                            GROUP by isd.sourceId;
+                                    -- BALANCE AMOUNT
+                                            SELECT SUM(balanceAmount) AS openingBalanceAmt FROM balance_data WHERE balanceDate = STR_TO_DATE('${currentDate}','%b %d %Y')`;
+        }
+        pool.query(sql_querry_getDetails, async (err, data) => {
+            if (err) {
+                console.error("An error occurd in SQL Queery", err);
+                return res.status(500).send('Database Error');
+            }
+            const cashAmtSum = data[0].filter(item => item.businessType === 'CASH').reduce((sum, item) => sum + item.businessAmt, 0);
+            const debitAmtSum = data[0].filter(item => item.businessType === 'DEBIT').reduce((sum, item) => sum + item.businessAmt, 0);
+            const onlineAmtSum = data[0].filter(item => item.businessType === 'ONLINE').reduce((sum, item) => sum + item.businessAmt, 0);
+            const dueAmtSum = data[0].filter(item => item.businessType === 'DUE').reduce((sum, item) => sum + item.businessAmt, 0);
+            const totalExpense = data[1].reduce((total, expense) => total + expense.expenseAmt, 0);
+
+            const combinedData = {
+                incomeSourceData: data[0],
+                expenseData: data[1],
+                totalBusiness: cashAmtSum + debitAmtSum,
+                totalCash: cashAmtSum - (onlineAmtSum + dueAmtSum),
+                totalDebit: debitAmtSum,
+                totalOnline: onlineAmtSum,
+                mistakeCredit: data[2][0].mistakeCredit,
+                totalExpense: totalExpense,
+                netProfit: cashAmtSum + debitAmtSum - totalExpense ? cashAmtSum + debitAmtSum - totalExpense : 0,
+            }
+
+            // return res.status(200).send(combinedData);
+            const workbook = new excelJS.Workbook();  // Create a new workbook
+            const worksheet = workbook.addWorksheet("Business Report"); // New Worksheet
+
+            // Add a merged cell for the header
+            worksheet.mergeCells('A1:C1');
+            const headerCell = worksheet.getCell('A1');
+            headerCell.value = `Business Report : ${req.query.startDate ? `From ${req.query.startDate.slice(4, 15)} To ${req.query.endDate.slice(4, 15)}` : currentDate}`;
+            headerCell.height = 30;
+            headerCell.alignment = { vertical: 'middle', horizontal: 'center' };
+            headerCell.font = { bold: true, size: 16 };
+
+            worksheet.addRow([]);
+
+            // Add headers for income source data
+            worksheet.addRow(['Business Name', 'Business Amount', 'Business Type']);
+            worksheet.getRow(3).font = { bold: true };
+
+            // Add income source data
+            combinedData.incomeSourceData.forEach(source => {
+                worksheet.addRow([
+                    source.businessName,
+                    source.businessAmt,
+                    source.businessType,
+                ]);
+            });
+            worksheet.addRow(['Mistake Credit', combinedData.mistakeCredit]);
+
+            // Merge header cells for expense data (across columns A to C)
+            worksheet.mergeCells('A' + (combinedData.incomeSourceData.length + 6) + ':B' + (combinedData.incomeSourceData.length + 6));
+            const headerCell2 = worksheet.getCell('A' + (combinedData.incomeSourceData.length + 6));
+            headerCell2.value = 'Expense Data';
+            headerCell2.height = 30;
+            headerCell2.alignment = { vertical: 'middle', horizontal: 'center' };
+            headerCell2.font = { bold: true, size: 16 };
+
+            worksheet.addRow([]);
+
+            // Add headers for expense data
+            worksheet.addRow(['Category Name', 'Expense Amount']);
+
+            // Bold the header row
+            worksheet.getRow(combinedData.incomeSourceData.length + 8).font = { bold: true };
+
+            // Add expense data
+            combinedData.expenseData.forEach(expense => {
+                worksheet.addRow([
+                    expense.categoryName,
+                    expense.expenseAmt
+                ]);
+            });
+            worksheet.addRows([]);
+            // Merge header cells for expense data (across columns A to C)
+            worksheet.mergeCells('A' + (combinedData.incomeSourceData.length + combinedData.expenseData.length + 10) + ':B' + (combinedData.incomeSourceData.length + combinedData.expenseData.length + 10));
+            const headerCell3 = worksheet.getCell('A' + (combinedData.incomeSourceData.length + combinedData.expenseData.length + 10));
+            headerCell3.value = 'Statistics Data';
+            headerCell3.height = 30;
+            headerCell3.alignment = { vertical: 'middle', horizontal: 'center' };
+            headerCell3.font = { bold: true, size: 16 };
+
+            worksheet.addRow([]);
+
+            // Add metadata to the Excel file
+
+            worksheet.addRow(['Total Cash', combinedData.totalCash]);
+            worksheet.addRow(['Total Debit', combinedData.totalDebit]);
+            worksheet.addRow(['Total Online', combinedData.totalOnline]);
+            worksheet.addRow(['Total Business', combinedData.totalBusiness]);
+            worksheet.addRow(['Total Expense', combinedData.totalExpense]);
+            worksheet.addRow(['Net Profit', combinedData.netProfit]);
+
+            // Set column widths for expense data
+            worksheet.getColumn(1).width = 30;
+            worksheet.getColumn(2).width = 30;
+            worksheet.getColumn(3).width = 30;
+
+            // Set row height for expense data
+            worksheet.eachRow({ includeEmpty: true }, function (row, rowNumber) {
+                row.height = 20; // Set the row height as needed
+            });
+            worksheet.eachRow((row) => {
+                row.eachCell((cell) => {
+                    cell.alignment = { horizontal: 'center', vertical: 'middle' };
+                    row.height = 20
+                });
+            });
+            try {
+                const data = await workbook.xlsx.writeBuffer()
+                var fileName = new Date().toString().slice(4, 15) + ".xlsx";
+                console.log(">>>", fileName);
+                res.contentType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+                res.type = 'blob';
+                res.send(data)
+            } catch (err) {
+                throw new Error(err);
+            }
+        })
+    } catch (error) {
+        console.error('An error occurd', error);
+        res.status(500).send('Internal Server Error');
+    }
+};
 
 module.exports = {
     addBusinessReport,
@@ -1007,5 +1392,8 @@ module.exports = {
     getExpenseAndClosingBalanceByDate,
     getBusinessReportDashBoard,
     exportExcelForBusinessReport,
-    exportPdfForBusinessReport
+    exportPdfForBusinessReport,
+    getBusinessReportDashBoardwithNetProfit,
+    exportPdfForBusinessReportNet,
+    exportExcelForBusinessReportNet
 }

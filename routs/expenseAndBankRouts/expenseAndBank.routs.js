@@ -101,7 +101,10 @@ router.post('/updateBusinessReport', protect, businessReportController.updateBus
 router.delete('/removeBusinessReport', protect, businessReportController.removeBusinessReport);
 router.get('/getExpenseAndClosingBalanceByDate', protect, businessReportController.getExpenseAndClosingBalanceByDate);
 router.get('/getBusinessReportDashBoard', protect, businessReportController.getBusinessReportDashBoard);
+router.get('/getBusinessReportDashBoardwithNetProfit', protect, businessReportController.getBusinessReportDashBoardwithNetProfit);
 router.get('/exportExcelForBusinessReport', protect, businessReportController.exportExcelForBusinessReport);
 router.get('/exportPdfForBusinessReport', protect, businessReportController.exportPdfForBusinessReport);
+router.get('/exportPdfForBusinessReportNet', protect, businessReportController.exportPdfForBusinessReportNet);
+router.get('/exportExcelForBusinessReportNet', businessReportController.exportExcelForBusinessReportNet);
 
 module.exports = router;

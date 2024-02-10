@@ -3277,7 +3277,7 @@ const updateEmployeeStatus = (req, res, next) => {
             } else {
                 sql_querry_updateActiveEmployeeStatusDate = `UPDATE staff_employee_data SET 
                                                                     employeeJoiningDate = CURDATE(),
-                                                                    salaryCalculationDate = CURDATE(),
+                                                                    salaryCalculationDate = CURDATE()
                                                             WHERE
                                                             employeeId = '${data.employeeId}'`;
                 pool.query(sql_querry_updateActiveEmployeeStatusDate, (err, result) => {

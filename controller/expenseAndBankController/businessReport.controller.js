@@ -204,6 +204,7 @@ const getBusinessReportDashBoardwithNetProfit = (req, res) => {
             const onlineAmtSum = data[0].filter(item => item.businessType === 'ONLINE').reduce((sum, item) => sum + item.businessAmt, 0);
             const dueAmtSum = data[0].filter(item => item.businessType === 'DUE').reduce((sum, item) => sum + item.businessAmt, 0);
             const totalExpense = data[1].reduce((total, expense) => total + expense.expenseAmt, 0);
+            const netProfit = cashAmtSum + debitAmtSum - totalExpense ? cashAmtSum + debitAmtSum - totalExpense : 0
 
             console.log(cashAmtSum, debitAmtSum, onlineAmtSum, dueAmtSum);
             const combinedData = {
@@ -215,7 +216,7 @@ const getBusinessReportDashBoardwithNetProfit = (req, res) => {
                 totalOnline: onlineAmtSum,
                 mistakeCredit: data[2][0].mistakeCredit,
                 totalExpense: totalExpense,
-                NetProfit: cashAmtSum + debitAmtSum - totalExpense ? cashAmtSum + debitAmtSum - totalExpense : 0,
+                NetProfit: netProfit,
                 isData: data && (data[3][0].openingBalanceAmt || data[3][0].openingBalanceAmt == 0) ? true : false,
             }
             return res.status(200).send(combinedData);

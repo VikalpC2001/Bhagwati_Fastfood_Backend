@@ -39,6 +39,7 @@ const upload = multer({
 }).any();
 
 // Function to execute the SQL query for a given date and return the sum of numLeave
+
 function getSumOfLeaveForDate(employeeId, date) {
     return new Promise((resolve, reject) => {
         sql_query = `SELECT COALESCE(SUM(numLeave),0) AS numLeave FROM staff_leave_data WHERE employeeId = '${employeeId}' AND leaveDate BETWEEN STR_TO_DATE('${date}','%d-%m-%Y') AND LAST_DAY(STR_TO_DATE('${date}','%d-%m-%Y'))`
@@ -57,6 +58,7 @@ function getSumOfLeaveForDate(employeeId, date) {
 }
 
 // Function to iterate through the date array and get the sum of leave for each date
+
 async function getSumOfLeaveForDates(employeeId, dateArray) {
     const sumOfLeaveArray = [];
     for (const date of dateArray) {
@@ -1116,6 +1118,7 @@ const updateEmployeeDetails = (req, res) => {
                                                     salary = ${data.salary},
                                                     maxLeave = ${data.maxLeave},
                                                     employeeJoiningDate = STR_TO_DATE('${data.joiningDate}','%b %d %Y'),
+                                                    salaryCalculationDate = STR_TO_DATE('${data.joiningDate}','%b %d %Y'),
                                                     employeeLastPaymentDate = STR_TO_DATE('${data.joiningDate}','%b %d %Y'),
                                                     accountHolderName = ${data.accountHolderName ? `'${data.accountHolderName}'` : null},
                                                     accountNumber = ${data.accountNumber ? `'${data.accountNumber}'` : null},

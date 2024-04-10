@@ -172,23 +172,23 @@ const getDebitTransactionList = async (req, res) => {
                 if (req.query.supplierId && req.query.startDate && req.query.endDate) {
                     sql_queries_getdetails = `${sql_common_qurey}
                                                 WHERE inventory_supplierTransaction_data.supplierId = '${data.supplierId}' AND inventory_supplierTransaction_data.transactionDate BETWEEN STR_TO_DATE('${data.startDate}','%b %d %Y') AND STR_TO_DATE('${data.endDate}','%b %d %Y') 
-                                                ORDER BY inventory_supplierTransaction_data.supplierTransactionCreationDate DESC LIMIT ${limit}`;
+                                                ORDER BY inventory_supplierTransaction_data.transactionDate DESC LIMIT ${limit}`;
                 } else if (req.query.startDate && req.query.endDate) {
                     sql_queries_getdetails = `${sql_common_qurey}
                                                 WHERE inventory_supplierTransaction_data.transactionDate BETWEEN STR_TO_DATE('${data.startDate}','%b %d %Y') AND STR_TO_DATE('${data.endDate}','%b %d %Y') 
-                                                ORDER BY inventory_supplierTransaction_data.supplierTransactionCreationDate DESC LIMIT ${limit}`;
+                                                ORDER BY inventory_supplierTransaction_data.transactionDate DESC LIMIT ${limit}`;
                 } else if (req.query.supplierId) {
                     sql_queries_getdetails = `${sql_common_qurey}
                                                 WHERE inventory_supplierTransaction_data.supplierId = '${data.supplierId}' AND inventory_supplierTransaction_data.transactionDate BETWEEN STR_TO_DATE('${firstDay}','%b %d %Y') AND STR_TO_DATE('${lastDay}','%b %d %Y')
-                                                ORDER BY inventory_supplierTransaction_data.supplierTransactionCreationDate DESC LIMIT ${limit}`;
+                                                ORDER BY inventory_supplierTransaction_data.transactionDate DESC LIMIT ${limit}`;
                 } else if (req.query.searchInvoiceNumber) {
                     sql_queries_getdetails = `${sql_common_qurey}
                                                 WHERE supplierTransactionId LIKE '%` + data.searchInvoiceNumber + `%'
-                                                ORDER BY inventory_supplierTransaction_data.supplierTransactionCreationDate DESC LIMIT ${limit}`;
+                                                ORDER BY inventory_supplierTransaction_data.transactionDate DESC LIMIT ${limit}`;
                 } else {
                     sql_queries_getdetails = `${sql_common_qurey}
                                                 WHERE  inventory_supplierTransaction_data.transactionDate BETWEEN STR_TO_DATE('${firstDay}','%b %d %Y') AND STR_TO_DATE('${lastDay}','%b %d %Y')
-                                                ORDER BY inventory_supplierTransaction_data.supplierTransactionCreationDate DESC LIMIT ${limit}`;
+                                                ORDER BY inventory_supplierTransaction_data.transactionDate DESC LIMIT ${limit}`;
                 }
                 console.log('bbbbbbb', sql_queries_getdetails);
                 pool.query(sql_queries_getdetails, (err, rows, fields) => {
@@ -376,14 +376,14 @@ const getCashTransactionList = async (req, res) => {
                                                 INNER JOIN user_details ON user_details.userId = inventory_stockIn_data.userId
                                                 INNER JOIN inventory_supplier_data ON inventory_supplier_data.supplierId = inventory_stockIn_data.supplierId
                                                 WHERE inventory_stockIn_data.stockInPaymentMethod = '${data.payMode}' AND inventory_stockIn_data.stockInDate BETWEEN STR_TO_DATE('${data.startDate}','%b %d %Y') AND STR_TO_DATE('${data.endDate}','%b %d %Y')
-                                                ORDER BY inventory_stockIn_data.stockInCreationDate DESC LIMIT ${limit}`;
+                                                ORDER BY inventory_stockIn_data.stockInDate DESC LIMIT ${limit}`;
                 } else {
                     sql_queries_getdetails = `SELECT CONCAT(user_details.userFirstName,' ',user_details.userLastName) AS paidBy, inventory_supplier_data.supplierNickName AS receviedBy, totalPrice AS paidAmount,  DATE_FORMAT(stockInDate,'%d-%M-%Y') AS transactionDate, DATE_FORMAT(stockInCreationDate,'%h:%i %p') AS transactionTime 
                                                 FROM inventory_stockIn_data
                                                 INNER JOIN user_details ON user_details.userId = inventory_stockIn_data.userId
                                                 INNER JOIN inventory_supplier_data ON inventory_supplier_data.supplierId = inventory_stockIn_data.supplierId
                                                 WHERE inventory_stockIn_data.stockInPaymentMethod = '${data.payMode}' AND inventory_stockIn_data.stockInDate BETWEEN STR_TO_DATE('${firstDay}','%b %d %Y') AND STR_TO_DATE('${lastDay}','%b %d %Y')
-                                                ORDER BY inventory_stockIn_data.stockInCreationDate DESC LIMIT ${limit}`;
+                                                ORDER BY inventory_stockIn_data.stockInDate DESC LIMIT ${limit}`;
                 }
                 console.log('bbbbbbb', sql_queries_getdetails);
                 pool.query(sql_queries_getdetails, (err, rows, fields) => {
@@ -650,15 +650,14 @@ const addSupplierTransactionDetails = async (req, res) => {
             const userId = decoded.id.id;
             const uid1 = new Date();
             const supplierTransactionId = String("Transaction_" + uid1.getTime());
-            console.log("...", supplierTransactionId);
 
             const supplierId = req.body.supplierId;
             const receivedBy = req.body.receivedBy.trim();
             const paidAmount = req.body.paidAmount;
             const transactionNote = req.body.transactionNote ? req.body.transactionNote.trim() : null;
-            const transactionDate = creationDate = new Date().toString().slice(4, 15);
+            const transactionDate = new Date(req.body.transactionDate ? req.body.transactionDate : null).toString().slice(4, 15)
 
-            if (!supplierId || !receivedBy || !paidAmount) {
+            if (!supplierId || !receivedBy || !paidAmount || !transactionDate) {
                 return res.status(400).send("Please Fill all the feilds");
             }
             const get_remaining_amount = `SELECT COALESCE(sisd.total_price, 0) - COALESCE(sosd.total_paid, 0) AS remainingAmount FROM inventory_supplier_data AS sd

@@ -690,16 +690,16 @@ const exportExcelForBankTransactionById = (req, res) => {
 
             if (req.query.startDate && req.query.endDate && req.query.bankId2 && req.query.transactionType) {
                 worksheet.mergeCells('A1', 'I1');
-                worksheet.getCell('A1').value = `${result[2][0].bankDisplayName} Transaction From ${req.query.startDate.trim()} To ${req.query.endDate.trim()} For ${result[0][0].fromName} (${req.query.transactionType})`;
+                worksheet.getCell('A1').value = `${result[2][0].bankDisplayName} Transaction From ${data.startDate} To ${data.endDate} For ${result[0][0].fromName} (${req.query.transactionType})`;
             } else if (req.query.startDate && req.query.endDate && req.query.bankId2) {
                 worksheet.mergeCells('A1', 'I1');
-                worksheet.getCell('A1').value = `${result[2][0].bankDisplayName} Transaction From ${req.query.startDate.trim()} To ${req.query.endDate.trim()} For ${result[0][0].fromName}`;
+                worksheet.getCell('A1').value = `${result[2][0].bankDisplayName} Transaction From ${data.startDate} To ${data.endDate} For ${result[0][0].fromName}`;
             } else if (req.query.startDate && req.query.endDate && req.query.transactionType) {
                 worksheet.mergeCells('A1', 'I1');
-                worksheet.getCell('A1').value = `${result[2][0].bankDisplayName} Transaction From ${req.query.startDate.trim()} To ${req.query.endDate.trim()} For Type ${req.query.transactionType}`;
+                worksheet.getCell('A1').value = `${result[2][0].bankDisplayName} Transaction From ${data.startDate} To ${data.endDate} For Type ${req.query.transactionType}`;
             } else if (req.query.startDate && req.query.endDate && req.query.expenseId) {
                 worksheet.mergeCells('A1', 'I1');
-                worksheet.getCell('A1').value = `${result[2][0].bankDisplayName} Transaction From ${req.query.startDate.trim()} To ${req.query.endDate.trim()} For ${result[1][0].categoryName}`;
+                worksheet.getCell('A1').value = `${result[2][0].bankDisplayName} Transaction From ${data.startDate} To ${data.endDate} For ${result[1][0].categoryName}`;
             } else if (req.query.bankId2 && req.query.transactionType) {
                 worksheet.mergeCells('A1', 'I1');
                 worksheet.getCell('A1').value = `${result[2][0].bankDisplayName} Transaction From ${lastDay.trim()} To ${firstDay.trim()} For ${result[0][0].fromName} (${req.query.transactionType})`;
@@ -1074,13 +1074,13 @@ const exportPdfForBankTransactionById = (req, res) => {
                     return res.status(500).send('Database Error');
                 }
                 if (req.query.startDate && req.query.endDate && req.query.bankId2 && req.query.transactionType) {
-                    tableHeading = `${result[2][0].bankDisplayName} Transaction From ${req.query.startDate.trim()} To ${req.query.endDate.trim()} For ${result[0][0].fromName} (${req.query.transactionType})`;
+                    tableHeading = `${result[2][0].bankDisplayName} Transaction From ${data.startDate} To ${data.endDate} For ${result[0][0].fromName} (${req.query.transactionType})`;
                 } else if (req.query.startDate && req.query.endDate && req.query.bankId2) {
-                    tableHeading = `${result[2][0].bankDisplayName} Transaction From ${req.query.startDate.trim()} To ${req.query.endDate.trim()} For ${result[0][0].fromName}`;
+                    tableHeading = `${result[2][0].bankDisplayName} Transaction From ${data.startDate} To ${data.endDate} For ${result[0][0].fromName}`;
                 } else if (req.query.startDate && req.query.endDate && req.query.transactionType) {
-                    tableHeading = `${result[2][0].bankDisplayName} Transaction From ${req.query.startDate.trim()} To ${req.query.endDate.trim()} For Type ${req.query.transactionType}`;
+                    tableHeading = `${result[2][0].bankDisplayName} Transaction From ${data.startDate} To ${data.endDate} For Type ${req.query.transactionType}`;
                 } else if (req.query.startDate && req.query.endDate && req.query.expenseId) {
-                    tableHeading = `${result[2][0].bankDisplayName} Transaction From ${req.query.startDate.trim()} To ${req.query.endDate.trim()} For ${result[1][0].categoryName}`;
+                    tableHeading = `${result[2][0].bankDisplayName} Transaction From ${data.startDate} To ${data.endDate} For ${result[1][0].categoryName}`;
                 } else if (req.query.bankId2 && req.query.transactionType) {
                     tableHeading = `${result[2][0].bankDisplayName} Transaction From ${lastDay.trim()} To ${firstDay.trim()} For ${result[0][0].fromName} (${req.query.transactionType})`;
                 } else if (req.query.bankId2) {

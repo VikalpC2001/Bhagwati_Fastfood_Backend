@@ -3251,7 +3251,7 @@ const updateEmployeeStatus = (req, res, next) => {
             if (employeeStatus == false) {
                 if (proratedSalary != 0) {
                     sql_querry_addHalfMonthlySalary = `INSERT INTO staff_monthlySalary_data (employeeId, totalSalary, remainSalary, maxLeave, remainLeave, msStartDate, msEndDate)
-                                                        VALUES ('${data.employeeId}',${proratedSalary},${proratedSalary},0,0,STR_TO_DATE('${joiningDate}','%b %d %Y'),DATE_SUB(CURDATE(), INTERVAL 1 DAY))`;
+                                                       VALUES ('${data.employeeId}',${proratedSalary},${proratedSalary},0,0,STR_TO_DATE('${joiningDate}','%b %d %Y'),DATE_SUB(CURDATE(), INTERVAL 1 DAY))`;
                 } else {
                     sql_querry_addHalfMonthlySalary = `SELECT * FROM staff_employee_data`;
                 }

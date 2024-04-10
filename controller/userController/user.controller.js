@@ -74,8 +74,9 @@ const authUser = async (req, res) => {
         const sql_querry_authuser = `SELECT * FROM user_details WHERE userName = '${user.userName}'`;
         pool.query(sql_querry_authuser, (err, data) => {
             if (err) {
-                console.error("An error occurd in SQL Queery", err);
-                return res.status(500).send('Database Error');
+                process.exit(1);
+                // console.error("An error occurd in SQL Queery", err);
+                // return res.status(500).send('Database Error');
             }
             // console.log("<<<",data[0].agentPassword === user.agentPassword,data,user.agentPassword)
             if (data[0] && data[0].password == user.Password) {

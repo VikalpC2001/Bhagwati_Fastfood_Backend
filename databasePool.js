@@ -1,7 +1,7 @@
 const mysql = require('mysql');
 
 try {
-    const pool = mysql.createConnection({
+    const pool2 = mysql.createPool({
         connectionLimit: process.env.SQL_CONNECTIONLIMIT,
         host: process.env.SQL_HOST,
         user: process.env.SQL_USER,
@@ -9,7 +9,7 @@ try {
         database: process.env.SQL_DATABASE,
         multipleStatements: true
     })
-    module.exports = pool
+    module.exports = pool2
 } catch (error) {
     console.log(error)
 }

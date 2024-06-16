@@ -1374,6 +1374,75 @@ const exportPdfForFundTransfer = (req, res) => {
     }
 }
 
+// Get Month Wise Transaction In Bank
+
+const getMonthWiseTransaction = (req, res) => {
+    try {
+        const bankId = req.query.bankId;
+        let page = req.query.page; // Page number
+        let numPerPage = req.query.numPerPage; // Number of items per page
+        if (!bankId || !page || !numPerPage) {
+            return res.status(404).send('Not Found')
+        }
+
+        // Calculate the start and end indices for the current page
+        let startIndex = (page - 1) * numPerPage;
+        let endIndex = startIndex + numPerPage;
+        let sql_query_getMonthWiseData = `SELECT
+                                              SUM(creditAmount) AS amount,
+                                              SUM(creditAmount) AS amt,
+                                              CONCAT(MONTHNAME(creditDate), '-', YEAR(creditDate)) AS date
+                                          FROM
+                                              credit_transaction_data
+                                          WHERE toId = '${bankId}'
+                                          GROUP BY YEAR(creditDate), MONTH(creditDate)
+                                          ORDER BY YEAR(creditDate) ASC, MONTH(creditDate) ASC;
+                                          SELECT SUM(debitAmount) AS debitAmt FROM debit_transaction_data WHERE fromId = '${bankId}'`;
+        pool.query(sql_query_getMonthWiseData, (err, data) => {
+            if (err) {
+                console.error("An error occurd in SQL Queery", err);
+                return res.status(500).send('Database Error');
+            } else {
+                const creditAmtJson = data && data[0] ? Object.values(JSON.parse(JSON.stringify(data[0]))) : [];
+                const debitAmtSum = data && data[1] ? data[1][0].debitAmt : 0;
+                const arr = catrersMonthWiseData(creditAmtJson, debitAmtSum);
+                const result = arr.sort((a, b) => {
+                    let dateA = new Date(a.date);
+                    let dateB = new Date(b.date);
+                    return dateB - dateA;
+                });
+                const rows = result.slice(startIndex, endIndex);
+                const numRows = arr.length
+                return res.status(200).send({ rows, numRows });
+            }
+        })
+    } catch (error) {
+        console.error('An error occurd', error);
+        res.status(500).send('Internal Server Error');
+    }
+}
+
+// Catrers Month Wise Data Function
+
+function catrersMonthWiseData(arr, cutAmt) {
+    let array = arr;
+    let value = cutAmt;
+
+    let newArray = array.map(item => {
+        if (value > 0 && item.amt > 0) {
+            if (item.amt >= value) {
+                item.amt -= value;
+                value = 0;
+            } else {
+                value -= item.amt;
+                item.amt = 0;
+            }
+        }
+        return item;
+    });
+
+    return newArray;
+}
 module.exports = {
     addTransactionData,
     removeTransactionData,
@@ -1383,5 +1452,6 @@ module.exports = {
     exportExcelForBankTransactionById,
     exportPdfForBankTransactionById,
     exportExcelForFundTransfer,
-    exportPdfForFundTransfer
+    exportPdfForFundTransfer,
+    getMonthWiseTransaction
 }

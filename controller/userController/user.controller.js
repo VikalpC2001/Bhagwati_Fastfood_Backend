@@ -70,7 +70,6 @@ const authUser = async (req, res) => {
             userName: req.body.userName,
             Password: req.body.Password
         }
-        console.log(">>>", user);
         const sql_querry_authuser = `SELECT * FROM user_details WHERE userName = '${user.userName}'`;
         pool.query(sql_querry_authuser, (err, data) => {
             if (err) {
@@ -84,9 +83,9 @@ const authUser = async (req, res) => {
                     userId: data[0].userId,
                     userRights: data[0].userRights,
                     userName: data[0].userFirstName + " " + data[0].userLastName,
-                    token: generateToken({ id: data[0].userId, rights: data[0].userRights }),
+                    token: generateToken({ id: data[0].userId, rights: data[0].userRights, firstName: data[0].userFirstName }),
                 });
-                console.log("??", generateToken({ id: data[0].userId, rights: data[0].userRights }), new Date().toLocaleString());
+                console.log("??", generateToken({ id: data[0].userId, rights: data[0].userRights, firstName: data[0].userFirstName }), new Date().toLocaleString());
             }
             else {
                 res.status(400);
@@ -121,7 +120,6 @@ const ddlRights = (req, res) => {
 
 const addUserDetails = async (req, res) => {
     try {
-
         let token;
         token = req.headers.authorization.split(" ")[1];
         if (token) {
@@ -181,7 +179,6 @@ const addUserDetails = async (req, res) => {
 // Remove User API
 
 const removeUserDetails = async (req, res) => {
-
     try {
         let token;
         token = req.headers.authorization.split(" ")[1];
@@ -244,7 +241,6 @@ const fillUserDetails = (req, res) => {
 
 const updateUserDetails = async (req, res) => {
     try {
-
         let token;
         token = req.headers.authorization.split(" ")[1];
         if (token) {

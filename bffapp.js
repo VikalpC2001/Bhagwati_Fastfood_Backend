@@ -11,6 +11,8 @@ const userrouter = require('./routs/userRouts/user.routs');
 const inventoryrouter = require('./routs/inventoryRouts/inventory.routs');
 const staffrouter = require('./routs/staffRouts/staff.routs');
 const expenseAndBankrouter = require('./routs/expenseAndBankRouts/expenseAndBank.routs');
+const menuItemrouter = require('./routs/menuItemRouts/item.routs');
+const billingrouter = require('./routs/billingRouts/billing.routs');
 
 // app.use(cors({
 //   credentials: true,
@@ -37,6 +39,8 @@ app.use('/userrouter', userrouter);
 app.use('/inventoryrouter', inventoryrouter);
 app.use('/staffrouter', staffrouter);
 app.use('/expenseAndBankrouter', expenseAndBankrouter);
+app.use('/menuItemrouter', menuItemrouter);
+app.use('/billingrouter', billingrouter);
 
 app.use(notFound);
 app.use(erroHandler);

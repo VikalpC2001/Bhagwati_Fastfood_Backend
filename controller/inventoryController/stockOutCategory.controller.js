@@ -169,7 +169,6 @@ const addstockOutCategory = async (req, res) => {
 // Remove stockOutCategory API
 
 const removeStockOutCategory = async (req, res) => {
-
     try {
         const stockOutCategoryId = req.query.stockOutCategoryId.trim();
         req.query.stockOutCategoryId = pool.query(`SELECT stockOutCategoryId FROM inventory_stockOutCategory_data WHERE stockOutCategoryId = '${stockOutCategoryId}'`, (err, row) => {

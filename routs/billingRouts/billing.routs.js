@@ -2,6 +2,13 @@ const express = require('express');
 const router = express.Router();
 const { protect } = require("../../middlewares/authMiddlewares.js");
 
+// Billing Category Routs
+
+const categoryController = require("../../controller/billingController/billCategory.controller.js");
+
+router.get('/getBillCategory', protect, categoryController.getBillCategory);
+router.post('/updateBillCategoryData', protect, categoryController.updateBillCategoryData);
+
 // Comment Routs
 
 const commentController = require("../../controller/billingController/comment.controller.js");
@@ -29,6 +36,7 @@ router.get('/getHotelList', protect, hotelController.getHotelList);
 router.post('/addHotelData', protect, hotelController.addHotelData);
 router.delete('/removeHotelData', protect, hotelController.removeHotelData);
 router.post('/updateHotelData', protect, hotelController.updateHotelData);
+router.get('/ddlHotelList', protect, hotelController.ddlHotelList);
 
 // Firm Routs
 
@@ -49,6 +57,7 @@ router.get('/getBillDataById', protect, billingController.getBillDataById);
 router.get('/getRecentBillData', protect, billingController.getRecentBillData);
 router.get('/getBillDataByToken', protect, billingController.getBillDataByToken);
 router.get('/getHoldBillData', protect, billingController.getHoldBillData);
+router.get('/getLiveViewByCategoryId', protect, billingController.getLiveViewByCategoryId);
 
 // Add Billing Data
 router.post('/addHotelBillData', protect, billingController.addHotelBillData);
@@ -59,6 +68,16 @@ router.post('/addDeliveryBillData', protect, billingController.addDeliveryBillDa
 router.post('/updateHotelBillData', protect, billingController.updateHotelBillData);
 router.post('/updatePickUpBillData', protect, billingController.updatePickUpBillData);
 router.post('/updateDeliveryBillData', protect, billingController.updateDeliveryBillData);
+
+// Hold Billing Routs
+
+const holdController = require("../../controller/billingController/hold.controller.js");
+
+router.get('/getHoldBillDataById', protect, holdController.getHoldBillDataById);
+router.post('/addHotelHoldBillData', protect, holdController.addHotelHoldBillData);
+router.post('/addPickUpHoldBillData', protect, holdController.addPickUpHoldBillData);
+router.post('/addDeliveryHoldBillData', protect, holdController.addDeliveryHoldBillData);
+router.delete('/discardHoldData', protect, holdController.discardHoldData);
 
 // Printer Routs
 

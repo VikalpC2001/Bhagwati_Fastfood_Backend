@@ -199,9 +199,49 @@ const updateHotelData = (req, res) => {
     }
 }
 
+// DDL Hotel List
+
+const ddlHotelList = (req, res) => {
+    try {
+        const sql_query_getDetails = `SELECT 
+                                        hotelId,
+                                        hotelName,
+                                        hotelAddress,
+                                        hotelLocality,
+                                        hotelPincode,
+                                        hotelMobileNo,
+                                        otherMobileNo,
+                                        payType,
+                                        discountType,
+                                        discount
+                                      FROM 
+                                        billing_hotel_data
+                                      ORDER BY hotelName ASC`;
+        pool.query(sql_query_getDetails, (err, rows, fields) => {
+            if (err) {
+                console.error("An error occurd in SQL Queery", err);
+                return res.status(500).send('Database Error');;
+            } else {
+                if (rows.length == 0) {
+                    const rows = [{
+                        'msg': 'No Data Found'
+                    }]
+                    return res.status(200).send(rows);
+                } else {
+                    return res.status(200).send(rows);
+                }
+            }
+        });
+    } catch (error) {
+        console.error('An error occurd', error);
+        res.status(500).json('Internal Server Error');
+    }
+}
+
 module.exports = {
     getHotelList,
     addHotelData,
     removeHotelData,
-    updateHotelData
+    updateHotelData,
+    ddlHotelList
 }

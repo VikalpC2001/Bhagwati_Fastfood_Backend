@@ -31,7 +31,7 @@ router.post('/updateSubCategoryData', protect, subCategoryController.updateSubCa
 router.post('/addSubCategoryPeriod', protect, subCategoryController.addSubCategoryPeriod);
 router.post('/updateSubCategoryPeriod', protect, subCategoryController.updateSubCategoryPeriod);
 router.post('/addRollBackTransaction', protect, subCategoryController.addRollBackTransaction);
-router.get('/getSubCategoryListForMobile', protect, subCategoryController.getSubCategoryListForMobile);
+router.get('/getSubCategoryListForMobile', subCategoryController.getSubCategoryListForMobile);
 
 
 // Menu Category Routs
@@ -48,7 +48,7 @@ router.get('/copyPriceAndStatusByMenuId', protect, menuCategoryController.copyPr
 
 const itemController = require("../../controller/menuItemController/item.controller.js");
 
-router.get('/getItemData', protect, itemController.getItemData);
+router.get('/getItemData', itemController.getItemData);
 router.post('/addItemData', protect, itemController.addItemData);
 router.delete('/removeItemData', protect, itemController.removeItemData);
 router.post('/updateItemData', protect, itemController.updateItemData);

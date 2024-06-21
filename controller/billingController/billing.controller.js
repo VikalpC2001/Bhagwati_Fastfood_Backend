@@ -14,6 +14,23 @@ function getCurrentDate() {
     return now.toDateString().slice(4, 15);
 }
 
+// Get Bill Category Function By First Word
+
+function getCategory(input) {
+    switch (input.toUpperCase()) {  // Ensure input is case-insensitive
+        case 'H':
+            return 'Hotel';
+        case 'P':
+            return 'Pick Up';
+        case 'D':
+            return 'Delivery';
+        case 'R':
+            return 'Dine In';
+        default:
+            return null;  // Default case if input doesn't match any cases
+    }
+}
+
 // Get Billing Statics Data
 
 const getBillingStaticsData = (req, res) => {
@@ -77,20 +94,149 @@ const getBillingStaticsData = (req, res) => {
     }
 }
 
-// Get Bill Category Function By First Word
+// Get Live View Data
 
-function getCategory(input) {
-    switch (input.toUpperCase()) {  // Ensure input is case-insensitive
-        case 'H':
-            return 'Hotel';
-        case 'P':
-            return 'Pick Up';
-        case 'D':
-            return 'Delivery';
-        case 'R':
-            return 'Dine In';
-        default:
-            return null;  // Default case if input doesn't match any cases
+const getLiveViewByCategoryId = (req, res) => {
+    try {
+        const billCategory = 'Delivery';
+        const currentDate = getCurrentDate();
+        let sql_query_chkBillExist = `SELECT billId, billType FROM billing_data 
+                                      WHERE billId IN (SELECT COALESCE(billId,NULL) FROM billing_data WHERE billType = '${billCategory}' AND billDate = STR_TO_DATE('${currentDate}','%b %d %Y'))
+                                      ORDER BY billing_data.billCreationDate DESC`;
+        pool.query(sql_query_chkBillExist, (err, bills) => {
+            if (err) {
+                console.error("An error occurred in SQL Query", err);
+                return res.status(500).send('Database Error');
+            } else {
+                if (bills && bills.length) {
+                    const billDataPromises = bills.map(bill => {
+                        const billId = bill.billId;
+                        const billType = bill.billType;
+                        let sql_query_getBillingData = `SELECT 
+                                                            bd.billId AS billId, 
+                                                            bd.billNumber AS billNumber,
+                                                            COALESCE(bod.billNumber, CONCAT('C', bcd.billNumber), 'Not Available') AS officialBillNumber,
+                                                            CASE
+                                                                WHEN bd.billType = 'Hotel' THEN CONCAT('H',btd.tokenNo)
+                                                                WHEN bd.billType = 'Pick Up' THEN CONCAT('P',btd.tokenNo)
+                                                                WHEN bd.billType = 'Delivery' THEN CONCAT('D',btd.tokenNo)
+                                                                WHEN bd.billType = 'Dine In' THEN CONCAT('R',btd.tokenNo)
+                                                                ELSE NULL
+                                                            END AS tokenNo,
+                                                            bd.firmId AS firmId, 
+                                                            bd.cashier AS cashier, 
+                                                            bd.menuStatus AS menuStatus, 
+                                                            bd.billType AS billType, 
+                                                            bd.billPayType AS billPayType, 
+                                                            bd.discountType AS discountType, 
+                                                            bd.discountValue AS discountValue, 
+                                                            bd.totalDiscount AS totalDiscount, 
+                                                            bd.totalAmount AS totalAmount, 
+                                                            bd.settledAmount AS settledAmount, 
+                                                            bd.billComment AS billComment, 
+                                                            DATE_FORMAT(bd.billDate,'%d/%m/%Y') AS billDate,
+                                                            bd.billStatus AS billStatus,
+                                                            DATE_FORMAT(bd.billCreationDate,'%h:%i %p') AS billTime
+                                                        FROM 
+                                                            billing_data AS bd
+                                                        LEFT JOIN billing_Official_data AS bod ON bod.billId = bd.billId
+                                                        LEFT JOIN billing_Complimentary_data AS bcd ON bcd.billId = bd.billId
+                                                        LEFT JOIN billing_token_data AS btd ON btd.billId = bd.billId
+                                                        LEFT JOIN billing_firm_data AS bfd ON bfd.firmId = bd.firmId
+                                                        WHERE bd.billId = '${billId}'`;
+                        let sql_query_getBillwiseItem = `SELECT
+                                                             bwid.iwbId AS iwbId,
+                                                             bwid.itemId AS itemId,
+                                                             imd.itemName AS itemName,
+                                                             imd.itemCode AS inputCode,
+                                                             bwid.qty AS qty,
+                                                             bwid.unit AS unit,
+                                                             bwid.itemPrice AS itemPrice,
+                                                             bwid.price AS price,
+                                                             bwid.comment AS comment
+                                                         FROM
+                                                             billing_billWiseItem_data AS bwid
+                                                         INNER JOIN item_menuList_data AS imd ON imd.itemId = bwid.itemId
+                                                         WHERE bwid.billId = '${billId}'`;
+                        let sql_query_getCustomerInfo = `SELECT
+                                                             bwcd.bwcId AS bwcId,
+                                                             bwcd.customerId AS customerId,
+                                                             bcd.customerMobileNumber AS mobileNo,
+                                                             bwcd.addressId AS addressId,
+                                                             bcad.customerAddress AS address,
+                                                             bcad.customerLocality AS locality,
+                                                             bwcd.customerName AS customerName
+                                                         FROM
+                                                             billing_billWiseCustomer_data AS bwcd
+                                                         LEFT JOIN billing_customer_data AS bcd ON bcd.customerId = bwcd.customerId
+                                                         LEFT JOIN billing_customerAddress_data AS bcad ON bcad.addressId = bwcd.addressId
+                                                         WHERE bwcd.billId = '${billId}'`;
+                        let sql_query_getHotelInfo = `SELECT
+                                                          bhid.hotelInfoId AS hotelInfoId,
+                                                          bhid.hotelId AS hotelId,
+                                                          bhd.hotelName AS hotelName,
+                                                          bhd.hotelAddress AS hotelAddress,
+                                                          bhd.hotelLocality AS hotelLocality,
+                                                          bhd.hotelMobileNo AS hotelMobileNo,
+                                                          bhid.roomNo AS roomNo,
+                                                          bhid.customerName AS customerName,
+                                                          bhid.phoneNumber AS phoneNumber
+                                                      FROM
+                                                          billing_hotelInfo_data AS bhid
+                                                      LEFT JOIN billing_hotel_data AS bhd ON bhd.hotelId = bhid.hotelId
+                                                      WHERE bhid.billId = '${billId}'`
+                        let sql_query_getFirmData = `SELECT 
+                                                        firmId, 
+                                                        firmName, 
+                                                        gstNumber, 
+                                                        firmAddress, 
+                                                        pincode, 
+                                                        firmMobileNo, 
+                                                        otherMobileNo 
+                                                     FROM 
+                                                        billing_firm_data 
+                                                     WHERE 
+                                                        firmId = (SELECT firmId FROM billing_data WHERE billId = '${billId}')`
+                        const sql_query_getBillData = `${sql_query_getBillingData};
+                                                           ${sql_query_getBillwiseItem};
+                                                           ${sql_query_getFirmData};
+                                                           ${billType == 'Hotel' ? sql_query_getHotelInfo + ';' : ''}
+                                                           ${billType == 'Pick Up' || billType == 'Delivery' ? sql_query_getCustomerInfo : ''}`;
+                        return new Promise((resolve, reject) => {
+                            pool.query(sql_query_getBillData, (err, billData) => {
+                                if (err) {
+                                    console.error("An error occurred in SQL Query", err);
+                                    return reject('Database Error');
+                                } else {
+                                    const json = {
+                                        ...billData[0][0],
+                                        itemData: billData && billData[1] ? billData[1] : [],
+                                        firmData: billData && billData[2] ? billData[2][0] : [],
+                                        ...(billType === 'Hotel' ? { ...billData[3][0] } : ''),
+                                        ...(billType == 'Pick Up' || billType == 'Delivery' ? { customerDetails: billData && billData[3][0] ? billData[3][0] : '' } : '')
+                                    }
+                                    return resolve(json);
+                                }
+                            });
+                        });
+                    });
+
+                    Promise.all(billDataPromises)
+                        .then(results => {
+                            return res.status(200).send(results);
+                        })
+                        .catch(error => {
+                            console.error('An error occurred', error);
+                            return res.status(500).send('Internal Server Error');
+                        });
+                } else {
+                    return res.status(404).send('Bills Not Found');
+                }
+            }
+        });
+    } catch (error) {
+        console.error('An error occurred', error);
+        res.status(500).json('Internal Server Error');
     }
 }
 
@@ -107,15 +253,50 @@ const getRecentBillData = (req, res) => {
                                                 bd.billId AS billId, 
                                                 bd.billNumber AS billNumber,
                                                 bd.totalAmount AS totalAmount,
+                                                bwc.customerName,
                                                 CASE
                                                     WHEN bd.billType = 'Hotel' THEN CONCAT('H',btd.tokenNo)
                                                     WHEN bd.billType = 'Pick Up' THEN CONCAT('P',btd.tokenNo)
                                                     WHEN bd.billType = 'Delivery' THEN CONCAT('D',btd.tokenNo)
                                                     WHEN bd.billType = 'Dine In' THEN CONCAT('R',btd.tokenNo)
                                                 ELSE NULL
-                                                END AS tokenNo 
+                                                END AS tokenNo ,
+                                                CASE
+                                                    WHEN bd.billType = 'Hotel' THEN
+                                                        TRIM(CONCAT(
+                                                            COALESCE(bhd.hotelName, ''),
+                                                            IF(bhd.hotelName IS NOT NULL AND hif.roomNo IS NOT NULL, ' - ', ''),
+                                                            COALESCE(hif.roomNo, '')
+                                                        ))
+                                                    WHEN bd.billType = 'Pick Up' THEN
+                                                        TRIM(CONCAT(
+                                                            COALESCE(bcd.customerMobileNumber, ''),
+                                                            IF(bcd.customerMobileNumber IS NOT NULL AND bwc.customerName IS NOT NULL, ' - ', ''),
+                                                            COALESCE(bwc.customerName, ''),
+                                                            IF((bcd.customerMobileNumber IS NOT NULL OR bwc.customerName IS NOT NULL) AND bcad.customerAddress IS NOT NULL, ' - ', ''),
+                                                            COALESCE(bcad.customerAddress, ''),
+                                                            IF((bcd.customerMobileNumber IS NOT NULL OR bwc.customerName IS NOT NULL OR bcad.customerAddress IS NOT NULL) AND bcad.customerLocality IS NOT NULL, ' - ', ''),
+                                                            COALESCE(bcad.customerLocality, '')
+                                                        ))
+                                                    WHEN bd.billType = 'Delivery' THEN
+                                                        TRIM(CONCAT(
+                                                            COALESCE(bcd.customerMobileNumber, ''),
+                                                            IF(bcd.customerMobileNumber IS NOT NULL AND bwc.customerName IS NOT NULL, ' - ', ''),
+                                                            COALESCE(bwc.customerName, ''),
+                                                            IF((bcd.customerMobileNumber IS NOT NULL OR bwc.customerName IS NOT NULL) AND bcad.customerAddress IS NOT NULL, ' - ', ''),
+                                                            COALESCE(bcad.customerAddress, ''),
+                                                            IF((bcd.customerMobileNumber IS NOT NULL OR bwc.customerName IS NOT NULL OR bcad.customerAddress IS NOT NULL) AND bcad.customerLocality IS NOT NULL, ' - ', ''),
+                                                            COALESCE(bcad.customerLocality, '')
+                                                        ))
+                                                    ELSE NULL
+                                                END AS info
                                            FROM billing_data AS bd
                                            LEFT JOIN billing_token_data AS btd ON btd.billId = bd.billId
+                                           LEFT JOIN billing_billWiseCustomer_data AS bwc ON bwc.billId = bd.billId
+                                           LEFT JOIN billing_customer_data AS bcd ON bcd.customerId = bwc.customerId
+                                           LEFT JOIN billing_customerAddress_data AS bcad ON bcad.addressId = bwc.addressId
+                                           LEFT JOIN billing_hotelInfo_data AS hif ON hif.billId = bd.billId
+                                           LEFT JOIN billing_hotel_data AS bhd ON bhd.hotelId = hif.hotelId
                                            WHERE bd.billType = '${billType}' AND bd.billDate = STR_TO_DATE('${currentDate}','%b %d %Y') AND bd.billStatus != 'Hold'
                                            ORDER BY btd.tokenNo DESC`;
             pool.query(sql_query_getRecentBill, (err, data) => {
@@ -808,6 +989,7 @@ const addPickUpBillData = (req, res) => {
                                                                         billNo: nextBillNo,
                                                                         officialBillNo: billData.isOfficial && !isComplimentary ? nextOfficialBillNo : isComplimentary ? 'C' + nextOfficialBillNo : 'Not Available',
                                                                         tokenNo: 'P' + nextTokenNo,
+                                                                        justToken: nextTokenNo,
                                                                         billDate: new Date(currentDate).toLocaleDateString('en-GB'),
                                                                         billTime: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
                                                                     }
@@ -2052,6 +2234,7 @@ const updatePickUpBillData = (req, res) => {
                                                                             cashier: cashier,
                                                                             billNo: billNumber,
                                                                             tokenNo: 'P' + tokenNo,
+                                                                            justToken: tokenNo,
                                                                             billDate: billDate,
                                                                             billTime: billTime
                                                                         }
@@ -3013,6 +3196,7 @@ module.exports = {
     getRecentBillData,
     getBillDataByToken,
     getHoldBillData,
+    getLiveViewByCategoryId,
 
     // Add Bill Data
     addHotelBillData,

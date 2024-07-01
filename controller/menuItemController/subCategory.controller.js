@@ -19,7 +19,7 @@ const getSubCategoryList = (req, res) => {
             } else {
                 const numRows = rows[0].numRows;
                 const numPages = Math.ceil(numRows / numPerPage);
-                const sql_query_getDetails = `SELECT subCategoryId, subCategoryName, displayRank FROM item_subCategory_data LIMIT ${limit}`;
+                const sql_query_getDetails = `SELECT subCategoryId, subCategoryName, categoryId AS mainCategory, displayRank FROM item_subCategory_data LIMIT ${limit}`;
                 pool.query(sql_query_getDetails, (err, rows, fields) => {
                     if (err) {
                         console.error("An error occurd in SQL Queery", err);
@@ -64,7 +64,7 @@ const getSubCategoryList = (req, res) => {
 
 const getSubCategoryListForMobile = (req, res) => {
     try {
-        const sql_query_getDetails = `SELECT subCategoryId, subCategoryName, displayRank FROM item_subCategory_data`;
+        const sql_query_getDetails = `SELECT subCategoryId, subCategoryName, displayRank FROM item_subCategory_data where subCategoryName = 'vik'`;
         pool.query(sql_query_getDetails, (err, rows, fields) => {
             if (err) {
                 console.error("An error occurd in SQL Queery", err);
@@ -104,8 +104,41 @@ const getSubCategoryListForMobile = (req, res) => {
 
 const ddlSubCategory = (req, res) => {
     try {
-        const sql_querry_getddlCategory = `SELECT subCategoryId, subCategoryName FROM item_subCategory_data
-                                           ORDER BY displayRank ASC`;
+        const menuId = req.query.menuId ? req.query.menuId : null
+        if (menuId) {
+            sql_querry_getddlCategory = `SELECT 
+                                            subCategoryId, 
+                                            subCategoryName,
+                                            (
+                                                SELECT COUNT(*)
+                                                FROM item_menuList_data imd
+                                                WHERE imd.itemSubCategory = subCategoryId
+                                            ) AS numberOfItem,
+                                            CASE
+                                                WHEN EXISTS (
+                                                    SELECT 1
+                                                    FROM item_unitWisePrice_data iup
+                                                    JOIN item_menuList_data id ON id.itemId = iup.itemId
+                                                    WHERE id.itemSubCategory = subCategoryId
+                                                      AND iup.status = 1 AND iup.menuCategoryId = '${menuId}'
+                                                ) THEN true
+                                                ELSE false
+                                            END AS status
+                                         FROM item_subCategory_data
+                                         ORDER BY displayRank ASC`;
+        } else {
+            sql_querry_getddlCategory = `SELECT 
+                                            subCategoryId, 
+                                            subCategoryName,
+                                            (
+                                                SELECT COUNT(*)
+                                                FROM item_menuList_data imd
+                                                WHERE imd.itemSubCategory = subCategoryId
+                                            ) AS numberOfItem
+                                         FROM item_subCategory_data
+                                         ORDER BY displayRank ASC`;
+        }
+
         pool.query(sql_querry_getddlCategory, (err, data) => {
             if (err) {
                 console.error("An error occurd in SQL Queery", err);
@@ -300,7 +333,7 @@ const updateSubCategoryPeriod = (req, res) => {
                         } else if (periodJson.length) {
                             let addPeriodData = periodJson.map((item, index) => {
                                 let uniqueId = `period_${Date.now() + index}`; // Generating a unique ID using current timestamp
-                                return `('${uniqueId}', '${periodData.subCategoryId}', '${item.startTime}', '${item.endTIme}')`;
+                                return `('${uniqueId}', '${periodData.subCategoryId}', '${item.startTime}', '${item.endTime}')`;
                             }).join(', ');
 
                             const sql_querry_addCategory = `INSERT INTO item_subCategoryPeriod_data (periodId, subCategoryId, startTime, endTime)
@@ -363,7 +396,6 @@ const updateSubCategoryPeriod = (req, res) => {
 // Test Roll Back 
 
 const addRollBackTransaction = (req, res) => {
-
     pool2.getConnection((err, conn) => {
         if (err) {
             console.log('Joo Erro', err)

@@ -23,7 +23,11 @@ router.post('/updateComment', protect, commentController.updateComment);
 const customerController = require("../../controller/billingController/customer.controller.js");
 
 router.get('/searchCustomerData', protect, customerController.searchCustomerData);
+router.get('/getCustomerList', protect, customerController.getCustomerList);
+router.get('/getCustomerDetailsById', protect, customerController.getCustomerDetailsById);
 router.post('/addMultipleCustomerData', customerController.addMultipleCustomerData);
+router.post('/addCustomerData', customerController.addCustomerData);
+router.post('/updateCustomerData', customerController.updateCustomerData);
 
 // Bill No Test Routs
 router.post('/billNoTest', commentController.billNoTest);
@@ -56,7 +60,6 @@ router.get('/getBillingStaticsData', protect, billingController.getBillingStatic
 router.get('/getBillDataById', protect, billingController.getBillDataById);
 router.get('/getRecentBillData', protect, billingController.getRecentBillData);
 router.get('/getBillDataByToken', protect, billingController.getBillDataByToken);
-router.get('/getHoldBillData', protect, billingController.getHoldBillData);
 router.get('/getLiveViewByCategoryId', protect, billingController.getLiveViewByCategoryId);
 
 // Add Billing Data
@@ -73,6 +76,8 @@ router.post('/updateDeliveryBillData', protect, billingController.updateDelivery
 
 const holdController = require("../../controller/billingController/hold.controller.js");
 
+router.get('/getHoldCount', protect, holdController.getHoldCount);
+router.get('/getHoldBillData', protect, holdController.getHoldBillData);
 router.get('/getHoldBillDataById', protect, holdController.getHoldBillDataById);
 router.post('/addHotelHoldBillData', protect, holdController.addHotelHoldBillData);
 router.post('/addPickUpHoldBillData', protect, holdController.addPickUpHoldBillData);

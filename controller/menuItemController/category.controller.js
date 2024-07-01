@@ -45,7 +45,7 @@ const addMainCategory = async (req, res) => {
                 if (!data.categoryName) {
                     return res.status(400).send("Please Add Category");
                 } else {
-                    req.body.productName = pool.query(`SELECT categoryName FROM item_mainCategory_data WHERE categoryName = '${data.categoryName}'`, function (err, row) {
+                    pool.query(`SELECT categoryName FROM item_mainCategory_data WHERE categoryName = '${data.categoryName}'`, function (err, row) {
                         if (err) {
                             console.error("An error occurd in SQL Queery", err);
                             return res.status(500).send('Database Error');

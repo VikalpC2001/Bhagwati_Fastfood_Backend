@@ -27,6 +27,11 @@ const getHotelList = (req, res) => {
                                                 otherMobileNo,
                                                 payType,
                                                 discountType,
+                                                CASE
+                                                    WHEN discountType = 'percentage' THEN CONCAT(discount,' %')
+                                                    WHEN discountType = 'fixed' THEN CONCAT('₹ ',discount)
+                                                    ELSE discount
+                                                END AS discountView,
                                                 discount
                                               FROM 
                                                 billing_hotel_data 
@@ -75,7 +80,7 @@ const addHotelData = (req, res) => {
             discountType: req.body.discountType ? req.body.discountType : null,
             discount: req.body.discount ? req.body.discount : 0,
         }
-        if (!data.hotelName || !data.hotelAddress || !data.hotelLocality || !data.hotelPincode || !data.hotelMobileNo || !data.payType || !data.discountType || !data.discount) {
+        if (!data.hotelName || !data.hotelMobileNo || !data.payType || !data.discountType) {
             return res.status(404).send('Please Fill All The Fields....!');
         } else {
             pool.query(`SELECT hotelName FROM billing_hotel_data WHERE hotelName = '${data.hotelName}'`, function (err, row) {
@@ -86,7 +91,7 @@ const addHotelData = (req, res) => {
                     return res.status(400).send('Hotel is Already In Use');
                 } else {
                     const sql_querry_addHotelData = `INSERT INTO billing_hotel_data (hotelId, hotelName, hotelAddress ,hotelLocality, hotelPincode, hotelMobileNo, otherMobileNo, payType, discountType, discount)
-                                                     VALUES ('${hotelId}', '${data.hotelName}', '${data.hotelAddress}', '${data.hotelLocality}', ${data.hotelPincode}, '${data.hotelMobileNo}', NULLIF('${data.otherMobileNo}','null'), '${data.payType}', '${data.discountType}', ${data.discount})`;
+                                                     VALUES ('${hotelId}', '${data.hotelName}', ${data.hotelAddress ? `'${data.hotelAddress}'` : null}, ${data.hotelLocality ? `'${data.hotelLocality}'` : null}, ${data.hotelPincode ? `${data.hotelPincode}` : null}, '${data.hotelMobileNo}',${data.otherMobileNo ? `'${data.otherMobileNo}'` : null}, '${data.payType}', '${data.discountType}', ${data.discount})`;
                     pool.query(sql_querry_addHotelData, (err, data) => {
                         if (err) {
                             console.error("An error occurd in SQL Queery", err);
@@ -160,7 +165,7 @@ const updateHotelData = (req, res) => {
             discountType: req.body.discountType ? req.body.discountType : null,
             discount: req.body.discount ? req.body.discount : 0,
         }
-        if (!data.hotelId || !data.hotelName || !data.hotelAddress || !data.hotelLocality || !data.hotelPincode || !data.hotelMobileNo || !data.payType || !data.discountType || !data.discount) {
+        if (!data.hotelId || !data.hotelName || !data.hotelMobileNo || !data.payType || !data.discountType) {
             return res.status(404).send('Please Fill All The Fields....!');
         } else {
             pool.query(`SELECT hotelName FROM billing_hotel_data WHERE hotelName = '${data.hotelName}' AND hotelId != '${data.hotelId}'`, function (err, row) {
@@ -174,11 +179,11 @@ const updateHotelData = (req, res) => {
                                                             billing_hotel_data
                                                         SET
                                                             hotelName = '${data.hotelName}',
-                                                            hotelAddress = '${data.hotelAddress}',
-                                                            hotelLocality = '${data.hotelLocality}',
-                                                            hotelPincode = ${data.hotelPincode},
+                                                            hotelAddress = ${data.hotelAddress ? `'${data.hotelAddress}'` : null},
+                                                            hotelLocality = ${data.hotelLocality ? `'${data.hotelLocality}'` : null},
+                                                            hotelPincode = ${data.hotelPincode ? `${data.hotelPincode}` : null},
                                                             hotelMobileNo = '${data.hotelMobileNo}',
-                                                            otherMobileNo = NULLIF('${data.otherMobileNo}','null'),
+                                                            otherMobileNo = ${data.otherMobileNo ? `'${data.otherMobileNo}'` : null},
                                                             payType = '${data.payType}',
                                                             discountType = '${data.discountType}',
                                                             discount = ${data.discount}

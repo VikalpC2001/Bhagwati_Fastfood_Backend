@@ -14,18 +14,39 @@ function getCurrentDate() {
     return now.toDateString().slice(4, 15);
 }
 
+// Get Number Of Hold
+
+const getHoldCount = (req, res) => {
+    try {
+        let sql_query_getHoldNumber = `SELECT COUNT(*) AS holdNo FROM hold_data`;
+        pool.query(sql_query_getHoldNumber, (err, data) => {
+            if (err) {
+                console.error("An error occurd in SQL Queery", err);
+                return res.status(500).send('Database Error');
+            } else {
+                return res.status(200).send(data[0]);
+            }
+        })
+    } catch (error) {
+        console.error('An error occurd', error);
+        res.status(500).json('Internal Server Error');
+    }
+}
+
 // Get Hold Bill List
 
-const getHoldBillDataList = (req, res) => {
+const getHoldBillData = (req, res) => {
     try {
-        const currentDate = getCurrentDate();
-        let sql_query_getHoldBill = `SELECT 
-                                          hd.holdId AS holdId,
-                                          hd.totalAmount AS totalAmount,
-                                          hd.billType AS billType,
-                                     FROM hold_data AS hd
-                                     WHERE hd.billDate = STR_TO_DATE('${currentDate}','%b %d %Y')
-                                     ORDER BY hd.billCreationDate DESC`;
+        let sql_query_getHoldBill = `SELECT
+                                         hd.holdId AS holdId,
+                                         hd.settledAmount AS totalAmount,
+                                         hd.cashier AS holdBy,
+                                         hd.menuStatus AS orderStatus,
+                                         CONCAT(DATE_FORMAT(hd.billDate,'%d-%b-%Y'),' ',DATE_FORMAT(hd.billCreationDate,'%h:%i:%s')) AS holdDateTime,
+                                         hd.billType AS billType
+                                     FROM
+                                         hold_data AS hd
+                                     ORDER BY hd.billCreationDate DESC;`;
         pool.query(sql_query_getHoldBill, (err, data) => {
             if (err) {
                 console.error("An error occurd in SQL Queery", err);
@@ -96,15 +117,13 @@ const getHoldBillDataById = (req, res) => {
                         let sql_query_getCustomerInfo = `SELECT
                                                              hwcd.bwcId AS bwcId,
                                                              hwcd.customerId AS customerId,
-                                                             bcd.customerMobileNumber AS mobileNo,
+                                                             hwcd.mobileNo AS mobileNo,
                                                              hwcd.addressId AS addressId,
-                                                             bcad.customerAddress AS address,
-                                                             bcad.customerLocality AS locality,
+                                                             hwcd.address AS address,
+                                                             hwcd.locality AS locality,
                                                              hwcd.customerName AS customerName
                                                          FROM
                                                              hold_billWiseCustomer_data AS hwcd
-                                                         LEFT JOIN billing_customer_data AS bcd ON bcd.customerId = hwcd.customerId
-                                                         LEFT JOIN billing_customerAddress_data AS bcad ON bcad.addressId = hwcd.addressId
                                                          WHERE hwcd.holdId = '${holdId}'`;
                         let sql_query_getHotelInfo = `SELECT
                                                           hhid.hotelInfoId AS hotelInfoId,
@@ -115,7 +134,7 @@ const getHoldBillDataById = (req, res) => {
                                                           bhd.hotelMobileNo AS hotelMobileNo,
                                                           hhid.roomNo AS roomNo,
                                                           hhid.customerName AS customerName,
-                                                          hhid.phoneNumber AS phoneNumber
+                                                          hhid.phoneNumber AS mobileNo
                                                       FROM
                                                           hold_hotelInfo_data AS hhid
                                                       LEFT JOIN billing_hotel_data AS bhd ON bhd.hotelId = hhid.hotelId
@@ -146,7 +165,7 @@ const getHoldBillDataById = (req, res) => {
                                     ...billData[0][0],
                                     itemData: billData && billData[1] ? billData[1] : [],
                                     firmData: billData && billData[2] ? billData[2][0] : [],
-                                    ...(billType === 'Hotel' ? { ...billData[3][0] } : ''),
+                                    ...(billType === 'Hotel' ? { hotelDetails: billData[3][0] } : ''),
                                     ...(billType == 'Pick Up' || billType == 'Delivery' ? { customerDetails: billData && billData[3][0] ? billData[3][0] : '' } : '')
                                 }
                                 const holdJson = json;
@@ -159,7 +178,17 @@ const getHoldBillDataById = (req, res) => {
                                         console.error("An error occurd in SQL Queery", err);
                                         return res.status(500).send('Database Error');
                                     } else {
-                                        return res.status(200).send(holdJson);
+                                        let sql_query_getHoldNumber = `SELECT COUNT(*) AS holdNo FROM hold_data`;
+                                        pool.query(sql_query_getHoldNumber, (err, data) => {
+                                            if (err) {
+                                                console.error("An error occurd in SQL Queery", err);
+                                                return res.status(500).send('Database Error');
+                                            } else {
+                                                const holdCount = data && data[0] ? data[0].holdNo : 0;
+                                                req?.io?.emit('getHoldCount', holdCount);
+                                                return res.status(200).send(holdJson);
+                                            }
+                                        })
                                     }
                                 })
                             }
@@ -247,9 +276,8 @@ const addHotelHoldBillData = (req, res) => {
                                         return res.status(500).send('Database Error');
                                     });
                                 } else {
-
                                     let sql_query_addHotelDetalis = `INSERT INTO hold_hotelInfo_data (hotelInfoId, holdId, hotelId, roomNo, customerName, phoneNumber)
-                                                                     VALUES('${hotelInfoId}', '${holdId}', '${holdData.hotelId}', ${holdData.roomNo ? `'${holdData.roomNo}'` : null}, ${holdData.customerName ? `'${holdData.customerName}'` : null}, ${holdData.customerName ? `'${holdData.customerNumber}'` : null})`;
+                                                                     VALUES('${hotelInfoId}', '${holdId}', '${holdData.hotelId}', ${holdData.roomNo ? `'${holdData.roomNo}'` : null}, ${holdData.customerName ? `'${holdData.customerName}'` : null}, ${holdData.mobileNo ? `'${holdData.mobileNo}'` : null})`;
                                     connection.query(sql_query_addHotelDetalis, (err) => {
                                         if (err) {
                                             console.error("Error inserting Hotel Info Details:", err);
@@ -273,18 +301,31 @@ const addHotelHoldBillData = (req, res) => {
                                                         return res.status(500).send('Database Error');
                                                     });
                                                 } else {
-                                                    connection.commit((err) => {
+                                                    let sql_query_getHoldCount = `SELECT COUNT(*) AS holdNo FROM hold_data`;
+                                                    connection.query(sql_query_getHoldCount, (err, count) => {
                                                         if (err) {
-                                                            console.error("Error committing transaction:", err);
+                                                            console.error("Error inserting Bill Wise Item Data:", err);
                                                             connection.rollback(() => {
                                                                 connection.release();
                                                                 return res.status(500).send('Database Error');
                                                             });
                                                         } else {
-                                                            connection.release();
-                                                            return res.status(200).send("Bill Is On Hold");
+                                                            let holdCount = count && count[0] ? count[0].holdNo : 0;
+                                                            connection.commit((err) => {
+                                                                if (err) {
+                                                                    console.error("Error committing transaction:", err);
+                                                                    connection.rollback(() => {
+                                                                        connection.release();
+                                                                        return res.status(500).send('Database Error');
+                                                                    });
+                                                                } else {
+                                                                    connection.release();
+                                                                    req?.io?.emit('getHoldCount', holdCount);
+                                                                    return res.status(200).send("Bill Is On Hold");
+                                                                }
+                                                            });
                                                         }
-                                                    });
+                                                    })
                                                 }
                                             });
                                         }
@@ -399,81 +440,57 @@ const addPickUpHoldBillData = (req, res) => {
                                                 return res.status(500).send('Database Error');
                                             });
                                         } else {
-                                            const customerData = holdData.customerDetails;
-                                            if (customerData && customerData.customerId && customerData.addressId) {
-                                                let sql_query_addAddressRelation = `INSERT INTO hold_billWiseCustomer_data(bwcId, holdId, customerId, addressId, customerName)
-                                                                                    VALUES ('${bwcId}', '${holdId}', '${customerData.customerId}', '${customerData.addressId}', ${customerData.customerName ? `TRIM('${customerData.customerName}')` : null})`;
-                                                connection.query(sql_query_addAddressRelation, (err) => {
-                                                    if (err) {
-                                                        console.error("Error inserting Customer Bill Wise Data:", err);
-                                                        connection.rollback(() => {
-                                                            connection.release();
-                                                            return res.status(500).send('Database Error');
-                                                        });
-                                                    } else {
-                                                        connection.commit((err) => {
+                                            let sql_query_getHoldCount = `SELECT COUNT(*) AS holdNo FROM hold_data`;
+                                            connection.query(sql_query_getHoldCount, (err, count) => {
+                                                if (err) {
+                                                    console.error("Error inserting Bill Wise Item Data:", err);
+                                                    connection.rollback(() => {
+                                                        connection.release();
+                                                        return res.status(500).send('Database Error');
+                                                    });
+                                                } else {
+                                                    let holdCount = count && count[0] ? count[0].holdNo : 0;
+                                                    const customerData = holdData.customerDetails;
+                                                    if (customerData && customerData.customerId && customerData.addressId) {
+                                                        let sql_query_addAddressRelation = `INSERT INTO hold_billWiseCustomer_data(bwcId, holdId, customerId, addressId, mobileNo, customerName, address, locality)
+                                                                                            VALUES ('${bwcId}', '${holdId}', '${customerData.customerId}', '${customerData.addressId}', ${customerData.mobileNo ? `TRIM('${customerData.mobileNo}')` : null}, ${customerData.customerName ? `TRIM('${customerData.customerName}')` : null}, ${customerData.address ? `'${customerData.address}'` : null}, ${customerData.locality ? `'${customerData.locality}'` : null})`;
+                                                        connection.query(sql_query_addAddressRelation, (err) => {
                                                             if (err) {
-                                                                console.error("Error committing transaction:", err);
+                                                                console.error("Error inserting Customer Bill Wise Data:", err);
                                                                 connection.rollback(() => {
                                                                     connection.release();
                                                                     return res.status(500).send('Database Error');
                                                                 });
                                                             } else {
-                                                                connection.release();
-                                                                return res.status(200).send("Bill is On Hold");
+                                                                connection.commit((err) => {
+                                                                    if (err) {
+                                                                        console.error("Error committing transaction:", err);
+                                                                        connection.rollback(() => {
+                                                                            connection.release();
+                                                                            return res.status(500).send('Database Error');
+                                                                        });
+                                                                    } else {
+                                                                        connection.release();
+                                                                        req?.io?.emit('getHoldCount', holdCount);
+                                                                        return res.status(200).send("Bill Is On Hold");
+                                                                    }
+                                                                });
                                                             }
                                                         });
-                                                    }
-                                                });
-                                            } else if (customerData && customerData.customerId && customerData.address) {
-                                                let sql_queries_chkOldAdd = `SELECT addressId, customerId FROM billing_customerAddress_data WHERE customerAddress = TRIM('${customerData.address}') AND customerLocality = '${customerData.locality}'`;
-                                                connection.query(sql_queries_chkOldAdd, (err, oldAdd) => {
-                                                    if (err) {
-                                                        console.error("Error inserting Customer New Address:", err);
-                                                        connection.rollback(() => {
-                                                            connection.release();
-                                                            return res.status(500).send('Database Error');
-                                                        });
-                                                    } else {
-                                                        if (oldAdd && oldAdd[0]) {
-                                                            const existAddressId = oldAdd[0].addressId;
-                                                            let sql_query_addAddressRelation = `INSERT INTO hold_billWiseCustomer_data(bwcId, holdId, customerId, addressId, customerName)
-                                                                                                VALUES ('${bwcId}', '${holdId}', '${customerData.customerId}', '${existAddressId}', ${customerData.customerName ? `TRIM('${customerData.customerName}')` : null})`;
-                                                            connection.query(sql_query_addAddressRelation, (err) => {
-                                                                if (err) {
-                                                                    console.error("Error inserting Customer Bill Wise Data:", err);
-                                                                    connection.rollback(() => {
-                                                                        connection.release();
-                                                                        return res.status(500).send('Database Error');
-                                                                    });
-                                                                } else {
-                                                                    connection.commit((err) => {
-                                                                        if (err) {
-                                                                            console.error("Error committing transaction:", err);
-                                                                            connection.rollback(() => {
-                                                                                connection.release();
-                                                                                return res.status(500).send('Database Error');
-                                                                            });
-                                                                        } else {
-                                                                            connection.release();
-                                                                            return res.status(200).send("Bill is On Hold");
-                                                                        }
-                                                                    });
-                                                                }
-                                                            });
-                                                        } else {
-                                                            let sql_querry_addNewAddress = `INSERT INTO billing_customerAddress_data(addressId, customerId, customerAddress, customerLocality)
-                                                                                            VALUES ('${newAddressId}', '${customerData.customerId}', TRIM('${customerData.address}'), ${customerData.locality ? `TRIM('${customerData.locality}')` : null})`;
-                                                            connection.query(sql_querry_addNewAddress, (err) => {
-                                                                if (err) {
-                                                                    console.error("Error inserting Customer New Address:", err);
-                                                                    connection.rollback(() => {
-                                                                        connection.release();
-                                                                        return res.status(500).send('Database Error');
-                                                                    });
-                                                                } else {
-                                                                    let sql_query_addAddressRelation = `INSERT INTO hold_billWiseCustomer_data(bwcId, holdId, customerId, addressId, customerName)
-                                                                                                        VALUES ('${bwcId}', '${holdId}', '${customerData.customerId}', '${newAddressId}', ${customerData.customerName ? `TRIM('${customerData.customerName}')` : null})`;
+                                                    } else if (customerData && customerData.customerId && customerData.address) {
+                                                        let sql_queries_chkOldAdd = `SELECT addressId, customerId FROM billing_customerAddress_data WHERE customerAddress = TRIM('${customerData.address}') AND customerLocality = '${customerData.locality}'`;
+                                                        connection.query(sql_queries_chkOldAdd, (err, oldAdd) => {
+                                                            if (err) {
+                                                                console.error("Error inserting Customer New Address:", err);
+                                                                connection.rollback(() => {
+                                                                    connection.release();
+                                                                    return res.status(500).send('Database Error');
+                                                                });
+                                                            } else {
+                                                                if (oldAdd && oldAdd[0]) {
+                                                                    const existAddressId = oldAdd[0].addressId;
+                                                                    let sql_query_addAddressRelation = `INSERT INTO hold_billWiseCustomer_data(bwcId, holdId, customerId, addressId, mobileNo, customerName, address, locality)
+                                                                                                        VALUES ('${bwcId}', '${holdId}', '${customerData.customerId}', '${existAddressId}', ${customerData.mobileNo ? `TRIM('${customerData.mobileNo}')` : null}, ${customerData.customerName ? `TRIM('${customerData.customerName}')` : null}, ${customerData.address ? `'${customerData.address}'` : null}, ${customerData.locality ? `'${customerData.locality}'` : null})`;
                                                                     connection.query(sql_query_addAddressRelation, (err) => {
                                                                         if (err) {
                                                                             console.error("Error inserting Customer Bill Wise Data:", err);
@@ -491,67 +508,25 @@ const addPickUpHoldBillData = (req, res) => {
                                                                                     });
                                                                                 } else {
                                                                                     connection.release();
-                                                                                    return res.status(200).send("Bill is On Hold");
+                                                                                    req?.io?.emit('getHoldCount', holdCount);
+                                                                                    return res.status(200).send("Bill Is On Hold");
                                                                                 }
                                                                             });
                                                                         }
                                                                     });
-                                                                }
-                                                            })
-                                                        }
-                                                    }
-                                                });
-                                            } else if (customerData && customerData.customerId) {
-                                                let sql_query_addAddressRelation = `INSERT INTO hold_billWiseCustomer_data(bwcId, holdId, customerId, addressId, customerName)
-                                                                                    VALUES ('${bwcId}', '${holdId}', '${customerData.customerId}', ${customerData.addressId ? `'${customerData.addressId}'` : null}, ${customerData.customerName ? `TRIM('${customerData.customerName}')` : null})`;
-                                                connection.query(sql_query_addAddressRelation, (err) => {
-                                                    if (err) {
-                                                        console.error("Error inserting Customer Bill Wise Data:", err);
-                                                        connection.rollback(() => {
-                                                            connection.release();
-                                                            return res.status(500).send('Database Error');
-                                                        });
-                                                    } else {
-                                                        connection.commit((err) => {
-                                                            if (err) {
-                                                                console.error("Error committing transaction:", err);
-                                                                connection.rollback(() => {
-                                                                    connection.release();
-                                                                    return res.status(500).send('Database Error');
-                                                                });
-                                                            } else {
-                                                                connection.release();
-                                                                return res.status(200).send("Bill is On Hold");
-                                                            }
-                                                        });
-                                                    }
-                                                });
-                                            } else {
-                                                if (customerData && (customerData.customerName || customerData.mobileNo)) {
-                                                    let sql_querry_getExistCustomer = `SELECT customerId, customerMobileNumber FROM billing_customer_data WHERE customerMobileNumber = '${customerData.mobileNo}'`;
-                                                    connection.query(sql_querry_getExistCustomer, (err, num) => {
-                                                        if (err) {
-                                                            console.error("Error Get Existing Customer Data:", err);
-                                                            connection.rollback(() => {
-                                                                connection.release();
-                                                                return res.status(500).send('Database Error');
-                                                            });
-                                                        } else {
-                                                            const existCustomerId = num && num[0] ? num[0].customerId : null;
-                                                            if (existCustomerId && customerData.address) {
-                                                                let sql_queries_chkOldAdd = `SELECT addressId, customerId FROM billing_customerAddress_data WHERE customerAddress = TRIM('${customerData.address}') AND customerLocality = '${customerData.locality}'`;
-                                                                connection.query(sql_queries_chkOldAdd, (err, oldAdd) => {
-                                                                    if (err) {
-                                                                        console.error("Error inserting Customer New Address:", err);
-                                                                        connection.rollback(() => {
-                                                                            connection.release();
-                                                                            return res.status(500).send('Database Error');
-                                                                        });
-                                                                    } else {
-                                                                        if (oldAdd && oldAdd[0]) {
-                                                                            const existAddressId = oldAdd[0].addressId;
-                                                                            let sql_query_addAddressRelation = `INSERT INTO hold_billWiseCustomer_data(bwcId, holdId, customerId, addressId, customerName)
-                                                                                                                VALUES ('${bwcId}', '${holdId}', '${existCustomerId}', '${existAddressId}', ${customerData.customerName ? `TRIM('${customerData.customerName}')` : null})`;
+                                                                } else {
+                                                                    let sql_querry_addNewAddress = `INSERT INTO billing_customerAddress_data(addressId, customerId, customerAddress, customerLocality)
+                                                                                                    VALUES ('${newAddressId}', '${customerData.customerId}', TRIM('${customerData.address}'), ${customerData.locality ? `TRIM('${customerData.locality}')` : null})`;
+                                                                    connection.query(sql_querry_addNewAddress, (err) => {
+                                                                        if (err) {
+                                                                            console.error("Error inserting Customer New Address:", err);
+                                                                            connection.rollback(() => {
+                                                                                connection.release();
+                                                                                return res.status(500).send('Database Error');
+                                                                            });
+                                                                        } else {
+                                                                            let sql_query_addAddressRelation = `INSERT INTO hold_billWiseCustomer_data(bwcId, holdId, customerId, addressId, mobileNo, customerName, address, locality)
+                                                                                                                VALUES ('${bwcId}', '${holdId}', '${customerData.customerId}', '${newAddressId}', ${customerData.mobileNo ? `TRIM('${customerData.mobileNo}')` : null}, ${customerData.customerName ? `TRIM('${customerData.customerName}')` : null}, ${customerData.address ? `'${customerData.address}'` : null}, ${customerData.locality ? `'${customerData.locality}'` : null})`;
                                                                             connection.query(sql_query_addAddressRelation, (err) => {
                                                                                 if (err) {
                                                                                     console.error("Error inserting Customer Bill Wise Data:", err);
@@ -569,24 +544,69 @@ const addPickUpHoldBillData = (req, res) => {
                                                                                             });
                                                                                         } else {
                                                                                             connection.release();
-                                                                                            return res.status(200).send("Bill is On Hold");
+                                                                                            req?.io?.emit('getHoldCount', holdCount);
+                                                                                            return res.status(200).send("Bill Is On Hold");
                                                                                         }
                                                                                     });
                                                                                 }
                                                                             });
-                                                                        } else {
-                                                                            let sql_querry_addNewAddress = `INSERT INTO billing_customerAddress_data(addressId, customerId, customerAddress, customerLocality)
-                                                                                                            VALUES ('${newAddressId}', '${existCustomerId}', TRIM('${customerData.address}'), ${customerData.locality ? `TRIM('${customerData.locality}')` : null})`;
-                                                                            connection.query(sql_querry_addNewAddress, (err) => {
-                                                                                if (err) {
-                                                                                    console.error("Error inserting Customer New Address:", err);
-                                                                                    connection.rollback(() => {
-                                                                                        connection.release();
-                                                                                        return res.status(500).send('Database Error');
-                                                                                    });
-                                                                                } else {
-                                                                                    let sql_query_addAddressRelation = `INSERT INTO hold_billWiseCustomer_data(bwcId, holdId, customerId, addressId, customerName)
-                                                                                                                        VALUES ('${bwcId}', '${holdId}', '${existCustomerId}', '${newAddressId}', ${customerData.customerName ? `TRIM('${customerData.customerName}')` : null})`;
+                                                                        }
+                                                                    })
+                                                                }
+                                                            }
+                                                        });
+                                                    } else if (customerData && customerData.customerId) {
+                                                        let sql_query_addAddressRelation = `INSERT INTO hold_billWiseCustomer_data(bwcId, holdId, customerId, addressId, mobileNo, customerName, address, locality)
+                                                                                            VALUES ('${bwcId}', '${holdId}', '${customerData.customerId}', ${customerData.addressId ? `'${customerData.addressId}'` : null}, ${customerData.mobileNo ? `TRIM('${customerData.mobileNo}')` : null}, ${customerData.customerName ? `TRIM('${customerData.customerName}')` : null}, ${customerData.address ? `'${customerData.address}'` : null}, ${customerData.locality ? `'${customerData.locality}'` : null})`;
+                                                        connection.query(sql_query_addAddressRelation, (err) => {
+                                                            if (err) {
+                                                                console.error("Error inserting Customer Bill Wise Data:", err);
+                                                                connection.rollback(() => {
+                                                                    connection.release();
+                                                                    return res.status(500).send('Database Error');
+                                                                });
+                                                            } else {
+                                                                connection.commit((err) => {
+                                                                    if (err) {
+                                                                        console.error("Error committing transaction:", err);
+                                                                        connection.rollback(() => {
+                                                                            connection.release();
+                                                                            return res.status(500).send('Database Error');
+                                                                        });
+                                                                    } else {
+                                                                        connection.release();
+                                                                        req?.io?.emit('getHoldCount', holdCount);
+                                                                        return res.status(200).send("Bill Is On Hold");
+                                                                    }
+                                                                });
+                                                            }
+                                                        });
+                                                    } else {
+                                                        if (customerData && (customerData.customerName || customerData.mobileNo)) {
+                                                            let sql_querry_getExistCustomer = `SELECT customerId, customerMobileNumber FROM billing_customer_data WHERE customerMobileNumber = '${customerData.mobileNo}'`;
+                                                            connection.query(sql_querry_getExistCustomer, (err, num) => {
+                                                                if (err) {
+                                                                    console.error("Error Get Existing Customer Data:", err);
+                                                                    connection.rollback(() => {
+                                                                        connection.release();
+                                                                        return res.status(500).send('Database Error');
+                                                                    });
+                                                                } else {
+                                                                    const existCustomerId = num && num[0] ? num[0].customerId : null;
+                                                                    if (existCustomerId && customerData.address) {
+                                                                        let sql_queries_chkOldAdd = `SELECT addressId, customerId FROM billing_customerAddress_data WHERE customerAddress = TRIM('${customerData.address}') AND customerLocality = '${customerData.locality}'`;
+                                                                        connection.query(sql_queries_chkOldAdd, (err, oldAdd) => {
+                                                                            if (err) {
+                                                                                console.error("Error inserting Customer New Address:", err);
+                                                                                connection.rollback(() => {
+                                                                                    connection.release();
+                                                                                    return res.status(500).send('Database Error');
+                                                                                });
+                                                                            } else {
+                                                                                if (oldAdd && oldAdd[0]) {
+                                                                                    const existAddressId = oldAdd[0].addressId;
+                                                                                    let sql_query_addAddressRelation = `INSERT INTO hold_billWiseCustomer_data(bwcId, holdId, customerId, addressId, mobileNo, customerName, address, locality)
+                                                                                                                        VALUES ('${bwcId}', '${holdId}', '${existCustomerId}', '${existAddressId}', ${customerData.mobileNo ? `TRIM('${customerData.mobileNo}')` : null}, ${customerData.customerName ? `TRIM('${customerData.customerName}')` : null}, ${customerData.address ? `'${customerData.address}'` : null}, ${customerData.locality ? `'${customerData.locality}'` : null})`;
                                                                                     connection.query(sql_query_addAddressRelation, (err) => {
                                                                                         if (err) {
                                                                                             console.error("Error inserting Customer Bill Wise Data:", err);
@@ -604,103 +624,106 @@ const addPickUpHoldBillData = (req, res) => {
                                                                                                     });
                                                                                                 } else {
                                                                                                     connection.release();
-                                                                                                    return res.status(200).send("Bill is On Hold");
+                                                                                                    req?.io?.emit('getHoldCount', holdCount);
+                                                                                                    return res.status(200).send("Bill Is On Hold");
                                                                                                 }
                                                                                             });
                                                                                         }
                                                                                     });
+                                                                                } else {
+                                                                                    let sql_querry_addNewAddress = `INSERT INTO billing_customerAddress_data(addressId, customerId, customerAddress, customerLocality)
+                                                                                                                    VALUES ('${newAddressId}', '${existCustomerId}', TRIM('${customerData.address}'), ${customerData.locality ? `TRIM('${customerData.locality}')` : null})`;
+                                                                                    connection.query(sql_querry_addNewAddress, (err) => {
+                                                                                        if (err) {
+                                                                                            console.error("Error inserting Customer New Address:", err);
+                                                                                            connection.rollback(() => {
+                                                                                                connection.release();
+                                                                                                return res.status(500).send('Database Error');
+                                                                                            });
+                                                                                        } else {
+                                                                                            let sql_query_addAddressRelation = `INSERT INTO hold_billWiseCustomer_data(bwcId, holdId, customerId, addressId, mobileNo, customerName, address, locality)
+                                                                                                                                VALUES ('${bwcId}', '${holdId}', '${existCustomerId}', '${newAddressId}', ${customerData.mobileNo ? `TRIM('${customerData.mobileNo}')` : null}, ${customerData.customerName ? `TRIM('${customerData.customerName}')` : null}, ${customerData.address ? `'${customerData.address}'` : null}, ${customerData.locality ? `'${customerData.locality}'` : null})`;
+                                                                                            connection.query(sql_query_addAddressRelation, (err) => {
+                                                                                                if (err) {
+                                                                                                    console.error("Error inserting Customer Bill Wise Data:", err);
+                                                                                                    connection.rollback(() => {
+                                                                                                        connection.release();
+                                                                                                        return res.status(500).send('Database Error');
+                                                                                                    });
+                                                                                                } else {
+                                                                                                    connection.commit((err) => {
+                                                                                                        if (err) {
+                                                                                                            console.error("Error committing transaction:", err);
+                                                                                                            connection.rollback(() => {
+                                                                                                                connection.release();
+                                                                                                                return res.status(500).send('Database Error');
+                                                                                                            });
+                                                                                                        } else {
+                                                                                                            connection.release();
+                                                                                                            req?.io?.emit('getHoldCount', holdCount);
+                                                                                                            return res.status(200).send("Bill Is On Hold");
+                                                                                                        }
+                                                                                                    });
+                                                                                                }
+                                                                                            });
+                                                                                        }
+                                                                                    })
                                                                                 }
-                                                                            })
-                                                                        }
-                                                                    }
-                                                                })
-                                                            } else if (customerData.address) {
-                                                                let sql_querry_addNewCustomer = `INSERT INTO billing_customer_data(customerId, customerName, customerMobileNumber, birthDate, anniversaryDate)
-                                                                                                 VALUES ('${newCustometId}', ${customerData.customerName ? `TRIM('${customerData.customerName}')` : null}, ${customerData.mobileNo ? `'${customerData.mobileNo}'` : null}, ${customerData.birthDate ? `STR_TO_DATE('${customerData.birthDate}','%b %d %Y')` : null}, ${customerData.aniversaryDate ? `STR_TO_DATE('${customerData.aniversaryDate}','%b %d %Y')` : null})`;
-                                                                connection.query(sql_querry_addNewCustomer, (err) => {
-                                                                    if (err) {
-                                                                        console.error("Error inserting New Customer Data:", err);
-                                                                        connection.rollback(() => {
-                                                                            connection.release();
-                                                                            return res.status(500).send('Database Error');
-                                                                        });
-                                                                    } else {
-                                                                        let sql_querry_addNewAddress = `INSERT INTO billing_customerAddress_data(addressId, customerId, customerAddress, customerLocality)
-                                                                                                        VALUES ('${newAddressId}', '${newCustometId}', TRIM('${customerData.address}'), ${customerData.locality ? `TRIM('${customerData.locality}')` : null})`;
-                                                                        connection.query(sql_querry_addNewAddress, (err) => {
+                                                                            }
+                                                                        })
+                                                                    } else if (customerData.address) {
+                                                                        let sql_querry_addNewCustomer = `INSERT INTO billing_customer_data(customerId, customerName, customerMobileNumber, birthDate, anniversaryDate)
+                                                                                                         VALUES ('${newCustometId}', ${customerData.customerName ? `TRIM('${customerData.customerName}')` : null}, ${customerData.mobileNo ? `'${customerData.mobileNo}'` : null}, ${customerData.birthDate ? `STR_TO_DATE('${customerData.birthDate}','%b %d %Y')` : null}, ${customerData.aniversaryDate ? `STR_TO_DATE('${customerData.aniversaryDate}','%b %d %Y')` : null})`;
+                                                                        connection.query(sql_querry_addNewCustomer, (err) => {
                                                                             if (err) {
-                                                                                console.error("Error inserting Customer New Address:", err);
+                                                                                console.error("Error inserting New Customer Data:", err);
                                                                                 connection.rollback(() => {
                                                                                     connection.release();
                                                                                     return res.status(500).send('Database Error');
                                                                                 });
                                                                             } else {
-                                                                                let sql_query_addAddressRelation = `INSERT INTO hold_billWiseCustomer_data(bwcId, holdId, customerId, addressId, customerName)
-                                                                                                                    VALUES ('${bwcId}', '${holdId}', '${newCustometId}', '${newAddressId}', ${customerData.customerName ? `TRIM('${customerData.customerName}')` : null})`;
-                                                                                connection.query(sql_query_addAddressRelation, (err) => {
+                                                                                let sql_querry_addNewAddress = `INSERT INTO billing_customerAddress_data(addressId, customerId, customerAddress, customerLocality)
+                                                                                                                VALUES ('${newAddressId}', '${newCustometId}', TRIM('${customerData.address}'), ${customerData.locality ? `TRIM('${customerData.locality}')` : null})`;
+                                                                                connection.query(sql_querry_addNewAddress, (err) => {
                                                                                     if (err) {
-                                                                                        console.error("Error inserting Customer Bill Wise Data:", err);
+                                                                                        console.error("Error inserting Customer New Address:", err);
                                                                                         connection.rollback(() => {
                                                                                             connection.release();
                                                                                             return res.status(500).send('Database Error');
                                                                                         });
                                                                                     } else {
-                                                                                        connection.commit((err) => {
+                                                                                        let sql_query_addAddressRelation = `INSERT INTO hold_billWiseCustomer_data(bwcId, holdId, customerId, addressId, mobileNo, customerName, address, locality)
+                                                                                                                            VALUES ('${bwcId}', '${holdId}', '${newCustometId}', '${newAddressId}', ${customerData.mobileNo ? `TRIM('${customerData.mobileNo}')` : null}, ${customerData.customerName ? `TRIM('${customerData.customerName}')` : null}, ${customerData.address ? `'${customerData.address}'` : null}, ${customerData.locality ? `'${customerData.locality}'` : null})`;
+                                                                                        connection.query(sql_query_addAddressRelation, (err) => {
                                                                                             if (err) {
-                                                                                                console.error("Error committing transaction:", err);
+                                                                                                console.error("Error inserting Customer Bill Wise Data:", err);
                                                                                                 connection.rollback(() => {
                                                                                                     connection.release();
                                                                                                     return res.status(500).send('Database Error');
                                                                                                 });
                                                                                             } else {
-                                                                                                connection.release();
-                                                                                                return res.status(200).send("Bill is On Hold");
+                                                                                                connection.commit((err) => {
+                                                                                                    if (err) {
+                                                                                                        console.error("Error committing transaction:", err);
+                                                                                                        connection.rollback(() => {
+                                                                                                            connection.release();
+                                                                                                            return res.status(500).send('Database Error');
+                                                                                                        });
+                                                                                                    } else {
+                                                                                                        connection.release();
+                                                                                                        req?.io?.emit('getHoldCount', holdCount);
+                                                                                                        return res.status(200).send("Bill Is On Hold");
+                                                                                                    }
+                                                                                                });
                                                                                             }
                                                                                         });
                                                                                     }
-                                                                                });
+                                                                                })
                                                                             }
                                                                         })
-                                                                    }
-                                                                })
-                                                            } else if (existCustomerId) {
-                                                                let sql_query_addAddressRelation = `INSERT INTO hold_billWiseCustomer_data(bwcId, holdId, customerId, addressId, customerName)
-                                                                                                    VALUES ('${bwcId}', '${holdId}', '${existCustomerId}', NULL, ${customerData.customerName ? `TRIM('${customerData.customerName}')` : null})`;
-                                                                connection.query(sql_query_addAddressRelation, (err) => {
-                                                                    if (err) {
-                                                                        console.error("Error inserting Customer Bill Wise Data:", err);
-                                                                        connection.rollback(() => {
-                                                                            connection.release();
-                                                                            return res.status(500).send('Database Error');
-                                                                        });
-                                                                    } else {
-                                                                        connection.commit((err) => {
-                                                                            if (err) {
-                                                                                console.error("Error committing transaction:", err);
-                                                                                connection.rollback(() => {
-                                                                                    connection.release();
-                                                                                    return res.status(500).send('Database Error');
-                                                                                });
-                                                                            } else {
-                                                                                connection.release();
-                                                                                return res.status(200).send("Bill is On Hold");
-                                                                            }
-                                                                        });
-                                                                    }
-                                                                });
-                                                            } else if (customerData.mobileNo) {
-                                                                let sql_querry_addNewCustomer = `INSERT INTO billing_customer_data(customerId, customerName, customerMobileNumber, birthDate, anniversaryDate)
-                                                                                                 VALUES ('${newCustometId}', ${customerData.customerName ? `TRIM('${customerData.customerName}')` : null}, ${customerData.mobileNo ? `'${customerData.mobileNo}'` : null}, ${customerData.birthDate ? `STR_TO_DATE('${customerData.birthDate}','%b %d %Y')` : null}, ${customerData.aniversaryDate ? `STR_TO_DATE('${customerData.aniversaryDate}','%b %d %Y')` : null})`;
-                                                                connection.query(sql_querry_addNewCustomer, (err) => {
-                                                                    if (err) {
-                                                                        console.error("Error inserting New Customer Data:", err);
-                                                                        connection.rollback(() => {
-                                                                            connection.release();
-                                                                            return res.status(500).send('Database Error');
-                                                                        });
-                                                                    } else {
-                                                                        let sql_query_addAddressRelation = `INSERT INTO hold_billWiseCustomer_data(bwcId, holdId, customerId, addressId, customerName)
-                                                                                                            VALUES ('${bwcId}', '${holdId}', '${newCustometId}', NULL, ${customerData.customerName ? `TRIM('${customerData.customerName}')` : null})`;
+                                                                    } else if (existCustomerId) {
+                                                                        let sql_query_addAddressRelation = `INSERT INTO hold_billWiseCustomer_data(bwcId, holdId, customerId, addressId, mobileNo, customerName, address, locality)
+                                                                                                            VALUES ('${bwcId}', '${holdId}', '${existCustomerId}', NULL, ${customerData.mobileNo ? `TRIM('${customerData.mobileNo}')` : null}, ${customerData.customerName ? `TRIM('${customerData.customerName}')` : null}, ${customerData.address ? `'${customerData.address}'` : null}, ${customerData.locality ? `'${customerData.locality}'` : null})`;
                                                                         connection.query(sql_query_addAddressRelation, (err) => {
                                                                             if (err) {
                                                                                 console.error("Error inserting Customer Bill Wise Data:", err);
@@ -718,56 +741,123 @@ const addPickUpHoldBillData = (req, res) => {
                                                                                         });
                                                                                     } else {
                                                                                         connection.release();
-                                                                                        return res.status(200).send("Bill is On Hold");
+                                                                                        req?.io?.emit('getHoldCount', holdCount);
+                                                                                        return res.status(200).send("Bill Is On Hold");
                                                                                     }
                                                                                 });
                                                                             }
                                                                         });
-                                                                    }
-                                                                })
-                                                            } else {
-                                                                let sql_query_addAddressRelation = `INSERT INTO hold_billWiseCustomer_data(bwcId, holdId, customerId, addressId, customerName)
-                                                                                                    VALUES ('${bwcId}', '${holdId}', NULL, NULL, ${customerData.customerName ? `TRIM('${customerData.customerName}')` : null})`;
-                                                                connection.query(sql_query_addAddressRelation, (err) => {
-                                                                    if (err) {
-                                                                        console.error("Error inserting Customer Bill Wise Data:", err);
-                                                                        connection.rollback(() => {
-                                                                            connection.release();
-                                                                            return res.status(500).send('Database Error');
-                                                                        });
-                                                                    } else {
-                                                                        connection.commit((err) => {
+                                                                    } else if (customerData.mobileNo) {
+                                                                        let sql_querry_addNewCustomer = `INSERT INTO billing_customer_data(customerId, customerName, customerMobileNumber, birthDate, anniversaryDate)
+                                                                                                         VALUES ('${newCustometId}', ${customerData.customerName ? `TRIM('${customerData.customerName}')` : null}, ${customerData.mobileNo ? `'${customerData.mobileNo}'` : null}, ${customerData.birthDate ? `STR_TO_DATE('${customerData.birthDate}','%b %d %Y')` : null}, ${customerData.aniversaryDate ? `STR_TO_DATE('${customerData.aniversaryDate}','%b %d %Y')` : null})`;
+                                                                        connection.query(sql_querry_addNewCustomer, (err) => {
                                                                             if (err) {
-                                                                                console.error("Error committing transaction:", err);
+                                                                                console.error("Error inserting New Customer Data:", err);
                                                                                 connection.rollback(() => {
                                                                                     connection.release();
                                                                                     return res.status(500).send('Database Error');
                                                                                 });
                                                                             } else {
-                                                                                connection.release();
-                                                                                return res.status(200).send("Bill is On Hold");
+                                                                                let sql_query_addAddressRelation = `INSERT INTO hold_billWiseCustomer_data(bwcId, holdId, customerId, addressId, mobileNo, customerName, address, locality)
+                                                                                                                    VALUES ('${bwcId}', '${holdId}', '${newCustometId}', NULL, ${customerData.mobileNo ? `TRIM('${customerData.mobileNo}')` : null}, ${customerData.customerName ? `TRIM('${customerData.customerName}')` : null}, ${customerData.address ? `'${customerData.address}'` : null}, ${customerData.locality ? `'${customerData.locality}'` : null})`;
+                                                                                connection.query(sql_query_addAddressRelation, (err) => {
+                                                                                    if (err) {
+                                                                                        console.error("Error inserting Customer Bill Wise Data:", err);
+                                                                                        connection.rollback(() => {
+                                                                                            connection.release();
+                                                                                            return res.status(500).send('Database Error');
+                                                                                        });
+                                                                                    } else {
+                                                                                        connection.commit((err) => {
+                                                                                            if (err) {
+                                                                                                console.error("Error committing transaction:", err);
+                                                                                                connection.rollback(() => {
+                                                                                                    connection.release();
+                                                                                                    return res.status(500).send('Database Error');
+                                                                                                });
+                                                                                            } else {
+                                                                                                connection.release();
+                                                                                                req?.io?.emit('getHoldCount', holdCount);
+                                                                                                return res.status(200).send("Bill Is On Hold");
+                                                                                            }
+                                                                                        });
+                                                                                    }
+                                                                                });
+                                                                            }
+                                                                        })
+                                                                    } else {
+                                                                        let sql_query_addAddressRelation = `INSERT INTO hold_billWiseCustomer_data(bwcId, holdId, customerId, addressId, mobileNo, customerName, address, locality)
+                                                                                                            VALUES ('${bwcId}', '${holdId}', NULL, NULL, ${customerData.mobileNo ? `TRIM('${customerData.mobileNo}')` : null}, ${customerData.customerName ? `TRIM('${customerData.customerName}')` : null}, ${customerData.address ? `'${customerData.address}'` : null}, ${customerData.locality ? `'${customerData.locality}'` : null})`;
+                                                                        connection.query(sql_query_addAddressRelation, (err) => {
+                                                                            if (err) {
+                                                                                console.error("Error inserting Customer Bill Wise Data:", err);
+                                                                                connection.rollback(() => {
+                                                                                    connection.release();
+                                                                                    return res.status(500).send('Database Error');
+                                                                                });
+                                                                            } else {
+                                                                                connection.commit((err) => {
+                                                                                    if (err) {
+                                                                                        console.error("Error committing transaction:", err);
+                                                                                        connection.rollback(() => {
+                                                                                            connection.release();
+                                                                                            return res.status(500).send('Database Error');
+                                                                                        });
+                                                                                    } else {
+                                                                                        connection.release();
+                                                                                        req?.io?.emit('getHoldCount', holdCount);
+                                                                                        return res.status(200).send("Bill Is On Hold");
+                                                                                    }
+                                                                                });
                                                                             }
                                                                         });
                                                                     }
-                                                                });
-                                                            }
-                                                        }
-                                                    })
-                                                } else {
-                                                    connection.commit((err) => {
-                                                        if (err) {
-                                                            console.error("Error committing transaction:", err);
-                                                            connection.rollback(() => {
-                                                                connection.release();
-                                                                return res.status(500).send('Database Error');
+                                                                }
+                                                            })
+                                                        } else if (customerData.address || customerData.locality) {
+                                                            let sql_query_addAddressRelation = `INSERT INTO hold_billWiseCustomer_data(bwcId, holdId, customerId, addressId, mobileNo, customerName, address, locality)
+                                                                                                VALUES ('${bwcId}', '${holdId}', NULL, NULL, ${customerData.mobileNo ? `TRIM('${customerData.mobileNo}')` : null}, ${customerData.customerName ? `TRIM('${customerData.customerName}')` : null}, ${customerData.address ? `'${customerData.address}'` : null}, ${customerData.locality ? `'${customerData.locality}'` : null})`;
+                                                            connection.query(sql_query_addAddressRelation, (err) => {
+                                                                if (err) {
+                                                                    console.error("Error inserting Customer Bill Wise Data:", err);
+                                                                    connection.rollback(() => {
+                                                                        connection.release();
+                                                                        return res.status(500).send('Database Error');
+                                                                    });
+                                                                } else {
+                                                                    connection.commit((err) => {
+                                                                        if (err) {
+                                                                            console.error("Error committing transaction:", err);
+                                                                            connection.rollback(() => {
+                                                                                connection.release();
+                                                                                return res.status(500).send('Database Error');
+                                                                            });
+                                                                        } else {
+                                                                            connection.release();
+                                                                            req?.io?.emit('getHoldCount', holdCount);
+                                                                            return res.status(200).send("Bill Is On Hold");
+                                                                        }
+                                                                    });
+                                                                }
                                                             });
                                                         } else {
-                                                            connection.release();
-                                                            return res.status(200).send("Bill is On Hold");
+                                                            connection.commit((err) => {
+                                                                if (err) {
+                                                                    console.error("Error committing transaction:", err);
+                                                                    connection.rollback(() => {
+                                                                        connection.release();
+                                                                        return res.status(500).send('Database Error');
+                                                                    });
+                                                                } else {
+                                                                    connection.release();
+                                                                    req?.io?.emit('getHoldCount', holdCount);
+                                                                    return res.status(200).send("Bill Is On Hold");
+                                                                }
+                                                            });
                                                         }
-                                                    });
+                                                    }
                                                 }
-                                            }
+                                            })
                                         }
                                     });
                                 }
@@ -791,7 +881,7 @@ const addPickUpHoldBillData = (req, res) => {
     });
 }
 
-// Add PickUp Bill Data
+// Add Delivery Bill Data
 
 const addDeliveryHoldBillData = (req, res) => {
     pool2.getConnection((err, connection) => {
@@ -880,81 +970,57 @@ const addDeliveryHoldBillData = (req, res) => {
                                                 return res.status(500).send('Database Error');
                                             });
                                         } else {
-                                            const customerData = holdData.customerDetails;
-                                            if (customerData && customerData.customerId && customerData.addressId) {
-                                                let sql_query_addAddressRelation = `INSERT INTO hold_billWiseCustomer_data(bwcId, holdId, customerId, addressId, customerName)
-                                                                                    VALUES ('${bwcId}', '${holdId}', '${customerData.customerId}', '${customerData.addressId}', ${customerData.customerName ? `TRIM('${customerData.customerName}')` : null})`;
-                                                connection.query(sql_query_addAddressRelation, (err) => {
-                                                    if (err) {
-                                                        console.error("Error inserting Customer Bill Wise Data:", err);
-                                                        connection.rollback(() => {
-                                                            connection.release();
-                                                            return res.status(500).send('Database Error');
-                                                        });
-                                                    } else {
-                                                        connection.commit((err) => {
+                                            let sql_query_getHoldCount = `SELECT COUNT(*) AS holdNo FROM hold_data`;
+                                            connection.query(sql_query_getHoldCount, (err, count) => {
+                                                if (err) {
+                                                    console.error("Error inserting Bill Wise Item Data:", err);
+                                                    connection.rollback(() => {
+                                                        connection.release();
+                                                        return res.status(500).send('Database Error');
+                                                    });
+                                                } else {
+                                                    let holdCount = count && count[0] ? count[0].holdNo : 0;
+                                                    const customerData = holdData.customerDetails;
+                                                    if (customerData && customerData.customerId && customerData.addressId) {
+                                                        let sql_query_addAddressRelation = `INSERT INTO hold_billWiseCustomer_data(bwcId, holdId, customerId, addressId, mobileNo, customerName, address, locality)
+                                                                                            VALUES ('${bwcId}', '${holdId}', '${customerData.customerId}', '${customerData.addressId}', ${customerData.mobileNo ? `TRIM('${customerData.mobileNo}')` : null}, ${customerData.customerName ? `TRIM('${customerData.customerName}')` : null}, ${customerData.address ? `'${customerData.address}'` : null}, ${customerData.locality ? `'${customerData.locality}'` : null})`;
+                                                        connection.query(sql_query_addAddressRelation, (err) => {
                                                             if (err) {
-                                                                console.error("Error committing transaction:", err);
+                                                                console.error("Error inserting Customer Bill Wise Data:", err);
                                                                 connection.rollback(() => {
                                                                     connection.release();
                                                                     return res.status(500).send('Database Error');
                                                                 });
                                                             } else {
-                                                                connection.release();
-                                                                return res.status(200).send("Bill is On Hold");
+                                                                connection.commit((err) => {
+                                                                    if (err) {
+                                                                        console.error("Error committing transaction:", err);
+                                                                        connection.rollback(() => {
+                                                                            connection.release();
+                                                                            return res.status(500).send('Database Error');
+                                                                        });
+                                                                    } else {
+                                                                        connection.release();
+                                                                        req?.io?.emit('getHoldCount', holdCount);
+                                                                        return res.status(200).send("Bill Is On Hold");
+                                                                    }
+                                                                });
                                                             }
                                                         });
-                                                    }
-                                                });
-                                            } else if (customerData && customerData.customerId && customerData.address) {
-                                                let sql_queries_chkOldAdd = `SELECT addressId, customerId FROM billing_customerAddress_data WHERE customerAddress = TRIM('${customerData.address}') AND customerLocality = '${customerData.locality}'`;
-                                                connection.query(sql_queries_chkOldAdd, (err, oldAdd) => {
-                                                    if (err) {
-                                                        console.error("Error inserting Customer New Address:", err);
-                                                        connection.rollback(() => {
-                                                            connection.release();
-                                                            return res.status(500).send('Database Error');
-                                                        });
-                                                    } else {
-                                                        if (oldAdd && oldAdd[0]) {
-                                                            const existAddressId = oldAdd[0].addressId;
-                                                            let sql_query_addAddressRelation = `INSERT INTO hold_billWiseCustomer_data(bwcId, holdId, customerId, addressId, customerName)
-                                                                                                VALUES ('${bwcId}', '${holdId}', '${customerData.customerId}', '${existAddressId}', ${customerData.customerName ? `TRIM('${customerData.customerName}')` : null})`;
-                                                            connection.query(sql_query_addAddressRelation, (err) => {
-                                                                if (err) {
-                                                                    console.error("Error inserting Customer Bill Wise Data:", err);
-                                                                    connection.rollback(() => {
-                                                                        connection.release();
-                                                                        return res.status(500).send('Database Error');
-                                                                    });
-                                                                } else {
-                                                                    connection.commit((err) => {
-                                                                        if (err) {
-                                                                            console.error("Error committing transaction:", err);
-                                                                            connection.rollback(() => {
-                                                                                connection.release();
-                                                                                return res.status(500).send('Database Error');
-                                                                            });
-                                                                        } else {
-                                                                            connection.release();
-                                                                            return res.status(200).send("Bill is On Hold");
-                                                                        }
-                                                                    });
-                                                                }
-                                                            });
-                                                        } else {
-                                                            let sql_querry_addNewAddress = `INSERT INTO billing_customerAddress_data(addressId, customerId, customerAddress, customerLocality)
-                                                                                            VALUES ('${newAddressId}', '${customerData.customerId}', TRIM('${customerData.address}'), ${customerData.locality ? `TRIM('${customerData.locality}')` : null})`;
-                                                            connection.query(sql_querry_addNewAddress, (err) => {
-                                                                if (err) {
-                                                                    console.error("Error inserting Customer New Address:", err);
-                                                                    connection.rollback(() => {
-                                                                        connection.release();
-                                                                        return res.status(500).send('Database Error');
-                                                                    });
-                                                                } else {
-                                                                    let sql_query_addAddressRelation = `INSERT INTO hold_billWiseCustomer_data(bwcId, holdId, customerId, addressId, customerName)
-                                                                                                        VALUES ('${bwcId}', '${holdId}', '${customerData.customerId}', '${newAddressId}', ${customerData.customerName ? `TRIM('${customerData.customerName}')` : null})`;
+                                                    } else if (customerData && customerData.customerId && customerData.address) {
+                                                        let sql_queries_chkOldAdd = `SELECT addressId, customerId FROM billing_customerAddress_data WHERE customerAddress = TRIM('${customerData.address}') AND customerLocality = '${customerData.locality}'`;
+                                                        connection.query(sql_queries_chkOldAdd, (err, oldAdd) => {
+                                                            if (err) {
+                                                                console.error("Error inserting Customer New Address:", err);
+                                                                connection.rollback(() => {
+                                                                    connection.release();
+                                                                    return res.status(500).send('Database Error');
+                                                                });
+                                                            } else {
+                                                                if (oldAdd && oldAdd[0]) {
+                                                                    const existAddressId = oldAdd[0].addressId;
+                                                                    let sql_query_addAddressRelation = `INSERT INTO hold_billWiseCustomer_data(bwcId, holdId, customerId, addressId, mobileNo, customerName, address, locality)
+                                                                                                        VALUES ('${bwcId}', '${holdId}', '${customerData.customerId}', '${existAddressId}', ${customerData.mobileNo ? `TRIM('${customerData.mobileNo}')` : null}, ${customerData.customerName ? `TRIM('${customerData.customerName}')` : null}, ${customerData.address ? `'${customerData.address}'` : null}, ${customerData.locality ? `'${customerData.locality}'` : null})`;
                                                                     connection.query(sql_query_addAddressRelation, (err) => {
                                                                         if (err) {
                                                                             console.error("Error inserting Customer Bill Wise Data:", err);
@@ -972,67 +1038,25 @@ const addDeliveryHoldBillData = (req, res) => {
                                                                                     });
                                                                                 } else {
                                                                                     connection.release();
-                                                                                    return res.status(200).send("Bill is On Hold");
+                                                                                    req?.io?.emit('getHoldCount', holdCount);
+                                                                                    return res.status(200).send("Bill Is On Hold");
                                                                                 }
                                                                             });
                                                                         }
                                                                     });
-                                                                }
-                                                            })
-                                                        }
-                                                    }
-                                                });
-                                            } else if (customerData && customerData.customerId) {
-                                                let sql_query_addAddressRelation = `INSERT INTO hold_billWiseCustomer_data(bwcId, holdId, customerId, addressId, customerName)
-                                                                                    VALUES ('${bwcId}', '${holdId}', '${customerData.customerId}', ${customerData.addressId ? `'${customerData.addressId}'` : null}, ${customerData.customerName ? `TRIM('${customerData.customerName}')` : null})`;
-                                                connection.query(sql_query_addAddressRelation, (err) => {
-                                                    if (err) {
-                                                        console.error("Error inserting Customer Bill Wise Data:", err);
-                                                        connection.rollback(() => {
-                                                            connection.release();
-                                                            return res.status(500).send('Database Error');
-                                                        });
-                                                    } else {
-                                                        connection.commit((err) => {
-                                                            if (err) {
-                                                                console.error("Error committing transaction:", err);
-                                                                connection.rollback(() => {
-                                                                    connection.release();
-                                                                    return res.status(500).send('Database Error');
-                                                                });
-                                                            } else {
-                                                                connection.release();
-                                                                return res.status(200).send("Bill is On Hold");
-                                                            }
-                                                        });
-                                                    }
-                                                });
-                                            } else {
-                                                if (customerData && (customerData.customerName || customerData.mobileNo)) {
-                                                    let sql_querry_getExistCustomer = `SELECT customerId, customerMobileNumber FROM billing_customer_data WHERE customerMobileNumber = '${customerData.mobileNo}'`;
-                                                    connection.query(sql_querry_getExistCustomer, (err, num) => {
-                                                        if (err) {
-                                                            console.error("Error Get Existing Customer Data:", err);
-                                                            connection.rollback(() => {
-                                                                connection.release();
-                                                                return res.status(500).send('Database Error');
-                                                            });
-                                                        } else {
-                                                            const existCustomerId = num && num[0] ? num[0].customerId : null;
-                                                            if (existCustomerId && customerData.address) {
-                                                                let sql_queries_chkOldAdd = `SELECT addressId, customerId FROM billing_customerAddress_data WHERE customerAddress = TRIM('${customerData.address}') AND customerLocality = '${customerData.locality}'`;
-                                                                connection.query(sql_queries_chkOldAdd, (err, oldAdd) => {
-                                                                    if (err) {
-                                                                        console.error("Error inserting Customer New Address:", err);
-                                                                        connection.rollback(() => {
-                                                                            connection.release();
-                                                                            return res.status(500).send('Database Error');
-                                                                        });
-                                                                    } else {
-                                                                        if (oldAdd && oldAdd[0]) {
-                                                                            const existAddressId = oldAdd[0].addressId;
-                                                                            let sql_query_addAddressRelation = `INSERT INTO hold_billWiseCustomer_data(bwcId, holdId, customerId, addressId, customerName)
-                                                                                                                VALUES ('${bwcId}', '${holdId}', '${existCustomerId}', '${existAddressId}', ${customerData.customerName ? `TRIM('${customerData.customerName}')` : null})`;
+                                                                } else {
+                                                                    let sql_querry_addNewAddress = `INSERT INTO billing_customerAddress_data(addressId, customerId, customerAddress, customerLocality)
+                                                                                                    VALUES ('${newAddressId}', '${customerData.customerId}', TRIM('${customerData.address}'), ${customerData.locality ? `TRIM('${customerData.locality}')` : null})`;
+                                                                    connection.query(sql_querry_addNewAddress, (err) => {
+                                                                        if (err) {
+                                                                            console.error("Error inserting Customer New Address:", err);
+                                                                            connection.rollback(() => {
+                                                                                connection.release();
+                                                                                return res.status(500).send('Database Error');
+                                                                            });
+                                                                        } else {
+                                                                            let sql_query_addAddressRelation = `INSERT INTO hold_billWiseCustomer_data(bwcId, holdId, customerId, addressId, mobileNo, customerName, address, locality)
+                                                                                                                VALUES ('${bwcId}', '${holdId}', '${customerData.customerId}', '${newAddressId}', ${customerData.mobileNo ? `TRIM('${customerData.mobileNo}')` : null}, ${customerData.customerName ? `TRIM('${customerData.customerName}')` : null}, ${customerData.address ? `'${customerData.address}'` : null}, ${customerData.locality ? `'${customerData.locality}'` : null})`;
                                                                             connection.query(sql_query_addAddressRelation, (err) => {
                                                                                 if (err) {
                                                                                     console.error("Error inserting Customer Bill Wise Data:", err);
@@ -1050,24 +1074,69 @@ const addDeliveryHoldBillData = (req, res) => {
                                                                                             });
                                                                                         } else {
                                                                                             connection.release();
-                                                                                            return res.status(200).send("Bill is On Hold");
+                                                                                            req?.io?.emit('getHoldCount', holdCount);
+                                                                                            return res.status(200).send("Bill Is On Hold");
                                                                                         }
                                                                                     });
                                                                                 }
                                                                             });
-                                                                        } else {
-                                                                            let sql_querry_addNewAddress = `INSERT INTO billing_customerAddress_data(addressId, customerId, customerAddress, customerLocality)
-                                                                                                            VALUES ('${newAddressId}', '${existCustomerId}', TRIM('${customerData.address}'), ${customerData.locality ? `TRIM('${customerData.locality}')` : null})`;
-                                                                            connection.query(sql_querry_addNewAddress, (err) => {
-                                                                                if (err) {
-                                                                                    console.error("Error inserting Customer New Address:", err);
-                                                                                    connection.rollback(() => {
-                                                                                        connection.release();
-                                                                                        return res.status(500).send('Database Error');
-                                                                                    });
-                                                                                } else {
-                                                                                    let sql_query_addAddressRelation = `INSERT INTO hold_billWiseCustomer_data(bwcId, holdId, customerId, addressId, customerName)
-                                                                                                                        VALUES ('${bwcId}', '${holdId}', '${existCustomerId}', '${newAddressId}', ${customerData.customerName ? `TRIM('${customerData.customerName}')` : null})`;
+                                                                        }
+                                                                    })
+                                                                }
+                                                            }
+                                                        });
+                                                    } else if (customerData && customerData.customerId) {
+                                                        let sql_query_addAddressRelation = `INSERT INTO hold_billWiseCustomer_data(bwcId, holdId, customerId, addressId, mobileNo, customerName, address, locality)
+                                                                                            VALUES ('${bwcId}', '${holdId}', '${customerData.customerId}', ${customerData.addressId ? `'${customerData.addressId}'` : null}, ${customerData.mobileNo ? `TRIM('${customerData.mobileNo}')` : null}, ${customerData.customerName ? `TRIM('${customerData.customerName}')` : null}, ${customerData.address ? `'${customerData.address}'` : null}, ${customerData.locality ? `'${customerData.locality}'` : null})`;
+                                                        connection.query(sql_query_addAddressRelation, (err) => {
+                                                            if (err) {
+                                                                console.error("Error inserting Customer Bill Wise Data:", err);
+                                                                connection.rollback(() => {
+                                                                    connection.release();
+                                                                    return res.status(500).send('Database Error');
+                                                                });
+                                                            } else {
+                                                                connection.commit((err) => {
+                                                                    if (err) {
+                                                                        console.error("Error committing transaction:", err);
+                                                                        connection.rollback(() => {
+                                                                            connection.release();
+                                                                            return res.status(500).send('Database Error');
+                                                                        });
+                                                                    } else {
+                                                                        connection.release();
+                                                                        req?.io?.emit('getHoldCount', holdCount);
+                                                                        return res.status(200).send("Bill Is On Hold");
+                                                                    }
+                                                                });
+                                                            }
+                                                        });
+                                                    } else {
+                                                        if (customerData && (customerData.customerName || customerData.mobileNo)) {
+                                                            let sql_querry_getExistCustomer = `SELECT customerId, customerMobileNumber FROM billing_customer_data WHERE customerMobileNumber = '${customerData.mobileNo}'`;
+                                                            connection.query(sql_querry_getExistCustomer, (err, num) => {
+                                                                if (err) {
+                                                                    console.error("Error Get Existing Customer Data:", err);
+                                                                    connection.rollback(() => {
+                                                                        connection.release();
+                                                                        return res.status(500).send('Database Error');
+                                                                    });
+                                                                } else {
+                                                                    const existCustomerId = num && num[0] ? num[0].customerId : null;
+                                                                    if (existCustomerId && customerData.address) {
+                                                                        let sql_queries_chkOldAdd = `SELECT addressId, customerId FROM billing_customerAddress_data WHERE customerAddress = TRIM('${customerData.address}') AND customerLocality = '${customerData.locality}'`;
+                                                                        connection.query(sql_queries_chkOldAdd, (err, oldAdd) => {
+                                                                            if (err) {
+                                                                                console.error("Error inserting Customer New Address:", err);
+                                                                                connection.rollback(() => {
+                                                                                    connection.release();
+                                                                                    return res.status(500).send('Database Error');
+                                                                                });
+                                                                            } else {
+                                                                                if (oldAdd && oldAdd[0]) {
+                                                                                    const existAddressId = oldAdd[0].addressId;
+                                                                                    let sql_query_addAddressRelation = `INSERT INTO hold_billWiseCustomer_data(bwcId, holdId, customerId, addressId, mobileNo, customerName, address, locality)
+                                                                                                                        VALUES ('${bwcId}', '${holdId}', '${existCustomerId}', '${existAddressId}', ${customerData.mobileNo ? `TRIM('${customerData.mobileNo}')` : null}, ${customerData.customerName ? `TRIM('${customerData.customerName}')` : null}, ${customerData.address ? `'${customerData.address}'` : null}, ${customerData.locality ? `'${customerData.locality}'` : null})`;
                                                                                     connection.query(sql_query_addAddressRelation, (err) => {
                                                                                         if (err) {
                                                                                             console.error("Error inserting Customer Bill Wise Data:", err);
@@ -1085,103 +1154,106 @@ const addDeliveryHoldBillData = (req, res) => {
                                                                                                     });
                                                                                                 } else {
                                                                                                     connection.release();
-                                                                                                    return res.status(200).send("Bill is On Hold");
+                                                                                                    req?.io?.emit('getHoldCount', holdCount);
+                                                                                                    return res.status(200).send("Bill Is On Hold");
                                                                                                 }
                                                                                             });
                                                                                         }
                                                                                     });
+                                                                                } else {
+                                                                                    let sql_querry_addNewAddress = `INSERT INTO billing_customerAddress_data(addressId, customerId, customerAddress, customerLocality)
+                                                                                                                    VALUES ('${newAddressId}', '${existCustomerId}', TRIM('${customerData.address}'), ${customerData.locality ? `TRIM('${customerData.locality}')` : null})`;
+                                                                                    connection.query(sql_querry_addNewAddress, (err) => {
+                                                                                        if (err) {
+                                                                                            console.error("Error inserting Customer New Address:", err);
+                                                                                            connection.rollback(() => {
+                                                                                                connection.release();
+                                                                                                return res.status(500).send('Database Error');
+                                                                                            });
+                                                                                        } else {
+                                                                                            let sql_query_addAddressRelation = `INSERT INTO hold_billWiseCustomer_data(bwcId, holdId, customerId, addressId, mobileNo, customerName, address, locality)
+                                                                                                                                VALUES ('${bwcId}', '${holdId}', '${existCustomerId}', '${newAddressId}', ${customerData.mobileNo ? `TRIM('${customerData.mobileNo}')` : null}, ${customerData.customerName ? `TRIM('${customerData.customerName}')` : null}, ${customerData.address ? `'${customerData.address}'` : null}, ${customerData.locality ? `'${customerData.locality}'` : null})`;
+                                                                                            connection.query(sql_query_addAddressRelation, (err) => {
+                                                                                                if (err) {
+                                                                                                    console.error("Error inserting Customer Bill Wise Data:", err);
+                                                                                                    connection.rollback(() => {
+                                                                                                        connection.release();
+                                                                                                        return res.status(500).send('Database Error');
+                                                                                                    });
+                                                                                                } else {
+                                                                                                    connection.commit((err) => {
+                                                                                                        if (err) {
+                                                                                                            console.error("Error committing transaction:", err);
+                                                                                                            connection.rollback(() => {
+                                                                                                                connection.release();
+                                                                                                                return res.status(500).send('Database Error');
+                                                                                                            });
+                                                                                                        } else {
+                                                                                                            connection.release();
+                                                                                                            req?.io?.emit('getHoldCount', holdCount);
+                                                                                                            return res.status(200).send("Bill Is On Hold");
+                                                                                                        }
+                                                                                                    });
+                                                                                                }
+                                                                                            });
+                                                                                        }
+                                                                                    })
                                                                                 }
-                                                                            })
-                                                                        }
-                                                                    }
-                                                                })
-                                                            } else if (customerData.address) {
-                                                                let sql_querry_addNewCustomer = `INSERT INTO billing_customer_data(customerId, customerName, customerMobileNumber, birthDate, anniversaryDate)
-                                                                                                 VALUES ('${newCustometId}', ${customerData.customerName ? `TRIM('${customerData.customerName}')` : null}, ${customerData.mobileNo ? `'${customerData.mobileNo}'` : null}, ${customerData.birthDate ? `STR_TO_DATE('${customerData.birthDate}','%b %d %Y')` : null}, ${customerData.aniversaryDate ? `STR_TO_DATE('${customerData.aniversaryDate}','%b %d %Y')` : null})`;
-                                                                connection.query(sql_querry_addNewCustomer, (err) => {
-                                                                    if (err) {
-                                                                        console.error("Error inserting New Customer Data:", err);
-                                                                        connection.rollback(() => {
-                                                                            connection.release();
-                                                                            return res.status(500).send('Database Error');
-                                                                        });
-                                                                    } else {
-                                                                        let sql_querry_addNewAddress = `INSERT INTO billing_customerAddress_data(addressId, customerId, customerAddress, customerLocality)
-                                                                                                        VALUES ('${newAddressId}', '${newCustometId}', TRIM('${customerData.address}'), ${customerData.locality ? `TRIM('${customerData.locality}')` : null})`;
-                                                                        connection.query(sql_querry_addNewAddress, (err) => {
+                                                                            }
+                                                                        })
+                                                                    } else if (customerData.address) {
+                                                                        let sql_querry_addNewCustomer = `INSERT INTO billing_customer_data(customerId, customerName, customerMobileNumber, birthDate, anniversaryDate)
+                                                                                                         VALUES ('${newCustometId}', ${customerData.customerName ? `TRIM('${customerData.customerName}')` : null}, ${customerData.mobileNo ? `'${customerData.mobileNo}'` : null}, ${customerData.birthDate ? `STR_TO_DATE('${customerData.birthDate}','%b %d %Y')` : null}, ${customerData.aniversaryDate ? `STR_TO_DATE('${customerData.aniversaryDate}','%b %d %Y')` : null})`;
+                                                                        connection.query(sql_querry_addNewCustomer, (err) => {
                                                                             if (err) {
-                                                                                console.error("Error inserting Customer New Address:", err);
+                                                                                console.error("Error inserting New Customer Data:", err);
                                                                                 connection.rollback(() => {
                                                                                     connection.release();
                                                                                     return res.status(500).send('Database Error');
                                                                                 });
                                                                             } else {
-                                                                                let sql_query_addAddressRelation = `INSERT INTO hold_billWiseCustomer_data(bwcId, holdId, customerId, addressId, customerName)
-                                                                                                                    VALUES ('${bwcId}', '${holdId}', '${newCustometId}', '${newAddressId}', ${customerData.customerName ? `TRIM('${customerData.customerName}')` : null})`;
-                                                                                connection.query(sql_query_addAddressRelation, (err) => {
+                                                                                let sql_querry_addNewAddress = `INSERT INTO billing_customerAddress_data(addressId, customerId, customerAddress, customerLocality)
+                                                                                                                VALUES ('${newAddressId}', '${newCustometId}', TRIM('${customerData.address}'), ${customerData.locality ? `TRIM('${customerData.locality}')` : null})`;
+                                                                                connection.query(sql_querry_addNewAddress, (err) => {
                                                                                     if (err) {
-                                                                                        console.error("Error inserting Customer Bill Wise Data:", err);
+                                                                                        console.error("Error inserting Customer New Address:", err);
                                                                                         connection.rollback(() => {
                                                                                             connection.release();
                                                                                             return res.status(500).send('Database Error');
                                                                                         });
                                                                                     } else {
-                                                                                        connection.commit((err) => {
+                                                                                        let sql_query_addAddressRelation = `INSERT INTO hold_billWiseCustomer_data(bwcId, holdId, customerId, addressId, mobileNo, customerName, address, locality)
+                                                                                                                            VALUES ('${bwcId}', '${holdId}', '${newCustometId}', '${newAddressId}', ${customerData.mobileNo ? `TRIM('${customerData.mobileNo}')` : null}, ${customerData.customerName ? `TRIM('${customerData.customerName}')` : null}, ${customerData.address ? `'${customerData.address}'` : null}, ${customerData.locality ? `'${customerData.locality}'` : null})`;
+                                                                                        connection.query(sql_query_addAddressRelation, (err) => {
                                                                                             if (err) {
-                                                                                                console.error("Error committing transaction:", err);
+                                                                                                console.error("Error inserting Customer Bill Wise Data:", err);
                                                                                                 connection.rollback(() => {
                                                                                                     connection.release();
                                                                                                     return res.status(500).send('Database Error');
                                                                                                 });
                                                                                             } else {
-                                                                                                connection.release();
-                                                                                                return res.status(200).send("Bill is On Hold");
+                                                                                                connection.commit((err) => {
+                                                                                                    if (err) {
+                                                                                                        console.error("Error committing transaction:", err);
+                                                                                                        connection.rollback(() => {
+                                                                                                            connection.release();
+                                                                                                            return res.status(500).send('Database Error');
+                                                                                                        });
+                                                                                                    } else {
+                                                                                                        connection.release();
+                                                                                                        req?.io?.emit('getHoldCount', holdCount);
+                                                                                                        return res.status(200).send("Bill Is On Hold");
+                                                                                                    }
+                                                                                                });
                                                                                             }
                                                                                         });
                                                                                     }
-                                                                                });
+                                                                                })
                                                                             }
                                                                         })
-                                                                    }
-                                                                })
-                                                            } else if (existCustomerId) {
-                                                                let sql_query_addAddressRelation = `INSERT INTO hold_billWiseCustomer_data(bwcId, holdId, customerId, addressId, customerName)
-                                                                                                    VALUES ('${bwcId}', '${holdId}', '${existCustomerId}', NULL, ${customerData.customerName ? `TRIM('${customerData.customerName}')` : null})`;
-                                                                connection.query(sql_query_addAddressRelation, (err) => {
-                                                                    if (err) {
-                                                                        console.error("Error inserting Customer Bill Wise Data:", err);
-                                                                        connection.rollback(() => {
-                                                                            connection.release();
-                                                                            return res.status(500).send('Database Error');
-                                                                        });
-                                                                    } else {
-                                                                        connection.commit((err) => {
-                                                                            if (err) {
-                                                                                console.error("Error committing transaction:", err);
-                                                                                connection.rollback(() => {
-                                                                                    connection.release();
-                                                                                    return res.status(500).send('Database Error');
-                                                                                });
-                                                                            } else {
-                                                                                connection.release();
-                                                                                return res.status(200).send("Bill is On Hold");
-                                                                            }
-                                                                        });
-                                                                    }
-                                                                });
-                                                            } else if (customerData.mobileNo) {
-                                                                let sql_querry_addNewCustomer = `INSERT INTO billing_customer_data(customerId, customerName, customerMobileNumber, birthDate, anniversaryDate)
-                                                                                                 VALUES ('${newCustometId}', ${customerData.customerName ? `TRIM('${customerData.customerName}')` : null}, ${customerData.mobileNo ? `'${customerData.mobileNo}'` : null}, ${customerData.birthDate ? `STR_TO_DATE('${customerData.birthDate}','%b %d %Y')` : null}, ${customerData.aniversaryDate ? `STR_TO_DATE('${customerData.aniversaryDate}','%b %d %Y')` : null})`;
-                                                                connection.query(sql_querry_addNewCustomer, (err) => {
-                                                                    if (err) {
-                                                                        console.error("Error inserting New Customer Data:", err);
-                                                                        connection.rollback(() => {
-                                                                            connection.release();
-                                                                            return res.status(500).send('Database Error');
-                                                                        });
-                                                                    } else {
-                                                                        let sql_query_addAddressRelation = `INSERT INTO hold_billWiseCustomer_data(bwcId, holdId, customerId, addressId, customerName)
-                                                                                                            VALUES ('${bwcId}', '${holdId}', '${newCustometId}', NULL, ${customerData.customerName ? `TRIM('${customerData.customerName}')` : null})`;
+                                                                    } else if (existCustomerId) {
+                                                                        let sql_query_addAddressRelation = `INSERT INTO hold_billWiseCustomer_data(bwcId, holdId, customerId, addressId, mobileNo, customerName, address, locality)
+                                                                                                            VALUES ('${bwcId}', '${holdId}', '${existCustomerId}', NULL, ${customerData.mobileNo ? `TRIM('${customerData.mobileNo}')` : null}, ${customerData.customerName ? `TRIM('${customerData.customerName}')` : null}, ${customerData.address ? `'${customerData.address}'` : null}, ${customerData.locality ? `'${customerData.locality}'` : null})`;
                                                                         connection.query(sql_query_addAddressRelation, (err) => {
                                                                             if (err) {
                                                                                 console.error("Error inserting Customer Bill Wise Data:", err);
@@ -1199,56 +1271,123 @@ const addDeliveryHoldBillData = (req, res) => {
                                                                                         });
                                                                                     } else {
                                                                                         connection.release();
-                                                                                        return res.status(200).send("Bill is On Hold");
+                                                                                        req?.io?.emit('getHoldCount', holdCount);
+                                                                                        return res.status(200).send("Bill Is On Hold");
                                                                                     }
                                                                                 });
                                                                             }
                                                                         });
-                                                                    }
-                                                                })
-                                                            } else {
-                                                                let sql_query_addAddressRelation = `INSERT INTO hold_billWiseCustomer_data(bwcId, holdId, customerId, addressId, customerName)
-                                                                                                    VALUES ('${bwcId}', '${holdId}', NULL, NULL, ${customerData.customerName ? `TRIM('${customerData.customerName}')` : null})`;
-                                                                connection.query(sql_query_addAddressRelation, (err) => {
-                                                                    if (err) {
-                                                                        console.error("Error inserting Customer Bill Wise Data:", err);
-                                                                        connection.rollback(() => {
-                                                                            connection.release();
-                                                                            return res.status(500).send('Database Error');
-                                                                        });
-                                                                    } else {
-                                                                        connection.commit((err) => {
+                                                                    } else if (customerData.mobileNo) {
+                                                                        let sql_querry_addNewCustomer = `INSERT INTO billing_customer_data(customerId, customerName, customerMobileNumber, birthDate, anniversaryDate)
+                                                                                                         VALUES ('${newCustometId}', ${customerData.customerName ? `TRIM('${customerData.customerName}')` : null}, ${customerData.mobileNo ? `'${customerData.mobileNo}'` : null}, ${customerData.birthDate ? `STR_TO_DATE('${customerData.birthDate}','%b %d %Y')` : null}, ${customerData.aniversaryDate ? `STR_TO_DATE('${customerData.aniversaryDate}','%b %d %Y')` : null})`;
+                                                                        connection.query(sql_querry_addNewCustomer, (err) => {
                                                                             if (err) {
-                                                                                console.error("Error committing transaction:", err);
+                                                                                console.error("Error inserting New Customer Data:", err);
                                                                                 connection.rollback(() => {
                                                                                     connection.release();
                                                                                     return res.status(500).send('Database Error');
                                                                                 });
                                                                             } else {
-                                                                                connection.release();
-                                                                                return res.status(200).send("Bill is On Hold");
+                                                                                let sql_query_addAddressRelation = `INSERT INTO hold_billWiseCustomer_data(bwcId, holdId, customerId, addressId, mobileNo, customerName, address, locality)
+                                                                                                                    VALUES ('${bwcId}', '${holdId}', '${newCustometId}', NULL, ${customerData.mobileNo ? `TRIM('${customerData.mobileNo}')` : null}, ${customerData.customerName ? `TRIM('${customerData.customerName}')` : null}, ${customerData.address ? `'${customerData.address}'` : null}, ${customerData.locality ? `'${customerData.locality}'` : null})`;
+                                                                                connection.query(sql_query_addAddressRelation, (err) => {
+                                                                                    if (err) {
+                                                                                        console.error("Error inserting Customer Bill Wise Data:", err);
+                                                                                        connection.rollback(() => {
+                                                                                            connection.release();
+                                                                                            return res.status(500).send('Database Error');
+                                                                                        });
+                                                                                    } else {
+                                                                                        connection.commit((err) => {
+                                                                                            if (err) {
+                                                                                                console.error("Error committing transaction:", err);
+                                                                                                connection.rollback(() => {
+                                                                                                    connection.release();
+                                                                                                    return res.status(500).send('Database Error');
+                                                                                                });
+                                                                                            } else {
+                                                                                                connection.release();
+                                                                                                req?.io?.emit('getHoldCount', holdCount);
+                                                                                                return res.status(200).send("Bill Is On Hold");
+                                                                                            }
+                                                                                        });
+                                                                                    }
+                                                                                });
+                                                                            }
+                                                                        })
+                                                                    } else {
+                                                                        let sql_query_addAddressRelation = `INSERT INTO hold_billWiseCustomer_data(bwcId, holdId, customerId, addressId, mobileNo, customerName, address, locality)
+                                                                                                            VALUES ('${bwcId}', '${holdId}', NULL, NULL, ${customerData.mobileNo ? `TRIM('${customerData.mobileNo}')` : null}, ${customerData.customerName ? `TRIM('${customerData.customerName}')` : null}, ${customerData.address ? `'${customerData.address}'` : null}, ${customerData.locality ? `'${customerData.locality}'` : null})`;
+                                                                        connection.query(sql_query_addAddressRelation, (err) => {
+                                                                            if (err) {
+                                                                                console.error("Error inserting Customer Bill Wise Data:", err);
+                                                                                connection.rollback(() => {
+                                                                                    connection.release();
+                                                                                    return res.status(500).send('Database Error');
+                                                                                });
+                                                                            } else {
+                                                                                connection.commit((err) => {
+                                                                                    if (err) {
+                                                                                        console.error("Error committing transaction:", err);
+                                                                                        connection.rollback(() => {
+                                                                                            connection.release();
+                                                                                            return res.status(500).send('Database Error');
+                                                                                        });
+                                                                                    } else {
+                                                                                        connection.release();
+                                                                                        req?.io?.emit('getHoldCount', holdCount);
+                                                                                        return res.status(200).send("Bill Is On Hold");
+                                                                                    }
+                                                                                });
                                                                             }
                                                                         });
                                                                     }
-                                                                });
-                                                            }
-                                                        }
-                                                    })
-                                                } else {
-                                                    connection.commit((err) => {
-                                                        if (err) {
-                                                            console.error("Error committing transaction:", err);
-                                                            connection.rollback(() => {
-                                                                connection.release();
-                                                                return res.status(500).send('Database Error');
+                                                                }
+                                                            })
+                                                        } else if (customerData.address || customerData.locality) {
+                                                            let sql_query_addAddressRelation = `INSERT INTO hold_billWiseCustomer_data(bwcId, holdId, customerId, addressId, mobileNo, customerName, address, locality)
+                                                                                                VALUES ('${bwcId}', '${holdId}', NULL, NULL, ${customerData.mobileNo ? `TRIM('${customerData.mobileNo}')` : null}, ${customerData.customerName ? `TRIM('${customerData.customerName}')` : null}, ${customerData.address ? `'${customerData.address}'` : null}, ${customerData.locality ? `'${customerData.locality}'` : null})`;
+                                                            connection.query(sql_query_addAddressRelation, (err) => {
+                                                                if (err) {
+                                                                    console.error("Error inserting Customer Bill Wise Data:", err);
+                                                                    connection.rollback(() => {
+                                                                        connection.release();
+                                                                        return res.status(500).send('Database Error');
+                                                                    });
+                                                                } else {
+                                                                    connection.commit((err) => {
+                                                                        if (err) {
+                                                                            console.error("Error committing transaction:", err);
+                                                                            connection.rollback(() => {
+                                                                                connection.release();
+                                                                                return res.status(500).send('Database Error');
+                                                                            });
+                                                                        } else {
+                                                                            connection.release();
+                                                                            req?.io?.emit('getHoldCount', holdCount);
+                                                                            return res.status(200).send("Bill Is On Hold");
+                                                                        }
+                                                                    });
+                                                                }
                                                             });
                                                         } else {
-                                                            connection.release();
-                                                            return res.status(200).send("Bill is On Hold");
+                                                            connection.commit((err) => {
+                                                                if (err) {
+                                                                    console.error("Error committing transaction:", err);
+                                                                    connection.rollback(() => {
+                                                                        connection.release();
+                                                                        return res.status(500).send('Database Error');
+                                                                    });
+                                                                } else {
+                                                                    connection.release();
+                                                                    req?.io?.emit('getHoldCount', holdCount);
+                                                                    return res.status(200).send("Bill Is On Hold");
+                                                                }
+                                                            });
                                                         }
-                                                    });
+                                                    }
                                                 }
-                                            }
+                                            })
                                         }
                                     });
                                 }
@@ -1289,7 +1428,17 @@ const discardHoldData = (req, res) => {
                     console.error("An error occurd in SQL Queery", err);
                     return res.status(500).send('Database Error');
                 } else {
-                    return res.status(200).send('Discard Successfully');
+                    let sql_query_getHoldNumber = `SELECT COUNT(*) AS holdNo FROM hold_data`;
+                    pool.query(sql_query_getHoldNumber, (err, data) => {
+                        if (err) {
+                            console.error("An error occurd in SQL Queery", err);
+                            return res.status(500).send('Database Error');
+                        } else {
+                            const holdCount = data && data[0] ? data[0].holdNo : 0;
+                            req?.io?.emit('getHoldCount', holdCount);
+                            return res.status(200).send('Discard Successfully');
+                        }
+                    })
                 }
             })
         }
@@ -1300,9 +1449,11 @@ const discardHoldData = (req, res) => {
 }
 
 module.exports = {
+    getHoldBillData,
     getHoldBillDataById,
     addHotelHoldBillData,
     addPickUpHoldBillData,
     addDeliveryHoldBillData,
-    discardHoldData
+    discardHoldData,
+    getHoldCount
 }

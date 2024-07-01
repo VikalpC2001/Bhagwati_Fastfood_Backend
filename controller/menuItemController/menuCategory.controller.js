@@ -1,6 +1,7 @@
 const pool = require('../../database');
 const jwt = require("jsonwebtoken");
 const pool2 = require('../../databasePool');
+const baseMenuId = process.env.BASE_MENU;
 
 // Get Manufacture Product Category List
 
@@ -47,7 +48,6 @@ const addMenuCategory = async (req, res) => {
                     const decoded = jwt.verify(token, process.env.JWT_SECRET);
                     const rights = decoded.id.rights;
                     if (rights == 1) {
-                        const baseMenuId = process.env.BASE_MENU
                         const uid1 = new Date();
                         const menuCategoryId = String("menuCategory_" + uid1.getTime());
 
@@ -153,7 +153,6 @@ const removeMenuCategory = async (req, res) => {
             const rights = decoded.id.rights;
             if (rights == 1) {
                 const menuCategoryId = req.query.menuCategoryId.trim();
-                const baseMenuId = process.env.BASE_MENU;
                 req.query.menuCategoryId = pool.query(`SELECT menuCategoryId FROM item_menuCategory_data WHERE menuCategoryId = '${menuCategoryId}'`, (err, row) => {
                     if (err) {
                         console.error("An error occurd in SQL Queery", err);
@@ -189,7 +188,6 @@ const removeMenuCategory = async (req, res) => {
 
 const updateMenuCategory = async (req, res) => {
     try {
-        const baseMenuId = process.env.BASE_MENU;
         const data = {
             menuCategoryId: req.body.menuCategoryId.trim(),
             menuCategoryName: req.body.menuCategoryName.trim()
@@ -221,14 +219,32 @@ const copyPriceAndStatusByMenuId = (req, res) => {
     try {
         const sourceId = req.query.sourceId ? req.query.sourceId : null;
         const targetId = req.query.targetId ? req.query.targetId : null;
-        if (sourceId && targetId) {
-            let sql_query_copyData = `UPDATE item_unitWisePrice_data AS target
+        const itemSubCategory = req.query.itemSubCategory ? req.query.itemSubCategory : null;
+        if (targetId == baseMenuId) {
+            return res.status(400).send('You Can Not Target Base Menu');
+        } else if (sourceId && targetId) {
+            if (itemSubCategory) {
+                sql_query_copyData = `UPDATE item_unitWisePrice_data AS target
+                                      JOIN item_unitWisePrice_data AS source ON target.itemId = source.itemId
+                                      AND target.menuCategoryId = '${targetId}' 
+                                      AND target.unit = source.unit
+                                      AND source.menuCategoryId = '${sourceId}'
+                                      SET target.price = source.price,
+                                      target.status = source.status
+                                      WHERE target.itemId IN (
+                                          SELECT itemId 
+                                          FROM item_menuList_data 
+                                          WHERE itemSubCategory = '${itemSubCategory}'
+                                      )`;
+            } else {
+                sql_query_copyData = `UPDATE item_unitWisePrice_data AS target
                                       JOIN item_unitWisePrice_data AS source ON target.itemId = source.itemId
                                       AND target.menuCategoryId = '${targetId}' 
                                       AND target.unit = source.unit
                                       AND source.menuCategoryId = '${sourceId}'
                                       SET target.price = source.price,
                                       target.status = source.status`;
+            }
             pool.query(sql_query_copyData, (err, copy) => {
                 if (err) {
                     console.error("An error occurd in SQL Queery", err);

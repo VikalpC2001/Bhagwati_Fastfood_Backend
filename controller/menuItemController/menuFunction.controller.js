@@ -19,7 +19,7 @@ function generateUpdateQuery(data) {
 // Function For Variants and Periods
 
 function getItemVariants(itemId, subCategoryId, menuId, callback) {
-    let sql_query_getData = `-- GET VARIANTS
+    let sql_query_getData = `-- GET ACTIVE VARIANTS
                                 SELECT uwpId, unit, price, status
                                 FROM item_unitWisePrice_data 
                                 WHERE itemId = '${itemId}' AND menuCategoryId = '${menuId}' AND status = 1;
@@ -30,7 +30,11 @@ function getItemVariants(itemId, subCategoryId, menuId, callback) {
                                 TIME_FORMAT(startTime,"%h:%i %p") AS displayStartTime,
                                 TIME_FORMAT(endTime,"%h:%i %p") AS displayEndTime
                                 FROM item_subCategoryPeriod_data 
-                                WHERE subCategoryId = '${subCategoryId}';`;
+                                WHERE subCategoryId = '${subCategoryId}';
+                            -- GET ALL VARIANTS
+                                SELECT uwpId, unit, price, status
+                                FROM item_unitWisePrice_data
+                                WHERE itemId = '${itemId}' AND menuCategoryId = '${menuId}'`;
 
     pool.query(sql_query_getData, (err, data) => {
         if (err) {
@@ -41,17 +45,19 @@ function getItemVariants(itemId, subCategoryId, menuId, callback) {
         let variantAndPeriod = Object.values(JSON.parse(JSON.stringify(data)));
         if (variantAndPeriod.length != 0) {
             let variantsList = variantAndPeriod[0].length ? variantAndPeriod[0] : [];
+            let variantsAllList = variantAndPeriod[2].length ? variantAndPeriod[2] : [];
             let jsonData = {
                 varients: variantsList.sort((a, b) => (a.unit == "NO") ? -1 : (b.unit == "NO") ? 1 : 0),
+                allVariantsList: variantsAllList.length ? variantsAllList.sort((a, b) => (a.unit == "NO") ? -1 : (b.unit == "NO") ? 1 : 0) : [],
                 periods: variantAndPeriod[1].length ? variantAndPeriod[1] : [],
-                status: variantsList.length ? 'Available' : 'Not Available'
+                status: variantsList.length ? true : false
             }
             callback(null, jsonData);
         } else {
             let jsonData = {
                 varients: [],
                 periods: [],
-                status: 'Not Available'
+                status: false
             }
             callback(null, jsonData);
         }

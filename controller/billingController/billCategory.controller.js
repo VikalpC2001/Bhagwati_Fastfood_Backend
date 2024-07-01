@@ -5,7 +5,7 @@ const pool = require('../../database');
 const getBillCategory = (req, res) => {
     try {
         // Use a single query with an IN clause to get all categories at once
-        let sql_query_getCategory = `SELECT categoryId, categoryName, menuId, firmId, billFooterNote, kotFooterNote 
+        let sql_query_getCategory = `SELECT categoryId, categoryName, menuId, firmId, isOfficial, billFooterNote, kotFooterNote 
                                      FROM billing_category_data 
                                      WHERE categoryId IN ('pickUp', 'delivery', 'dineIn', 'hotel')`;
 
@@ -19,7 +19,7 @@ const getBillCategory = (req, res) => {
 
                 // Loop through the results and populate the categories object
                 data.forEach(row => {
-                    categories[row.categoryId] = row;
+                    categories[row.categoryName] = row;
                 });
                 return res.status(200).send(categories);
             }
@@ -36,6 +36,7 @@ const updateBillCategoryData = (req, res) => {
             categoryId: req.body.categoryId ? req.body.categoryId : null,
             menuId: req.body.menuId ? req.body.menuId : null,
             firmId: req.body.firmId ? req.body.firmId : null,
+            isOfficial: req.body.isOfficial ? req.body.isOfficial : false,
             billFooterNote: req.body.billFooterNote ? req.body.billFooterNote : null,
             kotFooterNote: req.body.kotFooterNote ? req.body.kotFooterNote : null
         }
@@ -47,6 +48,7 @@ const updateBillCategoryData = (req, res) => {
                                         SET
                                             menuId = '${data.menuId}',
                                             firmId = '${data.firmId}',
+                                            isOfficial = ${data.isOfficial},
                                             billFooterNote = ${data.billFooterNote ? `'${data.billFooterNote}'` : null},
                                             kotFooterNote = ${data.kotFooterNote ? `'${data.kotFooterNote}'` : null}
                                         WHERE 

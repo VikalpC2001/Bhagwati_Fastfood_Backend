@@ -30,7 +30,13 @@ const getItemData = (req, res) => {
                     varientDatas(datas, menuId)
                         .then((data) => {
                             const combinedData = datas.map((item, index) => (
-                                { ...item, variantsList: data[index].varients, periods: data[index].periods, status: data[index].status }
+                                {
+                                    ...item,
+                                    variantsList: data[index].varients,
+                                    allVariantsList: data[index].allVariantsList,
+                                    periods: data[index].periods,
+                                    status: data[index].status
+                                }
                             ))
                             return res.status(200).send(combinedData);
                         }).catch(error => {

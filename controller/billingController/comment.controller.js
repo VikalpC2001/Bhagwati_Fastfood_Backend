@@ -132,26 +132,25 @@ const updateComment = async (req, res) => {
         if (!data.comment) {
             return res.status(400).send("Please Add Comment");
         } else {
-
-        }
-        pool.query(`SELECT comment FROM billing_comment_data WHERE comment = '${data.comment}' AND commentId != '${data.commentId}'`, function (err, row) {
-            if (err) {
-                console.error("An error occurd in SQL Queery", err);
-                return res.status(500).send('Database Error');
-            } else if (row && row.length) {
-                return res.status(400).send('Comment is Already In Use');
-            } else {
-                const sql_querry_updatedetails = `UPDATE billing_comment_data SET comment = '${data.comment}'
+            pool.query(`SELECT comment FROM billing_comment_data WHERE comment = '${data.comment}' AND commentId != '${data.commentId}'`, function (err, row) {
+                if (err) {
+                    console.error("An error occurd in SQL Queery", err);
+                    return res.status(500).send('Database Error');
+                } else if (row && row.length) {
+                    return res.status(400).send('Comment is Already In Use');
+                } else {
+                    const sql_querry_updatedetails = `UPDATE billing_comment_data SET comment = '${data.comment}'
                                                   WHERE commentId = '${data.commentId}'`;
-                pool.query(sql_querry_updatedetails, (err, data) => {
-                    if (err) {
-                        console.error("An error occurd in SQL Queery", err);
-                        return res.status(500).send('Database Error');
-                    }
-                    return res.status(200).send("Comment Updated Successfully");
-                })
-            }
-        })
+                    pool.query(sql_querry_updatedetails, (err, data) => {
+                        if (err) {
+                            console.error("An error occurd in SQL Queery", err);
+                            return res.status(500).send('Database Error');
+                        }
+                        return res.status(200).send("Comment Updated Successfully");
+                    })
+                }
+            })
+        }
     } catch (error) {
         console.error('An error occurd', error);
         res.status(500).send('Internal Server Error');

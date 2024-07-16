@@ -37,6 +37,9 @@ router.post('/billNoTest', commentController.billNoTest);
 const hotelController = require("../../controller/billingController/hotel.controller.js");
 
 router.get('/getHotelList', protect, hotelController.getHotelList);
+router.get('/getHotelStaticsData', protect, hotelController.getHotelStaticsData);
+router.get('/getHotelDataById', protect, hotelController.getHotelDataById);
+router.get('/getHotelBillDataById', protect, hotelController.getHotelBillDataById);
 router.post('/addHotelData', protect, hotelController.addHotelData);
 router.delete('/removeHotelData', protect, hotelController.removeHotelData);
 router.post('/updateHotelData', protect, hotelController.updateHotelData);
@@ -50,6 +53,7 @@ router.get('/getFirmData', protect, firmController.getFirmData);
 router.post('/addFirmData', protect, firmController.addFirmData);
 router.delete('/removeFirmData', protect, firmController.removeFirmData);
 router.post('/updateFirmData', protect, firmController.updateFirmData);
+router.get('/ddlFirmData', protect, firmController.ddlFirmData);
 
 // Billing Routs
 
@@ -72,6 +76,16 @@ router.post('/updateHotelBillData', protect, billingController.updateHotelBillDa
 router.post('/updatePickUpBillData', protect, billingController.updatePickUpBillData);
 router.post('/updateDeliveryBillData', protect, billingController.updateDeliveryBillData);
 
+// Print Bill Data
+router.get('/printBillInAdminSystem', protect, billingController.printBillInAdminSystem);
+
+// Online Billing Routs
+
+const onlineBillingController = require("../../controller/billingController/onlineBilling.controller.js");
+
+router.post('/addOnlineHotelBillData', onlineBillingController.addOnlineHotelBillData);
+router.post('/addOnlinePickUpBillData', onlineBillingController.addOnlinePickUpBillData);
+
 // Hold Billing Routs
 
 const holdController = require("../../controller/billingController/hold.controller.js");
@@ -84,11 +98,51 @@ router.post('/addPickUpHoldBillData', protect, holdController.addPickUpHoldBillD
 router.post('/addDeliveryHoldBillData', protect, holdController.addDeliveryHoldBillData);
 router.delete('/discardHoldData', protect, holdController.discardHoldData);
 
+// Pending Billing Routs
+
+const pendingController = require("../../controller/billingController/pendingBill.controller.js");
+
+router.get('/getPendingCount', protect, pendingController.getPendingCount);
+router.get('/getPendingBillData', protect, pendingController.getPendingBillData);
+router.get('/getPendingBillDataById', protect, pendingController.getPendingBillDataById);
+router.post('/addHotelPendingBillData', protect, pendingController.addHotelPendingBillData);
+router.post('/addPickUpPendingBillData', protect, pendingController.addPickUpPendingBillData);
+router.post('/addDeliveryPendingBillData', protect, pendingController.addDeliveryPendingBillData);
+router.delete('/discardpendingData', protect, pendingController.discardpendingData);
+
 // Printer Routs
 
 const printerController = require("../../controller/billingController/printer.controller.js");
 
 router.get('/getPrinterList', protect, printerController.getPrinterList);
 router.post('/updatePrinterData', protect, printerController.updatePrinterData);
+
+// Due Accounts Routs
+
+const accountConntroller = require("../../controller/billingController/dueAccount.controller.js");
+
+router.get('/getCustomerAccountList', protect, accountConntroller.getCustomerAccountList);
+router.post('/addCustomerAccount', protect, accountConntroller.addCustomerAccount);
+router.delete('/removeCustomerAccount', protect, accountConntroller.removeCustomerAccount);
+router.post('/updateCustomerAccount', protect, accountConntroller.updateCustomerAccount);
+router.post('/addDueBillData', protect, accountConntroller.addDueBillData);
+router.post('/addDebitDueTransactionData', protect, accountConntroller.addDebitDueTransactionData);
+router.get('/getDueBillDataById', protect, accountConntroller.getDueBillDataById);
+router.get('/getDueDebitTransactionListById', protect, accountConntroller.getDueDebitTransactionListById);
+router.get('/getMonthWiseTransaction', protect, accountConntroller.getMonthWiseTransaction);
+router.get('/getDueStaticsById', protect, accountConntroller.getDueStaticsById);
+router.delete('/removeDueBillDataById', protect, accountConntroller.removeDueBillDataById);
+router.delete('/removeDueDebitTransactionById', protect, accountConntroller.removeDueDebitTransactionById);
+router.post('/updateCustomerAccount', protect, accountConntroller.updateCustomerAccount);
+
+// UPI Routs
+
+const upiConntroller = require("../../controller/billingController/upi.controller.js");
+
+router.get('/getCustomerAccountList', protect, upiConntroller.getUPIList);
+router.post('/addCustomerAccount', protect, upiConntroller.addUPI);
+router.delete('/removeCustomerAccount', protect, upiConntroller.removeUPI);
+router.post('/updateCustomerAccount', protect, upiConntroller.updateUPI);
+router.get('/ddlUPI', protect, upiConntroller.ddlUPI);
 
 module.exports = router;

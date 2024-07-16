@@ -117,9 +117,6 @@ const getSupplierByProductId = (req, res) => {
         var firstDay = new Date(y, m, 1).toString().slice(4, 15);
         var lastDay = new Date(y, m + 1, 0).toString().slice(4, 15);
 
-        console.log("1111>>>>", firstDay);
-        console.log("1111>>>>", lastDay);
-
         const data = {
             startDate: (req.query.startDate ? req.query.startDate : '').slice(4, 15),
             endDate: (req.query.endDate ? req.query.endDate : '').slice(4, 15),
@@ -418,8 +415,6 @@ const getProductDetailsTable = (req, res) => {
         var firstDay = new Date(y, m, 1).toString().slice(4, 15);
         var lastDay = new Date(y, m + 1, 0).toString().slice(4, 15);
 
-        console.log("1111>>>>", firstDay);
-        console.log("1111>>>>", lastDay);
         const data = {
             startDate: (req.query.startDate ? req.query.startDate : '').slice(4, 15),
             endDate: (req.query.endDate ? req.query.endDate : '').slice(4, 15),
@@ -1029,9 +1024,6 @@ const exportExcelSheetForProductTable = (req, res) => {
     var date = new Date(), y = date.getFullYear(), m = (date.getMonth());
     var firstDay = new Date(y, m, 1).toString().slice(4, 15);
     var lastDay = new Date(y, m + 1, 0).toString().slice(4, 15);
-
-    console.log("1111>>>>", firstDay);
-    console.log("1111>>>>", lastDay);
 
     const data = {
         startDate: (req.query.startDate ? req.query.startDate : '').slice(4, 15),

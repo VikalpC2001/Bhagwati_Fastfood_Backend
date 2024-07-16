@@ -98,7 +98,6 @@ const getStockInList = async (req, res) => {
                     sql_queries_getdetails = `${commanQuarry}
                                                 ORDER BY inventory_stockIn_data.stockInDate DESC, inventory_stockIn_data.stockInCreationDate DESC LIMIT ${limit}`;
                 }
-                console.log('bbbbbbb', sql_queries_getdetails);
                 pool.query(sql_queries_getdetails, (err, rows, fields) => {
                     if (err) {
                         console.error("An error occurd in SQL Queery", err);
@@ -132,9 +131,6 @@ const exportExcelSheetForStockin = (req, res) => {
     var date = new Date(), y = date.getFullYear(), m = (date.getMonth());
     var firstDay = new Date(y, m, 1).toString().slice(4, 15);
     var lastDay = new Date(y, m + 1, 0).toString().slice(4, 15);
-
-    console.log("1111>>>>", firstDay);
-    console.log("1111>>>>", lastDay);
 
     const data = {
         startDate: (req.query.startDate ? req.query.startDate : '').slice(4, 15),

@@ -15,6 +15,7 @@ const expenseAndBankrouter = require('./routs/expenseAndBankRouts/expenseAndBank
 const menuItemrouter = require('./routs/menuItemRouts/item.routs');
 const billingrouter = require('./routs/billingRouts/billing.routs');
 const deliveryAndPickUprouter = require('./routs/deliveryAndPickUpRouts/deliveryAndPickUp.routs');
+const captainApprouter = require('./routs/captainAppRouts/captainApp.routs');
 
 // app.use(cors({
 //   credentials: true,
@@ -55,6 +56,7 @@ app.use('/expenseAndBankrouter', expenseAndBankrouter);
 app.use('/menuItemrouter', menuItemrouter);
 app.use('/billingrouter', billingrouter);
 app.use('/deliveryAndPickUprouter', deliveryAndPickUprouter);
+app.use('/captainApprouter', captainApprouter);
 
 app.use(notFound);
 app.use(erroHandler);

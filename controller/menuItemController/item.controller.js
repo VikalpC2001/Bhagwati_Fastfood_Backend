@@ -9,15 +9,15 @@ const getItemData = (req, res) => {
     try {
         const menuId = req.query.menuId ? req.query.menuId : 'base_2001';
         const subCategoryId = req.query.subCategoryId ? req.query.subCategoryId : '';
+        const sql_query_staticQuery = `SELECT itemId, itemName, itemGujaratiName, itemCode, itemShortKey, itemSubCategory, spicyLevel, isJain, isPureJain, itemDescription FROM item_menuList_data`;
         if (!menuId) {
             return res.status(404).send('menuId Not Found');
-        }
-        if (req.query.subCategoryId) {
-            sql_querry_getItem = `SELECT itemId, itemName, itemGujaratiName, itemCode, itemShortKey, itemSubCategory, itemDescription FROM item_menuList_data
+        } else if (req.query.subCategoryId) {
+            sql_querry_getItem = `${sql_query_staticQuery}
                                   WHERE itemSubCategory = '${subCategoryId}'
                                   ORDER BY itemCode ASC`;
         } else {
-            sql_querry_getItem = `SELECT itemId, itemName, itemGujaratiName, itemCode, itemShortKey, itemSubCategory, itemDescription FROM item_menuList_data
+            sql_querry_getItem = `${sql_query_staticQuery}
                                   ORDER BY itemCode ASC`;
         }
         pool.query(sql_querry_getItem, (err, rows) => {
@@ -72,7 +72,7 @@ const addItemData = (req, res) => {
                     const itemId = String("item_" + uid1.getTime());
                     const itemData = req.body;
 
-                    if (!itemData.itemName || !itemData.itemGujaratiName || !itemData.itemCode || !itemData.itemShortKey || !itemData.itemSubCategory || !itemData.variantsList) {
+                    if (!itemData.itemName || !itemData.itemGujaratiName || !itemData.itemCode || !itemData.itemShortKey || !itemData.itemSubCategory || !itemData.variantsList.length) {
                         conn.rollback(() => {
                             conn.release();
                             return res.status(404).send('Please Fill All The Fields..!');
@@ -120,8 +120,8 @@ const addItemData = (req, res) => {
                                         return res.status(400).send('Menu Category Not Found');
                                     })
                                 } else {
-                                    let sql_querry_addItem = `INSERT INTO item_menuList_data (itemId, itemName, itemGujaratiName, itemCode, itemShortKey, itemSubCategory, spicyLevel, itemDescription)
-                                                              VALUES ('${itemId}', TRIM('${itemData.itemName}'), TRIM('${itemData.itemGujaratiName}'), ${itemData.itemCode} ,TRIM('${itemData.itemShortKey}'), '${itemData.itemSubCategory}', ${itemData.spicyLevel ? itemData.spicyLevel : 0}, TRIM(${itemData.itemDescription ? `'${itemData.itemDescription}'` : null}))`;
+                                    let sql_querry_addItem = `INSERT INTO item_menuList_data (itemId, itemName, itemGujaratiName, itemCode, itemShortKey, itemSubCategory, spicyLevel, isJain, isPureJain,itemDescription)
+                                                              VALUES ('${itemId}', TRIM('${itemData.itemName}'), TRIM('${itemData.itemGujaratiName}'), ${itemData.itemCode} ,TRIM('${itemData.itemShortKey}'), '${itemData.itemSubCategory}', ${itemData.spicyLevel ? itemData.spicyLevel : 0}, ${itemData.isJain ? itemData.isJain : 0}, ${itemData.isPureJain ? itemData.isPureJain : 0}, TRIM(${itemData.itemDescription ? `'${itemData.itemDescription}'` : null}))`;
                                     conn.query(sql_querry_addItem, (err, menu) => {
                                         if (err) {
                                             conn.rollback(() => {
@@ -239,7 +239,7 @@ const updateItemData = (req, res) => {
                     return res.status(500).send('Transaction Error');
                 } else {
                     const itemData = req.body;
-                    if (!itemData.itemName || !itemData.itemGujaratiName || !itemData.itemCode || !itemData.itemShortKey || !itemData.itemSubCategory || !itemData.variantsList || !itemData.menuCategoryId) {
+                    if (!itemData.itemName || !itemData.itemGujaratiName || !itemData.itemCode || !itemData.itemShortKey || !itemData.itemSubCategory || !itemData.variantsList.length || !itemData.menuCategoryId) {
                         conn.rollback(() => {
                             conn.release();
                             return res.status(404).send('Please Fill All The Fields..!');
@@ -289,6 +289,8 @@ const updateItemData = (req, res) => {
                                                                      itemShortKey = TRIM('${itemData.itemShortKey}'),
                                                                      itemSubCategory = '${itemData.itemSubCategory}',
                                                                      spicyLevel = ${itemData.spicyLevel ? itemData.spicyLevel : 0},
+                                                                     isJain = ${itemData.isJain ? itemData.isJain : 0},
+                                                                     isPureJain = ${itemData.isPureJain ? itemData.isPureJain : 0},
                                                                      itemDescription = TRIM(${itemData.itemDescription ? `'${itemData.itemDescription}'` : null})
                                                                  WHERE itemId = '${itemData.itemId}'`;
                                     conn.query(sql_querry_updateData, (err, data) => {

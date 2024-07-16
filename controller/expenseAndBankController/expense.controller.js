@@ -60,24 +60,24 @@ const getExpenseTransactionData = (req, res) => {
                 const numRows = rows[0].numRows;
                 const numPages = Math.ceil(numRows / numPerPage);
                 const commonQueryForExpense = `SELECT
-                                              expenseId,
-                                              transactionId,
-                                              user_details.userName AS enterBy,
-                                              CONCAT(user_details.userFirstName,' ',user_details.userLastName) AS userName,
-                                              bank_data.bankName AS moneySource,
-                                              expense_category_data.categoryName AS mainCategory,
-                                              expense_subcategory_data.subCategoryName AS subCategory,
-                                              expenseAmount,
-                                              expenseComment,
-                                              expenseDate AS dateExpense,
-                                              DATE_FORMAT(expenseDate, '%a, %b %d, %Y') AS expenseDate,
-                                              DATE_FORMAT(expenseCreationDate, '%h:%i %p') AS expenseTime
-                                          FROM 
-                                              expense_data
-                                          LEFT JOIN bank_data ON bank_data.bankId = expense_data.moneySourceId
-                                          LEFT JOIN user_details ON user_details.userId = expense_data.userId
-                                          LEFT JOIN expense_category_data ON expense_category_data.categoryId = expense_data.categoryId
-                                          LEFT JOIN expense_subcategory_data ON expense_subcategory_data.subCategoryId = expense_data.subcategoryId`;
+                                                   expenseId,
+                                                   transactionId,
+                                                   user_details.userName AS enterBy,
+                                                   CONCAT(user_details.userFirstName,' ',user_details.userLastName) AS userName,
+                                                   bank_data.bankName AS moneySource,
+                                                   expense_category_data.categoryName AS mainCategory,
+                                                   expense_subcategory_data.subCategoryName AS subCategory,
+                                                   expenseAmount,
+                                                   expenseComment,
+                                                   expenseDate AS dateExpense,
+                                                   DATE_FORMAT(expenseDate, '%a, %b %d, %Y') AS expenseDate,
+                                                   DATE_FORMAT(expenseCreationDate, '%h:%i %p') AS expenseTime
+                                               FROM 
+                                                   expense_data
+                                               LEFT JOIN bank_data ON bank_data.bankId = expense_data.moneySourceId
+                                               LEFT JOIN user_details ON user_details.userId = expense_data.userId
+                                               LEFT JOIN expense_category_data ON expense_category_data.categoryId = expense_data.categoryId
+                                               LEFT JOIN expense_subcategory_data ON expense_subcategory_data.subCategoryId = expense_data.subcategoryId`;
                 if (req.query.startDate && req.query.endDate && req.query.categoryId && req.query.moneySourceId) {
                     sql_queries_getdetails = `${commonQueryForExpense}
                                               WHERE expense_data.moneySourceId = '${data.moneySourceId}' AND expense_data.categoryId = '${data.categoryId}' AND expense_data.expenseDate BETWEEN STR_TO_DATE('${data.startDate}','%b %d %Y') AND STR_TO_DATE('${data.endDate}','%b %d %Y')

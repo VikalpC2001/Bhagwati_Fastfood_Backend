@@ -1443,6 +1443,7 @@ function catrersMonthWiseData(arr, cutAmt) {
 
     return newArray;
 }
+
 module.exports = {
     addTransactionData,
     removeTransactionData,

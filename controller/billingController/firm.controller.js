@@ -176,9 +176,34 @@ const updateFirmData = async (req, res) => {
     }
 }
 
+// DDL Firm Data
+
+const ddlFirmData = (req, res) => {
+    try {
+        var sql_queries_getDetails = `SELECT
+                                        firmId,
+                                        firmName
+                                      FROM
+                                        billing_firm_data`;
+
+        pool.query(sql_queries_getDetails, (err, rows, fields) => {
+            if (err) {
+                console.error("An error occurd in SQL Queery", err);
+                return res.status(500).send('Database Error');;
+            } else {
+                return res.status(200).send(rows);
+            }
+        });
+    } catch (error) {
+        console.error('An error occurd', error);
+        res.status(500).send('Internal Server Error');
+    }
+}
+
 module.exports = {
     getFirmData,
     addFirmData,
     removeFirmData,
-    updateFirmData
+    updateFirmData,
+    ddlFirmData
 }

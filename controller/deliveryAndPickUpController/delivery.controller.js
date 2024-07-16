@@ -59,7 +59,7 @@ const getDeliveryDataByToken = (req, res) => {
                                                         END AS tokenNo 
                                                    FROM billing_data AS bd
                                                    LEFT JOIN billing_token_data AS btd ON btd.billId = bd.billId
-                                                   WHERE bd.billType = '${billType}' AND bd.billDate = STR_TO_DATE('${currentDate}','%b %d %Y')
+                                                   WHERE bd.billType = '${billType}' AND bd.billPayType != 'cancel' AND bd.billStatus != 'cancel' AND bd.billDate = STR_TO_DATE('${currentDate}','%b %d %Y')
                                                    ORDER BY btd.tokenNo DESC`;
                     pool.query(sql_query_getRecentBill, (err, data) => {
                         if (err) {
@@ -85,16 +85,24 @@ const getDeliveryDataByToken = (req, res) => {
                                             if (result && result.length) {
                                                 let sql_query_getBillingData = `SELECT 
                                                                                     bd.billId AS billId, 
-                                                                                    bd.billType AS billType, 
+                                                                                    bd.billType AS billType,
+                                                                                    CASE
+                                                                                        WHEN bd.billType = 'Hotel' THEN CONCAT('H',btd.tokenNo)
+                                                                                        WHEN bd.billType = 'Pick Up' THEN CONCAT('P',btd.tokenNo)
+                                                                                        WHEN bd.billType = 'Delivery' THEN CONCAT('D',btd.tokenNo)
+                                                                                        WHEN bd.billType = 'Dine In' THEN CONCAT('R',btd.tokenNo)
+                                                                                    ELSE NULL
+                                                                                    END AS tokenNo,
                                                                                     bd.billPayType AS billPayType, 
                                                                                     bd.settledAmount AS settledAmount
                                                                                 FROM 
                                                                                     billing_data AS bd
+                                                                                LEFT JOIN billing_token_data AS btd ON btd.billId = bd.billId
                                                                                 WHERE bd.billId = '${billId}'`;
                                                 let sql_query_getCustomerInfo = `SELECT
                                                                                     TRIM(CONCAT(
                                                                                         COALESCE(bwc.customerName, ''),
-                                                                                        IF((bwc.mobileNo IS NOT NULL OR bwc.customerName IS NOT NULL) AND bwc.address IS NOT NULL, ' - ', ''),
+                                                                                        IF((bwc.customerName IS NOT NULL OR bwc.customerName IS NOT NULL) AND bwc.address IS NOT NULL, ' - ', ''),
                                                                                         COALESCE(bwc.address, ''),
                                                                                         IF((bwc.mobileNo IS NOT NULL OR bwc.customerName IS NOT NULL OR bwc.address IS NOT NULL) AND bwc.locality IS NOT NULL, ' - ', ''),
                                                                                         COALESCE(bwc.locality, '')
@@ -129,7 +137,7 @@ const getDeliveryDataByToken = (req, res) => {
                                                     }
                                                 })
                                             } else {
-                                                return res.status(400).send('Token Is Already Delivered');
+                                                return res.status(400).send('Token Is Already Used');
                                             }
                                         }
                                     })
@@ -173,30 +181,48 @@ const getOnDeliveryData = (req, res) => {
                         let sql_query_getDeliveryData = `SELECT
                                                              deliveryId,
                                                              enterBy,
-                                                             personId,
+                                                             delivery_data.personId,
+                                                             delivery_person_data.personName,
                                                              totalBillAmt,
                                                              totalChange,
                                                              totalDesiredAmt,
                                                              durationTime,
                                                              deliveryDate,
-                                                             deliveryStatus
+                                                             deliveryStatus,
+                                                             SEC_TO_TIME(
+                                                                TIMESTAMPDIFF(
+                                                                    SECOND,
+                                                                    delivery_data.deliveryCreationDate,
+                                                                    NOW()
+                                                                )
+                                                            ) AS timeDifference
                                                          FROM
                                                              delivery_data
+                                                         INNER JOIN delivery_person_data ON delivery_person_data.personId = delivery_data.personId
                                                          WHERE deliveryId = '${deliveryId}';
                                                          SELECT
-                                                            bwdId,
-                                                            deliveryId,
-                                                            billId,
-                                                            billAddress,
-                                                            deliveryType,
-                                                            billPayType,
-                                                            billAmt,
-                                                            billChange,
-                                                            desiredAmt
+                                                            bwd.bwdId,
+                                                            bwd.deliveryId,
+                                                            bwd.billId,
+                                                            CASE 
+                                                            	WHEN bwd.deliveryType = 'Hotel' THEN CONCAT('H', btd.tokenNo) 
+                                                            	WHEN bwd.deliveryType = 'Pick Up' THEN CONCAT('P', btd.tokenNo) 
+                                                            	WHEN bwd.deliveryType = 'Delivery' THEN CONCAT('D', btd.tokenNo) 
+                                                            	WHEN bwd.deliveryType = 'Dine In' THEN CONCAT('R', btd.tokenNo)
+                                                                WHEN bwd.deliveryType = 'Due Bill' THEN 'B'
+                                                                WHEN bwd.deliveryType = 'other' THEN 'O'  
+                                                              	ELSE NULL
+	                                                        END AS token,
+                                                            bwd.billAddress,
+                                                            bwd.deliveryType,
+                                                            bwd.billPayType,
+                                                            bwd.billAmt,
+                                                            bwd.billChange,
+                                                            bwd.desiredAmt
                                                         FROM
-                                                            delivery_billWiseDelivery_data
-                                                        WHERE deliveryId = '${deliveryId}'`;
-
+                                                            delivery_billWiseDelivery_data AS bwd
+                                                        LEFT JOIN billing_token_data AS btd ON btd.billId = bwd.billId
+                                                        WHERE bwd.deliveryId = '${deliveryId}'`;
                         return new Promise((resolve, reject) => {
                             pool.query(sql_query_getDeliveryData, (err, data) => {
                                 if (err) {
@@ -264,7 +290,90 @@ const addDeliveryData = (req, res) => {
                             const uid1 = new Date();
                             const deliveryId = String("delivery_" + uid1.getTime());
 
-                            let sql_querry_addDeliveryData = `INSERT INTO delivery_data (
+                            let sql_querry_chkDeliveryPerson = `SELECT personId, deliveryId FROM delivery_data WHERE personId = '${deliveryData.personId}' AND deliveryStatus = 'On Delivery'`;
+                            connection.query(sql_querry_chkDeliveryPerson, (err, person) => {
+                                if (err) {
+                                    console.error("Error Check Delivery Person Availability:", err);
+                                    connection.rollback(() => {
+                                        connection.release();
+                                        return res.status(500).send('Database Error');
+                                    });
+                                } else {
+                                    if (person && person.length) {
+                                        const onDeliveryId = person[0].deliveryId
+                                        let sql_query_getOnDeliveryData = `SELECT
+                                                                               deliveryId,
+                                                                               enterBy,
+                                                                               delivery_data.personId,
+                                                                               delivery_person_data.personName,
+                                                                               totalBillAmt,
+                                                                               totalChange,
+                                                                               totalDesiredAmt,
+                                                                               durationTime,
+                                                                               deliveryDate,
+                                                                               deliveryStatus,
+                                                                               SEC_TO_TIME(
+                                                                                  TIMESTAMPDIFF(
+                                                                                      SECOND,
+                                                                                      delivery_data.deliveryCreationDate,
+                                                                                      NOW()
+                                                                                  )
+                                                                              ) AS timeDifference
+                                                                           FROM
+                                                                               delivery_data
+                                                                           INNER JOIN delivery_person_data ON delivery_person_data.personId = delivery_data.personId
+                                                                           WHERE deliveryId = '${onDeliveryId}';
+                                                                           SELECT
+                                                                              bwd.bwdId,
+                                                                              bwd.deliveryId,
+                                                                              bwd.billId,
+                                                                              CASE 
+                                                                              	WHEN bwd.deliveryType = 'Hotel' THEN CONCAT('H', btd.tokenNo) 
+                                                            	                WHEN bwd.deliveryType = 'Pick Up' THEN CONCAT('P', btd.tokenNo) 
+                                                            	                WHEN bwd.deliveryType = 'Delivery' THEN CONCAT('D', btd.tokenNo) 
+                                                            	                WHEN bwd.deliveryType = 'Dine In' THEN CONCAT('R', btd.tokenNo)
+                                                                                WHEN bwd.deliveryType = 'Due Bill' THEN 'B'
+                                                                                WHEN bwd.deliveryType = 'other' THEN 'O'
+                                                                                ELSE NULL
+	                                                                          END AS token,
+                                                                              bwd.billAddress,
+                                                                              bwd.deliveryType,
+                                                                              bwd.billPayType,
+                                                                              bwd.billAmt,
+                                                                              bwd.billChange,
+                                                                              bwd.desiredAmt
+                                                                           FROM
+                                                                              delivery_billWiseDelivery_data AS bwd
+                                                                           LEFT JOIN billing_token_data AS btd ON btd.billId = bwd.billId
+                                                                           WHERE bwd.deliveryId = '${onDeliveryId}'`;
+                                        connection.query(sql_query_getOnDeliveryData, (err, result) => {
+                                            if (err) {
+                                                console.error("Error Get Delivery Bill Data:", err);
+                                                connection.rollback(() => {
+                                                    connection.release();
+                                                    return res.status(500).send('Database Error');
+                                                });
+                                            } else {
+                                                const json = {
+                                                    ...result[0][0],
+                                                    deliveryData: result[1]
+                                                }
+                                                connection.commit((err) => {
+                                                    if (err) {
+                                                        console.error("Error committing transaction:", err);
+                                                        connection.rollback(() => {
+                                                            connection.release();
+                                                            return res.status(500).send('Database Error');
+                                                        });
+                                                    } else {
+                                                        connection.release();
+                                                        return res.status(402).send(json);
+                                                    }
+                                                });
+                                            }
+                                        })
+                                    } else {
+                                        let sql_querry_addDeliveryData = `INSERT INTO delivery_data (
                                                                                          deliveryId,
                                                                                          enterBy,
                                                                                          personId,
@@ -286,59 +395,66 @@ const addDeliveryData = (req, res) => {
                                                                                          STR_TO_DATE('${currentDate}','%b %d %Y'),
                                                                                          'On Delivery'
                                                                                         )`;
-                            connection.query(sql_querry_addDeliveryData, (err) => {
-                                if (err) {
-                                    console.error("Error inserting Delivery Data:", err);
-                                    connection.rollback(() => {
-                                        connection.release();
-                                        return res.status(500).send('Database Error');
-                                    });
-                                } else {
-                                    const deliveryBillData = deliveryData.deliveryBillData;
-
-                                    let billIds = (deliveryBillData && deliveryBillData.length)
-                                        ? `(${deliveryBillData.map(item => `'${item.billId}'`).join(',')})`
-                                        : '(NULL)';
-
-                                    let addBillWiseDeliveryData = deliveryBillData.map((item, index) => {
-                                        let uniqueId = `bwd_${Date.now() + index + '_' + index}`; // Generating a unique ID using current timestamp
-                                        return `('${uniqueId}', 
-                                                 '${deliveryId}', 
-                                                  ${item.billId ? `'${item.billId}'` : null}, 
-                                                  ${item.billAddress ? `'${item.billAddress}'` : null}, 
-                                                 '${item.deliveryType}', 
-                                                  ${item.billPayType ? `'${item.billPayType}'` : null}, 
-                                                  ${item.billAmt ? item.billAmt : 0}, 
-                                                  ${item.billChange ? item.billChange : 0},
-                                                  ${item.desiredAmt ? item.desiredAmt : 0})`;
-                                    }).join(', ');
-                                    let sql_query_addDeliveries = `INSERT INTO delivery_billWiseDelivery_data (bwdId, deliveryId, billId, billAddress, deliveryType, billPayType, billAmt, billChange, desiredAmt)
-                                                                   VALUES ${addBillWiseDeliveryData};
-                                                                   UPDATE billing_data SET billStatus = 'On Delivery' WHERE billId IN ${billIds}`;
-                                    connection.query(sql_query_addDeliveries, (err) => {
-                                        if (err) {
-                                            console.error("Error inserting Delivery Bill Data:", err);
-                                            connection.rollback(() => {
-                                                connection.release();
-                                                return res.status(500).send('Database Error');
-                                            });
-                                        } else {
-                                            connection.commit((err) => {
-                                                if (err) {
-                                                    console.error("Error committing transaction:", err);
-                                                    connection.rollback(() => {
-                                                        connection.release();
-                                                        return res.status(500).send('Database Error');
-                                                    });
-                                                } else {
+                                        connection.query(sql_querry_addDeliveryData, (err) => {
+                                            if (err) {
+                                                console.error("Error inserting Delivery Data:", err);
+                                                connection.rollback(() => {
                                                     connection.release();
-                                                    return res.status(200).send('Delivery Start Successfully');
-                                                }
-                                            });
-                                        }
-                                    })
+                                                    return res.status(500).send('Database Error');
+                                                });
+                                            } else {
+                                                const deliveryBillData = deliveryData.deliveryBillData;
+
+                                                let billIds = (deliveryBillData && deliveryBillData.length)
+                                                    ? `(${deliveryBillData.map(item => `'${item.billId}'`).join(',')})`
+                                                    : '(NULL)';
+
+                                                let addBillWiseDeliveryData = deliveryBillData.map((item, index) => {
+                                                    let uniqueId = `bwd_${Date.now() + index + '_' + index}`; // Generating a unique ID using current timestamp
+                                                    return `('${uniqueId}', 
+                                                             '${deliveryId}', 
+                                                              ${item.billId ? `'${item.billId}'` : null}, 
+                                                              ${item.billAddress ? `'${item.billAddress}'` : null}, 
+                                                             '${item.deliveryType}', 
+                                                              ${item.billPayType ? `'${item.billPayType}'` : null}, 
+                                                              ${item.billAmt ? item.billAmt : 0}, 
+                                                              ${item.billChange ? item.billChange : 0},
+                                                              ${item.desiredAmt ? item.desiredAmt : 0},
+                                                             STR_TO_DATE('${currentDate}','%b %d %Y'))`;
+                                                }).join(', ');
+                                                let sql_query_addDeliveries = `INSERT INTO delivery_billWiseDelivery_data (bwdId, deliveryId, billId, billAddress, deliveryType, billPayType, billAmt, billChange, desiredAmt, bwdDate)
+                                                                               VALUES ${addBillWiseDeliveryData};
+                                                                               UPDATE billing_data SET billStatus = 'On Delivery' WHERE billId IN ${billIds};
+                                                                               UPDATE billing_Official_data SET billStatus = 'On Delivery' WHERE billId IN ${billIds};
+                                                                               UPDATE billing_Complimentary_data SET billStatus = 'On Delivery' WHERE billId IN ${billIds}`;
+                                                connection.query(sql_query_addDeliveries, (err) => {
+                                                    if (err) {
+                                                        console.error("Error inserting Delivery Bill Data:", err);
+                                                        connection.rollback(() => {
+                                                            connection.release();
+                                                            return res.status(500).send('Database Error');
+                                                        });
+                                                    } else {
+                                                        connection.commit((err) => {
+                                                            if (err) {
+                                                                console.error("Error committing transaction:", err);
+                                                                connection.rollback(() => {
+                                                                    connection.release();
+                                                                    return res.status(500).send('Database Error');
+                                                                });
+                                                            } else {
+                                                                connection.release();
+                                                                return res.status(200).send('Delivery Start Successfully');
+                                                            }
+                                                        });
+                                                    }
+                                                })
+                                            }
+                                        });
+
+                                    }
                                 }
-                            });
+                            })
                         }
                     } else {
                         connection.rollback(() => {
@@ -397,7 +513,11 @@ const removeDeliveryData = (req, res) => {
                                 } else {
                                     if (id && id.length) {
                                         let sql_querry_addDeliveryData = `UPDATE billing_data SET billStatus = 'Print' 
-                                                                          WHERE billId IN (SELECT COALESCE(billId,NULL) FROM delivery_billWiseDelivery_data WHERE deliveryId = '${deliveryId}')`;
+                                                                          WHERE billId IN (SELECT COALESCE(billId,NULL) FROM delivery_billWiseDelivery_data WHERE deliveryId = '${deliveryId}') AND billStatus != 'cancel';
+                                                                          UPDATE billing_Official_data SET billStatus = 'Print'
+                                                                          WHERE billId IN (SELECT COALESCE(billId,NULL) FROM delivery_billWiseDelivery_data WHERE deliveryId = '${deliveryId}') AND billStatus != 'cancel';
+                                                                          UPDATE billing_Complimentary_data SET billStatus = 'Print'
+                                                                          WHERE billId IN (SELECT COALESCE(billId,NULL) FROM delivery_billWiseDelivery_data WHERE deliveryId = '${deliveryId}') AND billStatus != 'cancel'`;
                                         connection.query(sql_querry_addDeliveryData, (err) => {
                                             if (err) {
                                                 console.error("Error Update Delivery Bill Status:", err);
@@ -455,7 +575,7 @@ const removeDeliveryData = (req, res) => {
     });
 }
 
-// Get Delivery, Hotel & Bill Data By Token
+// Update All Delivery Data
 
 const updateDeliveryData = (req, res) => {
     pool2.getConnection((err, connection) => {
@@ -475,8 +595,9 @@ const updateDeliveryData = (req, res) => {
                     if (token) {
                         const decoded = jwt.verify(token, process.env.JWT_SECRET);
                         const enterBy = decoded.id.firstName;
-
+                        const currentDate = getCurrentDate();
                         const deliveryData = req.body;
+
                         if (!deliveryData.personId || !deliveryData.deliveryBillData.length) {
                             connection.rollback(() => {
                                 connection.release();
@@ -494,7 +615,11 @@ const updateDeliveryData = (req, res) => {
                                                               WHERE
                                                                   deliveryId = '${deliveryData.deliveryId}';
                                                               UPDATE billing_data SET billStatus = 'Print' 
-                                                              WHERE billId IN (SELECT COALESCE(billId,NULL) FROM delivery_billWiseDelivery_data WHERE deliveryId = '${deliveryData.deliveryId}')`;
+                                                              WHERE billId IN (SELECT COALESCE(billId,NULL) FROM delivery_billWiseDelivery_data WHERE deliveryId = '${deliveryData.deliveryId}') AND billStatus != 'cancel';
+                                                              UPDATE billing_Official_data SET billStatus = 'Print'
+                                                              WHERE billId IN (SELECT COALESCE(billId,NULL) FROM delivery_billWiseDelivery_data WHERE deliveryId = '${deliveryData.deliveryId}') AND billStatus != 'cancel';
+                                                              UPDATE billing_Complimentary_data SET billStatus = 'Print'
+                                                              WHERE billId IN (SELECT COALESCE(billId,NULL) FROM delivery_billWiseDelivery_data WHERE deliveryId = '${deliveryData.deliveryId}' AND billStatus != 'cancel')`;
                             connection.query(sql_querry_addDeliveryData, (err) => {
                                 if (err) {
                                     console.error("Error Update Delivery Data:", err);
@@ -528,12 +653,15 @@ const updateDeliveryData = (req, res) => {
                                                   ${item.billPayType ? `'${item.billPayType}'` : null}, 
                                                   ${item.billAmt ? item.billAmt : 0}, 
                                                   ${item.billChange ? item.billChange : 0},
-                                                  ${item.desiredAmt ? item.desiredAmt : 0})`;
+                                                  ${item.desiredAmt ? item.desiredAmt : 0},
+                                                 STR_TO_DATE('${currentDate}','%b %d %Y'))`;
                                             }).join(', ');
 
-                                            let sql_query_addDeliveries = `INSERT INTO delivery_billWiseDelivery_data (bwdId, deliveryId, billId, billAddress, deliveryType, billPayType, billAmt, billChange, desiredAmt)
+                                            let sql_query_addDeliveries = `INSERT INTO delivery_billWiseDelivery_data (bwdId, deliveryId, billId, billAddress, deliveryType, billPayType, billAmt, billChange, desiredAmt, bwdDate)
                                                                            VALUES ${addBillWiseDeliveryData};
-                                                                           UPDATE billing_data SET billStatus = 'On Delivery' WHERE billId IN ${billIds}`;
+                                                                           UPDATE billing_data SET billStatus = 'On Delivery' WHERE billId IN ${billIds};
+                                                                           UPDATE billing_Official_data SET billStatus = 'On Delivery' WHERE billId IN ${billIds};
+                                                                           UPDATE billing_Complimentary_data SET billStatus = 'On Delivery' WHERE billId IN ${billIds}`;
                                             connection.query(sql_query_addDeliveries, (err) => {
                                                 if (err) {
                                                     console.error("Error inserting Delivery Bill Data:", err);
@@ -542,18 +670,75 @@ const updateDeliveryData = (req, res) => {
                                                         return res.status(500).send('Database Error');
                                                     });
                                                 } else {
-                                                    connection.commit((err) => {
+                                                    let sql_query_getDeliveryData = `SELECT
+                                                                                         deliveryId,
+                                                                                         enterBy,
+                                                                                         personId,
+                                                                                         totalBillAmt,
+                                                                                         totalChange,
+                                                                                         totalDesiredAmt,
+                                                                                         durationTime,
+                                                                                         deliveryDate,
+                                                                                         deliveryStatus,
+                                                                                         SEC_TO_TIME(
+                                                                                            TIMESTAMPDIFF(
+                                                                                                SECOND,
+                                                                                                delivery_data.deliveryCreationDate,
+                                                                                                NOW()
+                                                                                            )
+                                                                                        ) AS timeDifference
+                                                                                     FROM
+                                                                                         delivery_data
+                                                                                     WHERE deliveryId = '${deliveryData.deliveryId}';
+                                                                                     SELECT
+                                                                                        bwd.bwdId,
+                                                                                        bwd.deliveryId,
+                                                                                        bwd.billId,
+                                                                                        CASE 
+                                                                                        	WHEN bwd.deliveryType = 'Hotel' THEN CONCAT('H', btd.tokenNo) 
+                                                            	                            WHEN bwd.deliveryType = 'Pick Up' THEN CONCAT('P', btd.tokenNo) 
+                                                            	                            WHEN bwd.deliveryType = 'Delivery' THEN CONCAT('D', btd.tokenNo) 
+                                                            	                            WHEN bwd.deliveryType = 'Dine In' THEN CONCAT('R', btd.tokenNo)
+                                                                                            WHEN bwd.deliveryType = 'Due Bill' THEN 'B'
+                                                                                            WHEN bwd.deliveryType = 'other' THEN 'O'
+                                                                                          	ELSE NULL
+	                                                                                    END AS token,
+                                                                                        bwd.billAddress,
+                                                                                        bwd.deliveryType,
+                                                                                        bwd.billPayType,
+                                                                                        bwd.billAmt,
+                                                                                        bwd.billChange,
+                                                                                        bwd.desiredAmt
+                                                                                     FROM
+                                                                                        delivery_billWiseDelivery_data AS bwd
+                                                                                     LEFT JOIN billing_token_data AS btd ON btd.billId = bwd.billId
+                                                                                     WHERE bwd.deliveryId = '${deliveryData.deliveryId}'`;
+                                                    connection.query(sql_query_getDeliveryData, (err, data) => {
                                                         if (err) {
-                                                            console.error("Error committing transaction:", err);
+                                                            console.error("Error inserting Delivery Bill Data:", err);
                                                             connection.rollback(() => {
                                                                 connection.release();
                                                                 return res.status(500).send('Database Error');
                                                             });
                                                         } else {
-                                                            connection.release();
-                                                            return res.status(200).send('Delivery Updated Successfully');
+                                                            let json = {
+                                                                ...data[0][0],
+                                                                deliveryData: data[1]
+                                                            }
+                                                            connection.commit((err) => {
+                                                                if (err) {
+                                                                    console.error("Error committing transaction:", err);
+                                                                    connection.rollback(() => {
+                                                                        connection.release();
+                                                                        return res.status(500).send('Database Error');
+                                                                    });
+                                                                } else {
+                                                                    connection.release();
+                                                                    return res.status(200).send(json);
+                                                                }
+                                                            });
                                                         }
-                                                    });
+                                                    })
                                                 }
                                             })
                                         }
@@ -579,10 +764,322 @@ const updateDeliveryData = (req, res) => {
     });
 }
 
+// Update Delivery Person In Delivery Data
+
+const updateDeliveryPerson = (req, res) => {
+    try {
+        const personId = req.query.personId ? req.query.personId : null;
+        const deliveryId = req.query.deliveryId ? req.query.deliveryId : null;
+        if (!personId || !deliveryId) {
+            return res.status(404).send('Please Fill All The Fields...!');
+        } else {
+            let sql_query_chkPersonAvailability = `SELECT personId FROM delivery_data WHERE personId = '${personId}' AND deliveryStatus = 'On Delivery' AND deliveryId != '${deliveryId}'`;
+            pool.query(sql_query_chkPersonAvailability, (err, chk) => {
+                if (err) {
+                    console.error("An error occurred in SQL Query", err);
+                    return res.status(500).send('Database Error');
+                } else {
+                    if (chk && chk.length) {
+                        return res.status(400).send('Person Is On Delivery');
+                    } else {
+                        let sql_query_chkPersonAvailability = `UPDATE delivery_data SET personId = '${personId}' WHERE deliveryId = '${deliveryId}'`;
+                        pool.query(sql_query_chkPersonAvailability, (err, result) => {
+                            if (err) {
+                                console.error("An error occurred in SQL Query", err);
+                                return res.status(500).send('Database Error');
+                            } else {
+                                return res.status(200).send(personId);
+                            }
+                        })
+                    }
+                }
+            })
+        }
+    } catch (error) {
+        console.error('An error occurred', error);
+        res.status(500).json('Internal Server Error');
+    }
+}
+
+// Stop Delivery Data
+
+const stopDeliveryData = (req, res) => {
+    pool2.getConnection((err, connection) => {
+        if (err) {
+            console.error("Error getting database connection:", err);
+            return res.status(500).send('Database Error');
+        }
+        try {
+            connection.beginTransaction((err) => {
+                if (err) {
+                    console.error("Error beginning transaction:", err);
+                    connection.release();
+                    return res.status(500).send('Database Error');
+                } else {
+                    let token;
+                    token = req.headers ? req.headers.authorization.split(" ")[1] : null;
+                    if (token) {
+                        const decoded = jwt.verify(token, process.env.JWT_SECRET);
+                        const enterBy = decoded.id.firstName;
+                        const currentDate = getCurrentDate();
+                        const deliveryId = req.query.deliveryId;
+
+                        if (!deliveryId) {
+                            connection.rollback(() => {
+                                connection.release();
+                                return res.status(404).send('Please Fill All The Fields..!');
+                            })
+                        } else {
+                            let sql_querry_updateDelivery = `UPDATE
+                                                                  delivery_data
+                                                              SET
+                                                                  durationTime = SEC_TO_TIME(
+                                                                                     TIMESTAMPDIFF(
+                                                                                         SECOND,
+                                                                                         delivery_data.deliveryCreationDate,
+                                                                                         NOW()
+                                                                                     )
+                                                                                 ),
+                                                                  deliveryStatus = 'complete'
+                                                              WHERE 
+                                                                  deliveryId = '${deliveryId}';`;
+                            connection.query(sql_querry_updateDelivery, (err) => {
+                                if (err) {
+                                    console.error("Error Update Delivery Data:", err);
+                                    connection.rollback(() => {
+                                        connection.release();
+                                        return res.status(500).send('Database Error');
+                                    });
+                                } else {
+                                    let sql_query_updateBillStatus = `UPDATE billing_data SET billStatus = 'complete' 
+                                                                      WHERE billId IN (SELECT COALESCE(billId,NULL) FROM delivery_billWiseDelivery_data WHERE deliveryId = '${deliveryId}');
+                                                                      UPDATE billing_Official_data SET billStatus = 'complete'
+                                                                      WHERE billId IN (SELECT COALESCE(billId,NULL) FROM delivery_billWiseDelivery_data WHERE deliveryId = '${deliveryId}');
+                                                                      UPDATE billing_Complimentary_data SET billStatus = 'complete'
+                                                                      WHERE billId IN (SELECT COALESCE(billId,NULL) FROM delivery_billWiseDelivery_data WHERE deliveryId = '${deliveryId}')`;
+                                    connection.query(sql_query_updateBillStatus, (err) => {
+                                        if (err) {
+                                            console.error("Error Update Bill Status:", err);
+                                            connection.rollback(() => {
+                                                connection.release();
+                                                return res.status(500).send('Database Error');
+                                            });
+                                        } else {
+                                            connection.commit((err) => {
+                                                if (err) {
+                                                    console.error("Error committing transaction:", err);
+                                                    connection.rollback(() => {
+                                                        connection.release();
+                                                        return res.status(500).send('Database Error');
+                                                    });
+                                                } else {
+                                                    connection.release();
+                                                    return res.status(200).send('Delivery has Completed');
+                                                }
+                                            });
+                                        }
+                                    })
+                                }
+                            })
+                        }
+                    } else {
+                        connection.rollback(() => {
+                            connection.release();
+                            return res.status(404).send('Please Login First....!');
+                        });
+                    }
+                }
+            });
+        } catch (error) {
+            console.error('An error occurd', error);
+            connection.rollback(() => {
+                connection.release();
+                return res.status(500).json('Internal Server Error');
+            })
+        }
+    });
+}
+
+// Change PayType In Delivery Console
+
+const changePayTypeByDelivery = (req, res) => {
+    pool2.getConnection((err, connection) => {
+        if (err) {
+            console.error("Error getting database connection:", err);
+            return res.status(500).send('Database Error');
+        }
+        try {
+            connection.beginTransaction((err) => {
+                if (err) {
+                    console.error("Error beginning transaction:", err);
+                    connection.release();
+                    return res.status(500).send('Database Error');
+                } else {
+                    let token;
+                    token = req.headers ? req.headers.authorization.split(" ")[1] : null;
+                    if (token) {
+                        const decoded = jwt.verify(token, process.env.JWT_SECRET);
+                        const enterBy = decoded.id.firstName;
+                        const uid1 = new Date();
+                        const bwuId = String("bwu_" + uid1.getTime());
+                        const dabId = String("dab_" + uid1.getTime());
+                        const deliveryData = req.body;
+                        const currentDate = getCurrentDate();
+                        if (!deliveryData.deliveryId || !deliveryData.payTypeData ||
+                            !deliveryData.payTypeData.bwdId || !deliveryData.payTypeData.deliveryType || !deliveryData.payTypeData.billPayType) {
+                            connection.rollback(() => {
+                                connection.release();
+                                return res.status(404).send('Please Fill All The Fields..!');
+                            })
+                        } else {
+                            if (deliveryData.payTypeData.deliveryType == 'Hotel') {
+                                let sql_querry_updateDelivery = `UPDATE
+                                                                     delivery_data
+                                                                 SET
+                                                                     totalBillAmt = ${deliveryData.totalBillAmt ? deliveryData.totalBillAmt : 0},
+                                                                     totalChange = ${deliveryData.totalChange ? deliveryData.totalChange : 0},
+                                                                     totalDesiredAmt = ${deliveryData.totalDesiredAmt ? deliveryData.totalDesiredAmt : 0}
+                                                                 WHERE deliveryId = '${deliveryData.deliveryId}';
+                                                                 UPDATE
+                                                                     delivery_billWiseDelivery_data
+                                                                 SET
+                                                                     billPayType = '${deliveryData.payTypeData.billPayType}',
+                                                                     billAmt = ${deliveryData.payTypeData.billAmt ? deliveryData.payTypeData.billAmt : 0},
+                                                                     billChange = ${deliveryData.payTypeData.billChange ? deliveryData.payTypeData.billChange : 0},
+                                                                     desiredAmt = ${deliveryData.payTypeData.desiredAmt ? deliveryData.payTypeData.desiredAmt : 0}
+                                                                 WHERE bwdId = '${deliveryData.payTypeData.bwdId}';
+                                                                 UPDATE billing_data SET billStatus = '${deliveryData.payTypeData.billPayType}' WHERE billId = '${deliveryData.payTypeData.billId}';
+                                                                 UPDATE billing_Official_data SET billStatus = '${deliveryData.payTypeData.billPayType}' WHERE billId = '${deliveryData.payTypeData.billId}'`;
+                                connection.query(sql_querry_updateDelivery, (err) => {
+                                    if (err) {
+                                        console.error("Error Update Delivery Data:", err);
+                                        connection.rollback(() => {
+                                            connection.release();
+                                            return res.status(500).send('Database Error');
+                                        });
+                                    } else {
+                                        connection.commit((err) => {
+                                            if (err) {
+                                                console.error("Error committing transaction:", err);
+                                                connection.rollback(() => {
+                                                    connection.release();
+                                                    return res.status(500).send('Database Error');
+                                                });
+                                            } else {
+                                                connection.release();
+                                                return res.status(200).send('Change Successfully');
+                                            }
+                                        });
+                                    }
+                                });
+                            } else {
+                                let sql_query_chkOfficial = `SELECT billId FROM billing_Official_data WHERE billId = '${deliveryData.payTypeData.billId}';
+                                                             SELECT COALESCE(MAX(billNumber),0) AS officialLastBillNo FROM billing_Official_data WHERE firmId = (SELECT firmId FROM billing_data WHERE billId = '${deliveryData.payTypeData.billId}') AND billCreationDate = (SELECT MAX(billCreationDate) FROM billing_Official_data WHERE firmId = (SELECT firmId FROM billing_data WHERE billId = '${deliveryData.payTypeData.billId}')) FOR UPDATE`;
+                                connection.query(sql_query_chkOfficial, (err, chkExist) => {
+                                    if (err) {
+                                        console.error("Error check official bill exist or not:", err);
+                                        connection.rollback(() => {
+                                            connection.release();
+                                            return res.status(500).send('Database Error');
+                                        });
+                                    } else {
+                                        const isExist = chkExist && chkExist[0].length ? true : false;
+                                        const officialLastBillNo = chkExist && chkExist[1] ? chkExist[1][0].officialLastBillNo : 0;
+                                        const nextOfficialBillNo = officialLastBillNo + 1;
+                                        let sql_querry_updateDelivery = `UPDATE
+                                                                             delivery_data
+                                                                         SET
+                                                                             totalBillAmt = ${deliveryData.totalBillAmt ? deliveryData.totalBillAmt : 0},
+                                                                             totalChange = ${deliveryData.totalChange ? deliveryData.totalChange : 0},
+                                                                             totalDesiredAmt = ${deliveryData.totalDesiredAmt ? deliveryData.totalDesiredAmt : 0}
+                                                                         WHERE deliveryId = '${deliveryData.deliveryId}';
+                                                                         UPDATE
+                                                                             delivery_billWiseDelivery_data
+                                                                         SET
+                                                                             billPayType = '${deliveryData.payTypeData.billPayType}',
+                                                                             billAmt = ${deliveryData.payTypeData.billAmt ? deliveryData.payTypeData.billAmt : 0},
+                                                                             billChange = ${deliveryData.payTypeData.billChange ? deliveryData.payTypeData.billChange : 0},
+                                                                             desiredAmt = ${deliveryData.payTypeData.desiredAmt ? deliveryData.payTypeData.desiredAmt : 0}
+                                                                         WHERE bwdId = '${deliveryData.payTypeData.bwdId}';
+                                        ${deliveryData.payTypeData.billPayType == 'Cancel'
+                                                ?
+                                                `UPDATE billing_data SET billPayType = '${deliveryData.payTypeData.billPayType}', billStatus = '${deliveryData.payTypeData.billPayType}' WHERE billId = '${deliveryData.payTypeData.billId}';
+                                                 UPDATE billing_Official_data SET billPayType = '${deliveryData.payTypeData.billPayType}', billStatus = '${deliveryData.payTypeData.billPayType}' WHERE billId = '${deliveryData.payTypeData.billId}';
+                                                 DELETE FROM billing_billWiseUpi_data WHERE billId = '${deliveryData.payTypeData.billId}';
+                                                 DELETE FROM due_billAmount_data WHERE billId = '${deliveryData.payTypeData.billId}';`
+                                                :
+                                                `UPDATE billing_data SET billPayType = '${deliveryData.payTypeData.billPayType}' WHERE billId = '${deliveryData.payTypeData.billId}';
+                                                 UPDATE billing_Official_data SET billPayType = '${deliveryData.payTypeData.billPayType}' WHERE billId = '${deliveryData.payTypeData.billId}';
+                                                 DELETE FROM billing_billWiseUpi_data WHERE billId = '${deliveryData.payTypeData.billId}';
+                                                 DELETE FROM due_billAmount_data WHERE billId = '${deliveryData.payTypeData.billId}';
+                                                 ${deliveryData.payTypeData.billPayType == 'online'
+                                                    ?
+                                                    `INSERT INTO billing_billWiseUpi_data(bwuId, onlineId, billId, amount, onlineDate)
+                                                     VALUES('${bwuId}', '${deliveryData.onlineId}', '${deliveryData.payTypeData.billId}', '${deliveryData.payTypeData.billAmt}', STR_TO_DATE('${currentDate}','%b %d %Y'));`
+                                                    :
+                                                    deliveryData.accountId && billData.payTypeData.billPayType == 'due'
+                                                        ?
+                                                        `INSERT INTO due_billAmount_data(dabId, accountId, billId, billAmount, billNote, dueDate)
+                                                         VALUES('${dabId}','${deliveryData.accountId}','${deliveryData.payTypeData.billId}',${deliveryData.payTypeData.billAmt},${deliveryData.billNote ? `'${deliveryData.billNote}'` : null}, STR_TO_DATE('${currentDate}','%b %d %Y'));`
+                                                        :
+                                                        ''}
+                                                 ${!isExist && deliveryData.isOfficial
+                                                    ?
+                                                    `INSERT INTO billing_Official_data(billId, billNumber, firmId, cashier, menuStatus, billType, billPayType, discountType, discountValue, totalDiscount, totalAmount, settledAmount, billComment, billDate, billStatus)
+                                                     SELECT billId, ${nextOfficialBillNo}, firmId, cashier, menuStatus, billType, '${deliveryData.payTypeData.billPayType}', discountType, discountValue, totalDiscount, totalAmount, settledAmount, billComment, billDate, billStatus FROM billing_data WHERE billId = '${deliveryData.payTypeData.billId}';`
+                                                    :
+                                                    ''}`}`;
+                                        connection.query(sql_querry_updateDelivery, (err) => {
+                                            if (err) {
+                                                console.error("Error Update Delivery Data:", err);
+                                                connection.rollback(() => {
+                                                    connection.release();
+                                                    return res.status(500).send('Database Error');
+                                                });
+                                            } else {
+                                                connection.commit((err) => {
+                                                    if (err) {
+                                                        console.error("Error committing transaction:", err);
+                                                        connection.rollback(() => {
+                                                            connection.release();
+                                                            return res.status(500).send('Database Error');
+                                                        });
+                                                    } else {
+                                                        connection.release();
+                                                        return res.status(200).send('Change Successfully');
+                                                    }
+                                                });
+                                            }
+                                        });
+                                    }
+                                })
+                            }
+                        }
+                    } else {
+                        connection.rollback(() => {
+                            connection.release();
+                            return res.status(404).send('Please Login First....!');
+                        });
+                    }
+                }
+            });
+        } catch (error) {
+            console.error('An error occurd', error);
+            connection.rollback(() => {
+                connection.release();
+                return res.status(500).json('Internal Server Error');
+            })
+        }
+    });
+}
+
 module.exports = {
     getDeliveryDataByToken,
     getOnDeliveryData,
     addDeliveryData,
     removeDeliveryData,
-    updateDeliveryData
+    updateDeliveryData,
+    updateDeliveryPerson,
+    stopDeliveryData,
+    changePayTypeByDelivery
 }

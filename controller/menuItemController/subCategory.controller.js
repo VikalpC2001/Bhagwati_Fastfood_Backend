@@ -64,7 +64,7 @@ const getSubCategoryList = (req, res) => {
 
 const getSubCategoryListForMobile = (req, res) => {
     try {
-        const sql_query_getDetails = `SELECT subCategoryId, subCategoryName, displayRank FROM item_subCategory_data where subCategoryName = 'vik'`;
+        const sql_query_getDetails = `SELECT subCategoryId, subCategoryName, displayRank FROM item_subCategory_data`;
         pool.query(sql_query_getDetails, (err, rows, fields) => {
             if (err) {
                 console.error("An error occurd in SQL Queery", err);

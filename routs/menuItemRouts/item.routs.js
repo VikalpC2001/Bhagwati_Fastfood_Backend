@@ -54,5 +54,6 @@ router.delete('/removeItemData', protect, itemController.removeItemData);
 router.post('/updateItemData', protect, itemController.updateItemData);
 router.post('/updateMultipleItemPrice', protect, itemController.updateMultipleItemPrice);
 router.get('/updateItemStatus', protect, itemController.updateItemStatus);
+router.get('/getItemSalesReport', itemController.getItemSalesReport);
 
 module.exports = router;

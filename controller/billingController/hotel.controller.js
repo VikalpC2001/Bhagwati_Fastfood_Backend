@@ -314,7 +314,7 @@ const getHotelBillDataById = (req, res) => {
             sql_querry_getCountDetails = `SELECT COUNT(*) AS numRows FROM billing_Official_data AS bod
                                           LEFT JOIN billing_hotelInfo_data AS hif ON bod.billId = hif.billId
                                           WHERE hif.hotelId = '${data.hotelId}'
-                                          AND bbod.billStatus = '${data.payType}'
+                                          AND bod.billStatus = '${data.payType}'
                                           AND bod.billDate BETWEEN STR_TO_DATE('${data.startDate}','%b %d %Y') AND STR_TO_DATE('${data.endDate}','%b %d %Y')`;
         } else if (data.startDate && data.endDate) {
             sql_querry_getCountDetails = `SELECT COUNT(*) AS numRows FROM billing_Official_data AS bod
@@ -373,7 +373,7 @@ const getHotelBillDataById = (req, res) => {
                 } else if (data.payType && data.payType == 'cancel' && data.startDate && data.endDate) {
                     sql_query_getDetails = `${commaonQuery}
                                             WHERE hif.hotelId = '${data.hotelId}'
-                                            AND bbod.billStatus = '${data.payType}'
+                                            AND bod.billStatus = '${data.payType}'
                                             AND bod.billDate BETWEEN STR_TO_DATE('${data.startDate}','%b %d %Y') AND STR_TO_DATE('${data.endDate}','%b %d %Y')
                                             ORDER BY bod.billNumber DESC, bod.billDate DESC
                                             LIMIT ${limit}`;

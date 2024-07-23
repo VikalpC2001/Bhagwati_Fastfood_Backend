@@ -2,6 +2,88 @@ const pool = require('../../database');
 const pool2 = require('../../databasePool');
 const jwt = require("jsonwebtoken");
 const { generateUpdateQuery, varientDatas } = require('./menuFunction.controller');
+const { jsPDF } = require('jspdf');
+require('jspdf-autotable');
+async function createPDF(res, datas) {
+    try {
+        const doc = new jsPDF();
+
+        function addSection(doc, title, items, isFirstPage = false, footer) {
+            if (!isFirstPage) {
+                doc.addPage();
+            }
+            doc.text(title, 14, 20);
+
+            const tableData = items.map((item, index) => (
+                [index + 1, item.itemName, item.soldQty, parseFloat(item.soldRevenue).toLocaleString('en-IN'), item.complimentaryQty, parseFloat(item.complimentaryRevenue).toLocaleString('en-IN'), item.cancelQty, parseFloat(item.cancelRevenue).toLocaleString('en-IN')]
+            ));
+            tableData.push(footer);
+
+
+            const head = [
+                ['Item Info', '', 'Regular', '', 'Complimentary', '', 'Cancel', ''],
+                ['Sr.', 'Item Name', 'Qty', 'Revenue', 'Qty', 'Revenue', 'Qty', 'Revenue']
+            ];
+
+            doc.autoTable({
+                head: head,
+                body: tableData,
+                startY: 30,
+                theme: 'grid',
+                styles: {
+                    cellPadding: 2,
+                    halign: 'center',
+                    fontSize: 10,
+                    lineWidth: 0.1, // Add border width
+                    lineColor: [192, 192, 192] // Add border color
+                },
+                headStyles: {
+                    lineWidth: 0.1, // Add border width
+                    lineColor: [192, 192, 192], // Add border color
+                    fontSize: 10,
+                    halign: 'center',
+                },
+                didParseCell: function (data) {
+                    if (data.row.section === 'head') {
+                        if (data.row.index === 0) {
+                            if (data.column.index === 0) {
+                                data.cell.colSpan = 2;
+                            } else if (data.column.index === 2 || data.column.index === 4 || data.column.index === 6) {
+                                data.cell.colSpan = 2;
+                            }
+                        } else if (data.row.index === 1) {
+                            if (data.column.index === 1) {
+                                data.cell.rowSpan = 1;
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        let isFirstPage = true;
+        Object.keys(datas).forEach((key, index) => {
+            const section = datas[key];
+            const footer = ['Total', '', '', parseFloat(datas[key].totalRevenue).toLocaleString('en-IN'), '', parseFloat(datas[key].totalComplimentaryRevenue).toLocaleString('en-IN'), '', parseFloat(datas[key].totalCancelRevenue).toLocaleString('en-IN')]
+            addSection(doc, index + 1 + '. ' + key, section.items, isFirstPage, footer);
+            isFirstPage = false;
+        });
+
+        const pdfBytes = await doc.output('arraybuffer');
+        const fileName = 'jane-doe.pdf'; // Set the desired file name
+
+        // Set the response headers for the PDF download
+        res.setHeader('Content-Disposition', `attachment; filename="${fileName}"`);
+        res.setHeader('Content-Type', 'application/pdf');
+
+        // Stream the PDF to the client for download
+        res.send(Buffer.from(pdfBytes));
+
+    } catch (error) {
+        console.error('An error occurred', error);
+        res.status(500).json('Internal Server Error');
+    }
+}
 
 // Get Item Data
 
@@ -433,11 +515,100 @@ const updateItemStatus = (req, res) => {
     }
 }
 
+// Get Item Sell Report
+
+const getItemSalesReport = (req, res) => {
+    try {
+        var date = new Date(), y = date.getFullYear(), m = (date.getMonth());
+        var firstDay = new Date(y, m, 1).toString().slice(4, 15);
+        var lastDay = new Date(y, m + 1, 0).toString().slice(4, 15);
+
+        const data = {
+            startDate: (req.query.startDate ? req.query.startDate : '').slice(4, 15),
+            endDate: (req.query.endDate ? req.query.endDate : '').slice(4, 15)
+        }
+        let sql_querry_getDetails = `SELECT
+                                         uwi.itemId,
+                                         CONCAT(item.itemName,' (',uwi.unit,')') AS itemName,
+                                         item.itemSubCategory,
+                                         iscd.subCategoryName,
+                                         uwi.unit,
+                                         SUM(CASE WHEN bd.billStatus != 'cancel' AND bd.billPayType != 'complimentary' THEN bbi.qty ELSE 0 END) AS soldQty,
+                                         SUM(CASE WHEN bd.billStatus != 'cancel' AND bd.billPayType != 'complimentary' THEN bbi.price ELSE 0 END) AS soldRevenue,
+                                         SUM(CASE WHEN bd.billStatus != 'cancel' AND bd.billPayType = 'complimentary' THEN bbi.qty ELSE 0 END) AS complimentaryQty,
+                                         SUM(CASE WHEN bd.billStatus != 'cancel' AND bd.billPayType = 'complimentary' THEN bbi.price ELSE 0 END) AS complimentaryRevenue,
+                                         SUM(CASE WHEN bd.billStatus = 'cancel' THEN bbi.qty ELSE 0 END) AS cancelQty,
+                                         SUM(CASE WHEN bd.billStatus = 'cancel' THEN bbi.price ELSE 0 END) AS cancelRevenue
+                                     FROM
+                                         item_unitWisePrice_data AS uwi
+                                     INNER JOIN item_menuList_data AS item ON item.itemId = uwi.itemId
+                                     INNER JOIN item_subCategory_data AS iscd ON iscd.subCategoryId = item.itemSubCategory
+                                     LEFT JOIN billing_billWiseItem_data AS bbi ON uwi.itemId = bbi.itemId AND uwi.unit = bbi.unit
+                                     LEFT JOIN billing_data AS bd ON bd.billId = bbi.billId AND bd.billDate BETWEEN STR_TO_DATE('${data.startDate ? data.startDate : firstDay}', '%b %d %Y') AND STR_TO_DATE('${data.endDate ? data.endDate : lastDay}', '%b %d %Y')
+                                     WHERE uwi.menuCategoryId = 'base_2001'
+                                     GROUP BY
+                                         uwi.itemId,
+                                         uwi.unit,
+                                         item.itemName,
+                                         item.itemSubCategory
+                                     ORDER BY
+                                         uwi.itemId,
+                                         CASE
+                                            WHEN uwi.unit = 'NO' THEN 1
+                                            WHEN uwi.unit = 'HP' THEN 2
+                                            WHEN uwi.unit = 'KG' THEN 3
+                                            ELSE 4
+                                          END`;
+        pool.query(sql_querry_getDetails, (err, data) => {
+            if (err) {
+                console.error("An error occurd in SQL Queery", err);
+                return res.status(500).send('Database Error');
+            } else {
+                const result = data.reduce((acc, item) => {
+                    const key = item.subCategoryName;
+                    if (!acc[key]) {
+                        acc[key] = {
+                            items: [],
+                            totalQty: 0, totalRevenue: 0,
+                            totalComplimentaryQty: 0, totalComplimentaryRevenue: 0,
+                            totalCancelQty: 0, totalCancelRevenue: 0
+                        };
+                    }
+                    acc[key].items.push(item);
+                    if (item.soldRevenue !== null) {
+                        acc[key].totalQty += item.soldQty;
+                        acc[key].totalRevenue += item.soldRevenue;
+                        acc[key].totalComplimentaryQty += item.complimentaryQty;
+                        acc[key].totalComplimentaryRevenue += item.complimentaryRevenue;
+                        acc[key].totalCancelQty += item.cancelQty;
+                        acc[key].totalCancelRevenue += item.cancelRevenue;
+                    }
+                    return acc;
+                }, {});
+                createPDF(res, result)
+                    .then(() => {
+                        console.log('PDF created successfully');
+                        res.status(200);
+                    })
+                    .catch((err) => {
+                        console.log(err);
+                        res.status(500).send('Error creating PDF');
+                    });
+                // return res.status(200).send(result);
+            }
+        })
+    } catch (error) {
+        console.error('An error occurd', error);
+        res.status(500).send('Internal Server Error');
+    }
+}
+
 module.exports = {
     getItemData,
     addItemData,
     removeItemData,
     updateItemData,
     updateMultipleItemPrice,
-    updateItemStatus
+    updateItemStatus,
+    getItemSalesReport
 }

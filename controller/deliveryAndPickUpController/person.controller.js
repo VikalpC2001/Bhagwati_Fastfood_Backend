@@ -324,7 +324,7 @@ const getDeliveryDataByPerson = (req, res) => {
                                                              durationTime,
                                                              DATE_FORMAT(deliveryDate,'%D %b %Y') AS deliveryDate,
                                                              deliveryStatus,
-                                                             CONCAT(TIME_FORMAT(deliveryCreationDate, '%h:%i %p'),' TO ',
+                                                             CONCAT(TIME_FORMAT(deliveryCreationDate, '%h:%i %p'),' To ',
                                                                     TIME_FORMAT(ADDTIME(deliveryCreationDate, durationTime), '%h:%i %p'))
                                                              AS timePeriod
                                                          FROM

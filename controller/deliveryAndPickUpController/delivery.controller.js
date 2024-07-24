@@ -388,9 +388,9 @@ const addDeliveryData = (req, res) => {
                                                                                          '${deliveryId}',
                                                                                          '${enterBy}',
                                                                                          '${deliveryData.personId}',
-                                                                                          ${deliveryData.totalBillAmt},
-                                                                                          ${deliveryData.totalChange},
-                                                                                          ${deliveryData.totalDesiredAmt},
+                                                                                          ${deliveryData.totalBillAmt ? deliveryData.totalBillAmt : 0},
+                                                                                          ${deliveryData.totalChange ? deliveryData.totalChange : 0},
+                                                                                          ${deliveryData.totalDesiredAmt ? deliveryData.totalDesiredAmt : 0},
                                                                                          '${deliveryData.durationTime}',
                                                                                          STR_TO_DATE('${currentDate}','%b %d %Y'),
                                                                                          'On Delivery'
@@ -609,9 +609,9 @@ const updateDeliveryData = (req, res) => {
                                                               SET
                                                                   enterBy = '${enterBy}',
                                                                   personId = '${deliveryData.personId}',
-                                                                  totalBillAmt = ${deliveryData.totalBillAmt},
-                                                                  totalChange = ${deliveryData.totalChange},
-                                                                  totalDesiredAmt = ${deliveryData.totalDesiredAmt}
+                                                                  totalBillAmt = ${deliveryData.totalBillAmt ? deliveryData.totalBillAmt : 0},
+                                                                  totalChange = ${deliveryData.totalChange ? deliveryData.totalChange : 0},
+                                                                  totalDesiredAmt = ${deliveryData.totalDesiredAmt ? deliveryData.totalDesiredAmt : 0}
                                                               WHERE
                                                                   deliveryId = '${deliveryData.deliveryId}';
                                                               UPDATE billing_data SET billStatus = 'Print' 

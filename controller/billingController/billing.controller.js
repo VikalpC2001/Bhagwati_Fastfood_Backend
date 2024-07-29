@@ -2075,8 +2075,7 @@ const updateHotelBillData = (req, res) => {
                                         const billDate = billInfo && billInfo[0] && billInfo[0].billDate ? billInfo[0].billDate : 0;
                                         const billTime = billInfo && billInfo[0] && billInfo[0].billTime ? billInfo[0].billTime : 0;
 
-                                        let updateColumnField = `cashier = '${cashier}', 
-                                                                 billPayType = '${billData.billPayType}',
+                                        let updateColumnField = `cashier = '${cashier}',
                                                                  discountType = '${billData.discountType}',
                                                                  discountValue = ${billData.discountValue},
                                                                  totalDiscount = ${billData.totalDiscount},

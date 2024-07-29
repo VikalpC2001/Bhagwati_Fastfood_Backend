@@ -39,7 +39,12 @@ const getEmployeeMonthlySalaryById = (req, res) => {
                                         smsd.totalSalary,
                                         smsd.remainSalary,
                                         smsd.maxLeave,
-                                        COALESCE(FLOOR(e.salary / DAY(LAST_DAY(msEndDate))),0) AS perDaySalary,
+                                        COALESCE(FLOOR(
+                                                        (SELECT salary FROM salary_history_data 
+                                                        WHERE employeeId = '${employeeId}'
+                                                        ORDER BY ABS(DATEDIFF(msEndDate, historyCreationDate)) ASC
+                                                        LIMIT 1)
+                                                        / DAY(LAST_DAY(msEndDate))),0) AS perDaySalary,
                                         DATE_FORMAT(msStartDate, '%d-%m-%Y') AS startDate,
                                         DATE_FORMAT(smsd.msStartDate, '%M %Y') AS salaryMonth,
                                         CONCAT(
@@ -141,7 +146,10 @@ const getEmployeeMonthlySalaryById = (req, res) => {
                                     ) ELSE 0
                                     END
                                     ) *(
-                                        COALESCE(FLOOR(e.salary / DAY(LAST_DAY(msEndDate))),
+                                        COALESCE(FLOOR( (SELECT salary FROM salary_history_data
+                                                        WHERE employeeId = '${employeeId}'
+                                                        ORDER BY ABS(DATEDIFF(msEndDate, historyCreationDate)) ASC
+                                                        LIMIT 1)/ DAY(LAST_DAY(msEndDate))),
                                         0)
                                     ) AS deductionSalaryOfLeave
                                     FROM

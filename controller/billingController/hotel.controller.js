@@ -358,6 +358,7 @@ const getHotelBillDataById = (req, res) => {
                                         bod.discountValue AS discountValue,
                                         bod.totalDiscount AS totalDiscount,
                                         bod.settledAmount AS grandTotal,
+                                        bod.billStatus AS billStatus,
                                         DATE_FORMAT(bod.billDate,'%d-%m-%Y') AS billDate,
                                         DATE_FORMAT(bod.billCreationDate,'%h:%i %p') AS billTime
                                     FROM billing_Official_data AS bod

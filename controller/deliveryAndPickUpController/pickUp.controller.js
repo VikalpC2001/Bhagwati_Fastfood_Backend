@@ -77,7 +77,9 @@ const updateTokenToDisplay = (req, res) => {
         const tokenNo = req.query.tokenNo ? req.query.tokenNo : null;
         const currentDate = getCurrentDate();
         if (!tokenNo) {
-            return res.status(200).send("Pleast Fill Token No...!")
+            return res.status(404).send("Pleast Fill Token No...!")
+        } else if (!Number.isInteger(tokenNo)) {
+            return res.status(401).send("Token must be a Number")
         } else {
             let sql_querry_getBillIdByToken = `SELECT tokenId, billId FROM billing_token_data
                                                WHERE tokenNo = ${tokenNo} AND billType = 'Pick Up' AND billDate = STR_TO_DATE('${currentDate}','%b %d %Y');`;

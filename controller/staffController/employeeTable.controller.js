@@ -39,11 +39,17 @@ const getEmployeeMonthlySalaryById = (req, res) => {
                                         smsd.totalSalary,
                                         smsd.remainSalary,
                                         smsd.maxLeave,
+                                        (SELECT salary FROM salary_history_data
+                                         WHERE employeeId = '${employeeId}' AND (msEndDate BETWEEN startDate AND endDate
+                                         OR (endDate = startDate AND msEndDate > endDate))
+                                         ORDER BY startDate DESC
+                                         LIMIT 1) AS thisMonthSalary,
                                         COALESCE(FLOOR(
-                                                        (SELECT salary FROM salary_history_data 
-                                                        WHERE employeeId = '${employeeId}'
-                                                        ORDER BY ABS(DATEDIFF(msEndDate, historyCreationDate)) ASC
-                                                        LIMIT 1)
+                                                        (SELECT salary FROM salary_history_data
+                                                         WHERE employeeId = '${employeeId}' AND (msEndDate BETWEEN startDate AND endDate
+                                                         OR (endDate = startDate AND msEndDate > endDate))
+                                                         ORDER BY startDate DESC
+                                                         LIMIT 1)
                                                         / DAY(LAST_DAY(msEndDate))),0) AS perDaySalary,
                                         DATE_FORMAT(msStartDate, '%d-%m-%Y') AS startDate,
                                         DATE_FORMAT(smsd.msStartDate, '%M %Y') AS salaryMonth,
@@ -147,9 +153,10 @@ const getEmployeeMonthlySalaryById = (req, res) => {
                                     END
                                     ) *(
                                         COALESCE(FLOOR( (SELECT salary FROM salary_history_data
-                                                        WHERE employeeId = '${employeeId}'
-                                                        ORDER BY ABS(DATEDIFF(msEndDate, historyCreationDate)) ASC
-                                                        LIMIT 1)/ DAY(LAST_DAY(msEndDate))),
+                                                         WHERE employeeId = '${employeeId}' AND (msEndDate BETWEEN startDate AND endDate
+                                                         OR (endDate = startDate AND msEndDate > endDate))
+                                                         ORDER BY startDate DESC
+                                                         LIMIT 1)/ DAY(LAST_DAY(msEndDate))),
                                         0)
                                     ) AS deductionSalaryOfLeave
                                     FROM

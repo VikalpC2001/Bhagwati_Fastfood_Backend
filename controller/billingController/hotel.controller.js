@@ -673,7 +673,7 @@ const exportPdfBillDataById = (req, res) => {
             if (err) {
                 console.error("An error occurd in SQL Queery", err);
                 return res.status(500).send('Database Error');
-            } else if (rows && rows.length <= 0) {
+            } else if (rows && rows[1].length <= 0) {
                 return res.status(400).send('No Data Found');
             }
             const abc = Object.values(JSON.parse(JSON.stringify(rows[1])));

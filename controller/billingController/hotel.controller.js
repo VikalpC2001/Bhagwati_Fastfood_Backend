@@ -1,5 +1,7 @@
 const pool = require('../../database');
 const jwt = require("jsonwebtoken");
+const { jsPDF } = require('jspdf');
+require('jspdf-autotable');
 
 // Get Hotel List
 
@@ -487,6 +489,216 @@ const getHotelStaticsData = (req, res) => {
     }
 }
 
+// Export PDF Function
+
+async function createBillPDF(res, datas, sumFooterArray, tableHeading) {
+    try {
+        // Create a new PDF document
+        console.log(';;;;;;', datas);
+        console.log('?????', sumFooterArray);
+        console.log('?????', tableHeading);
+        const doc = new jsPDF();
+
+        // JSON data
+        const jsonData = datas;
+        // console.log(jsonData);
+
+        // Get the keys from the first JSON object to set as columns
+        const keys = Object.keys(jsonData[0]);
+
+        // Define columns for the auto table, including a "Serial No." column
+        const columns = [
+            { header: 'Sr.', dataKey: 'serialNo' }, // Add Serial No. column
+            ...keys.map(key => ({ header: key, dataKey: key }))
+        ]
+
+        // Convert JSON data to an array of arrays (table rows) and add a serial number
+        const data = jsonData.map((item, index) => [index + 1, ...keys.map(key => item[key]), '', '']);
+
+        // Initialize the sum columns with empty strings
+        if (sumFooterArray) {
+            data.push(sumFooterArray);
+        }
+
+        // Add auto table to the PDF document
+        // Set font size for the title
+        doc.setTextColor(255, 0, 0);
+        doc.setFontSize(28);
+
+        // Get the page width
+        const pageWidth = doc.internal.pageSize.getWidth();
+
+        // Calculate the text width for centering
+        const text = "SHRI BHAGWATI FAST FOOD";
+        const textWidth = doc.getTextWidth(text);
+
+        // Calculate the x-coordinate to center the text
+        const xCoordinate = (pageWidth - textWidth) / 2;
+
+        // Add the centered title to the document
+        doc.text(xCoordinate, 15, text);
+
+        // Set font size back to normal for the address
+        doc.setFontSize(14);
+
+        // Add the address below the title, centered as well
+        const address1 = "Palace Road, Rajkot - 360001";
+        const address2 = "Mobile : 9825360287  , 9909036360";
+
+        // Calculate the text width for the address
+        const address1Width = doc.getTextWidth(address1);
+        const address2Width = doc.getTextWidth(address2);
+
+        // Calculate the x-coordinate to center the address
+        const address1XCoordinate = (pageWidth - address1Width) / 2;
+        const address2XCoordinate = (pageWidth - address2Width) / 2;
+
+        doc.text(address1XCoordinate, 24, address1);
+        doc.text(address2XCoordinate, 31, address2);
+
+        const lineStartY = 35;
+        doc.setDrawColor(255, 0, 0); // Set draw color to red
+        doc.setLineWidth(0.5);
+        doc.line(15, lineStartY, pageWidth - 15, lineStartY);
+
+        doc.setFontSize(13);
+        doc.setTextColor(0, 0, 0);
+        doc.setFont('BOLD')
+        doc.text(address2XCoordinate + 8, 41, 'GSTIN: 24BDZPC3972L1ZX');
+
+        doc.setDrawColor(0, 0, 0);
+        doc.line(15, 43, pageWidth - 15, 43);
+
+        doc.setFontSize(13);
+        doc.setTextColor(0, 0, 0);
+        doc.setFont('BOLD')
+        doc.text(15, 49, `A/c of : ${tableHeading} `);
+
+        const amountColumnIndex = columns.findIndex(col => col.header === 'Amount');
+
+        doc.autoTable({
+            startY: 52,
+            head: [columns.map(col => col.header)], // Extract headers correctly
+            body: data,
+            theme: 'grid',
+            styles: {
+                cellPadding: 2, // Add padding to cells for better appearance
+                halign: 'center', // Horizontally center-align content
+                fontSize: 12
+            },
+            columnStyles: {
+                [amountColumnIndex]: { halign: 'right' } // Align amount column to the right
+            },
+            didParseCell: function (data) {
+                var rows = data.table.body;
+                if (data.row.index === rows.length - 1) {
+                    data.cell.styles.fontSize = 14
+                    data.cell.styles.fontStyle = 'bold';
+                }
+            }
+        });
+
+        const pdfBytes = await doc.output();
+        const fileName = 'jane-doe.pdf'; // Set the desired file name
+
+        // Set the response headers for the PDF download
+        res.setHeader('Content-Disposition', `attachment; filename="${fileName}"`);
+        res.setHeader('Content-Type', 'application/pdf');
+
+        // Stream the PDF to the client for download
+        res.send(pdfBytes);
+
+
+        // Save the PDF to a file
+        // const pdfFilename = 'output.pdf';
+        // fs.writeFileSync(pdfFilename, doc.output());
+        // console.log(`PDF saved as ${pdfFilename}`);
+    } catch (error) {
+        console.error('An error occurd', error);
+        res.status(500).json('Internal Server Error');
+    }
+}
+
+// Export Hotel Data PDF
+
+const exportPdfBillDataById = (req, res) => {
+    try {
+        var date = new Date(), y = date.getFullYear(), m = (date.getMonth());
+        var firstDay = new Date(y, m, 1).toString().slice(4, 15);
+        var lastDay = new Date(y, m + 1, 0).toString().slice(4, 15);
+
+        const data = {
+            hotelId: req.query.hotelId ? req.query.hotelId : null,
+            payType: req.query.payType ? req.query.payType : null,
+            startDate: (req.query.startDate ? req.query.startDate : '').slice(4, 15),
+            endDate: (req.query.endDate ? req.query.endDate : '').slice(4, 15)
+        }
+        console.log(data.startDate)
+        const commanTransactionQuarry = `SELECT hotelName FROM billing_hotel_data WHERE hotelId = '${data.hotelId}';
+                                         SELECT 
+                                            CONCAT(DATE_FORMAT(bod.billDate,'%d-%m-%Y'),' ',DATE_FORMAT(bod.billCreationDate,'%h:%i %p')) AS Date,
+                                            FORMAT(bod.settledAmount,2) AS Amount,
+                                            CONCAT('Bill No : ',bod.billNumber) AS "Bill Number",
+                                            CONCAT('Room No : ',hif.roomNo) AS "Room Number"
+                                         FROM billing_Official_data AS bod
+                                         LEFT JOIN billing_hotelInfo_data AS hif ON bod.billId = hif.billId`;
+        if (data.payType && data.startDate && data.endDate) {
+            sql_query_getDetails = `${commanTransactionQuarry}
+                                        WHERE hif.hotelId = '${data.hotelId}'
+                                        AND bod.billPayType = '${data.payType}'
+                                        AND bod.billStatus != 'Cancel' 
+                                        AND bod.billDate BETWEEN STR_TO_DATE('${data.startDate}','%b %d %Y') AND STR_TO_DATE('${data.endDate}','%b %d %Y')
+                                        ORDER BY bod.billDate ASC`;
+        } else if (data.startDate && data.endDate) {
+            sql_query_getDetails = `${commanTransactionQuarry}
+                                        WHERE hif.hotelId = '${data.hotelId}'
+                                        AND bod.billStatus != 'Cancel'
+                                        AND bod.billDate BETWEEN STR_TO_DATE('${data.startDate}','%b %d %Y') AND STR_TO_DATE('${data.endDate}','%b %d %Y')
+                                        ORDER BY bod.billDate ASC`;
+        } else if (data.payType) {
+            sql_query_getDetails = `${commanTransactionQuarry}
+                                        WHERE hif.hotelId = '${data.hotelId}'
+                                        AND bod.billPayType = '${data.payType}'
+                                        AND bod.billStatus != 'Cancel'
+                                        AND bod.billDate BETWEEN STR_TO_DATE('${firstDay}','%b %d %Y') AND STR_TO_DATE('${lastDay}','%b %d %Y')
+                                        ORDER BY bod.billDate ASC`;
+        } else {
+            sql_query_getDetails = `${commanTransactionQuarry}
+                                        WHERE hif.hotelId = '${data.hotelId}'
+                                        AND bod.billStatus != 'Cancel'
+                                        AND bod.billDate BETWEEN STR_TO_DATE('${firstDay}','%b %d %Y') AND STR_TO_DATE('${lastDay}','%b %d %Y')
+                                        ORDER BY bod.billDate ASC`;
+        }
+        pool.query(sql_query_getDetails, (err, rows) => {
+            if (err) {
+                console.error("An error occurd in SQL Queery", err);
+                return res.status(500).send('Database Error');
+            } else if (rows && rows.length <= 0) {
+                return res.status(400).send('No Data Found');
+            }
+            const abc = Object.values(JSON.parse(JSON.stringify(rows[1])));
+            const grandTotal = abc.reduce((total, item) => total + Number(item.Amount || 0), 0);
+            const sumFooterArray = ['Total', '', parseFloat(grandTotal).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })];
+
+            let tableHeading = rows && rows[0].length ? rows[0][0].hotelName + ' (' + (data.startDate ? data.startDate : firstDay) + ' To ' + (data.endDate ? data.endDate : lastDay) + ')' : 'NA';
+
+
+            createBillPDF(res, abc, sumFooterArray, tableHeading)
+                .then(() => {
+                    console.log('PDF created successfully');
+                    res.status(200);
+                })
+                .catch((err) => {
+                    console.log(err);
+                    res.status(500).send('Error creating PDF');
+                });
+        });
+    } catch (error) {
+        console.error('An error occurd', error);
+        res.status(500).json('Internal Server Error');
+    }
+}
+
 module.exports = {
     getHotelList,
     getHotelDataById,
@@ -495,5 +707,6 @@ module.exports = {
     addHotelData,
     removeHotelData,
     updateHotelData,
-    ddlHotelList
+    ddlHotelList,
+    exportPdfBillDataById
 }

@@ -44,6 +44,7 @@ router.post('/addHotelData', protect, hotelController.addHotelData);
 router.delete('/removeHotelData', protect, hotelController.removeHotelData);
 router.post('/updateHotelData', protect, hotelController.updateHotelData);
 router.get('/ddlHotelList', protect, hotelController.ddlHotelList);
+router.get('/exportPdfBillDataById', hotelController.exportPdfBillDataById);
 
 // Firm Routs
 

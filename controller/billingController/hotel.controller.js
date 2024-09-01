@@ -23,11 +23,11 @@ const getHotelList = (req, res) => {
                 const sql_query_getDetails = `SELECT 
                                                 hotelId,
                                                 hotelName,
-                                                hotelAddress,
-                                                hotelLocality,
-                                                hotelPincode,
+                                                COALESCE(hotelAddress,'N/A') AS hotelAddress,
+                                                COALESCE(hotelLocality,'N/A') AS hotelLocality,
+                                                COALESCE(hotelPincode,'N/A') AS hotelPincode,
                                                 hotelMobileNo,
-                                                otherMobileNo,
+                                                COALESCE(otherMobileNo,'N/A') AS otherMobileNo,
                                                 payType,
                                                 discountType,
                                                 CASE
@@ -77,11 +77,11 @@ const getHotelDataById = (req, res) => {
             sql_querry_getCountDetails = `SELECT
                                             hotelId,
                                             hotelName,
-                                            hotelAddress,
-                                            hotelLocality,
-                                            hotelPincode,
+                                            COALESCE(hotelAddress,'N/A') AS hotelAddress,
+                                            COALESCE(hotelLocality,'N/A') AS hotelLocality,
+                                            COALESCE(hotelPincode,'N/A') AS hotelPincode,
                                             hotelMobileNo,
-                                            otherMobileNo,
+                                            COALESCE(otherMobileNo,'N/A') AS otherMobileNo,
                                             payType,
                                             discountType,
                                             CASE
@@ -210,6 +210,7 @@ const updateHotelData = (req, res) => {
             discountType: req.body.discountType ? req.body.discountType : null,
             discount: req.body.discount ? req.body.discount : 0,
         }
+        console.log('mummm', data.discountType, data.discountType == 'none' ? 0 : data.discount);
         if (!data.hotelId || !data.hotelName || !data.hotelMobileNo || !data.payType || !data.discountType) {
             return res.status(404).send('Please Fill All The Fields....!');
         } else {
@@ -231,7 +232,7 @@ const updateHotelData = (req, res) => {
                                                             otherMobileNo = ${data.otherMobileNo ? `'${data.otherMobileNo}'` : null},
                                                             payType = '${data.payType}',
                                                             discountType = '${data.discountType}',
-                                                            discount = ${data.discount}
+                                                            discount = ${data.discountType == 'none' ? 0 : data.discount}
                                                         WHERE hotelId = '${data.hotelId}'`;
                     pool.query(sql_querry_updateHotelData, (err, data) => {
                         if (err) {
@@ -699,6 +700,258 @@ const exportPdfBillDataById = (req, res) => {
     }
 }
 
+// Add Hotel Transaction Data
+
+const addHotelTransactionData = async (req, res) => {
+    try {
+        let token;
+        token = req.headers ? req.headers.authorization.split(" ")[1] : null;
+        if (token) {
+            const decoded = jwt.verify(token, process.env.JWT_SECRET);
+            const cashier = decoded.id.firstName;
+            const uid1 = new Date();
+            const transactionId = String("Transaction_" + uid1.getTime());
+
+            const hotelId = req.body.hotelId ? req.body.hotelId : null;
+            const givenBy = req.body.givenBy ? req.body.givenBy.trim() : null;
+            const paidAmount = req.body.paidAmount ? req.body.paidAmount : 0;
+            const transactionNote = req.body.transactionNote ? req.body.transactionNote.trim() : null;
+            const transactionDate = new Date(req.body.transactionDate ? req.body.transactionDate : null).toString().slice(4, 15)
+
+            if (!hotelId || !paidAmount || !transactionDate) {
+                return res.status(400).send("Please Fill all the feilds");
+            }
+            const get_remaining_amount = `SELECT
+                                              COALESCE(SUM(CASE 
+                                                  WHEN bod.billPayType = 'debit' AND bod.billStatus != 'Cancel' THEN bod.settledAmount 
+                                                  ELSE 0 
+                                              END), 0) - COALESCE(SUM(ht.paidAmount), 0) AS remainingAmount
+                                          FROM
+                                              billing_hotel_data AS bhd
+                                          LEFT JOIN billing_hotelInfo_data AS hinfo ON bhd.hotelId = hinfo.hotelId
+                                          LEFT JOIN billing_Official_data AS bod ON hinfo.billId = bod.billId
+                                          LEFT JOIN billing_hotelTransaction_data AS ht ON bhd.hotelId = ht.hotelId
+                                          WHERE bhd.hotelId = '${hotelId}'
+                                          GROUP BY bhd.hotelName`;
+            pool.query(get_remaining_amount, (err, data) => {
+                if (err) {
+                    console.error("An error occurd in SQL Queery", err);
+                    return res.status(500).send('Database Error');
+                }
+                const remainingAmount = data[0].remainingAmount
+
+                const sql_querry_addTransaction = `INSERT INTO billing_hotelTransaction_data (transactionId, hotelId, receivedBy, givenBy, pendingAmount, paidAmount, transactionNote, transactionDate)  
+                                                   VALUES ('${transactionId}', '${hotelId}', '${cashier}', ${givenBy ? `'${givenBy}'` : null}, ${remainingAmount}, ${paidAmount}, ${transactionNote ? `'${transactionNote}'` : null}, STR_TO_DATE('${transactionDate}','%b %d %Y'))`;
+                pool.query(sql_querry_addTransaction, (err, data) => {
+                    if (err) {
+                        console.error("An error occurd in SQL Queery", err);
+                        return res.status(500).send('Database Error');
+                    }
+                    return res.status(200).send("Transaction Added Successfully");
+                })
+            })
+        } else {
+            return res.status(401).send("Please Login Firest.....!");
+        }
+    } catch (error) {
+        console.error('An error occurd', error);
+        return res.status(500).json('Internal Server Error');
+    }
+}
+
+// Remove Hotel Transaction Data
+
+const removeHotelTransactionById = (req, res) => {
+    try {
+        let token;
+        token = req.headers ? req.headers.authorization.split(" ")[1] : null;
+        if (token) {
+            const decoded = jwt.verify(token, process.env.JWT_SECRET);
+            const rights = decoded.id.rights;
+
+            const transactionId = req.query.transactionId ? req.query.transactionId.trim() : null;
+            if (!transactionId) {
+                return res.status(404).send('transactionId Not Found..!');
+            } else {
+                req.query.transactionId = pool.query(`SELECT transactionId FROM billing_hotelTransaction_data WHERE transactionId = '${transactionId}'`, (err, row) => {
+                    if (err) {
+                        console.error("An error occurd in SQL Queery", err);
+                        return res.status(500).send('Database Error');
+                    }
+                    if (row && row.length) {
+                        const sql_querry_removedetails = `DELETE FROM billing_hotelTransaction_data WHERE transactionId = '${transactionId}'`;
+                        pool.query(sql_querry_removedetails, (err, data) => {
+                            if (err) {
+                                console.error("An error occurd in SQL Queery", err);
+                                return res.status(500).send('Database Error');
+                            }
+                            return res.status(200).send("Transaction Deleted Successfully");
+                        })
+                    } else {
+                        return res.send('transactionId Not Found');
+                    }
+                })
+            }
+        } else {
+            return res.status(404).send('Please Login First...!');
+        }
+    } catch (error) {
+        console.error('An error occurd', error);
+        res.status(500).send('Internal Server Error');
+    }
+}
+
+// Get Hotel Transaction Data
+
+const getHotelTransactionListById = (req, res) => {
+    try {
+        const page = req.query.page;
+        const numPerPage = req.query.numPerPage;
+        const skip = (page - 1) * numPerPage;
+        const limit = skip + ',' + numPerPage;
+
+        var date = new Date(), y = date.getFullYear(), m = (date.getMonth());
+        var firstDay = new Date(y, m, 1).toString().slice(4, 15);
+        var lastDay = new Date(y, m + 1, 0).toString().slice(4, 15);
+
+        const data = {
+            startDate: (req.query.startDate ? req.query.startDate : '').slice(4, 15),
+            endDate: (req.query.endDate ? req.query.endDate : '').slice(4, 15),
+            hotelId: req.query.hotelId
+        }
+        if (data.startDate && data.endDate) {
+            sql_querry_getCountDetails = `SELECT count(*) as numRows FROM billing_hotelTransaction_data WHERE hotelId = '${data.hotelId}' AND transactionDate BETWEEN STR_TO_DATE('${data.startDate}', '%b %d %Y') AND STR_TO_DATE('${data.endDate}', '%b %d %Y')`;
+        } else {
+            sql_querry_getCountDetails = `SELECT count(*) as numRows FROM billing_hotelTransaction_data WHERE hotelId = '${data.hotelId}' AND transactionDate BETWEEN STR_TO_DATE('${firstDay}', '%b %d %Y') AND STR_TO_DATE('${lastDay}', '%b %d %Y')`;
+        }
+        pool.query(sql_querry_getCountDetails, (err, rows, fields) => {
+            if (err) {
+                console.error("An error occurd in SQL Queery", err);
+                return res.status(500).send('Database Error');
+            } else {
+                const numRows = rows[0].numRows;
+                const numPages = Math.ceil(numRows / numPerPage);
+                const sql_query_staticQuery = `SELECT transactionId, hotelId, receivedBy, givenBy, pendingAmount, paidAmount, transactionNote, transactionDate FROM billing_hotelTransaction_data`;
+                if (data.startDate && data.endDate) {
+                    sql_query_getDetails = `${sql_query_staticQuery}
+                                            WHERE hotelId = '${data.hotelId}' 
+                                            AND transactionDate BETWEEN STR_TO_DATE('${data.startDate}', '%b %d %Y') AND STR_TO_DATE('${data.endDate}', '%b %d %Y')
+                                            ORDER BY transactionDate DESC
+                                            LIMIT ${limit}`;
+                } else {
+                    sql_query_getDetails = `${sql_query_staticQuery}
+                                            WHERE hotelId = '${data.hotelId}' 
+                                            AND transactionDate BETWEEN STR_TO_DATE('${firstDay}', '%b %d %Y') AND STR_TO_DATE('${lastDay}', '%b %d %Y')
+                                            ORDER BY transactionDate DESC
+                                            LIMIT ${limit}`;
+                }
+                pool.query(sql_query_getDetails, (err, rows, fields) => {
+                    if (err) {
+                        console.error("An error occurd in SQL Queery", err);
+                        return res.status(500).send('Database Error');;
+                    } else {
+                        if (numRows === 0) {
+                            const rows = [{
+                                'msg': 'No Data Found'
+                            }]
+                            return res.status(200).send({ rows, numRows });
+                        } else {
+                            return res.status(200).send({ rows, numRows });
+                        }
+                    }
+                });
+            }
+        })
+    } catch (error) {
+        console.error('An error occurd', error);
+        res.status(500).json('Internal Server Error');
+    }
+}
+
+// Get Month Wise Debit Transaction Of Hotel
+
+const getMonthWiseTransactionForHotel = (req, res) => {
+    try {
+        const hotelId = req.query.hotelId;
+        let page = req.query.page; // Page number
+        let numPerPage = req.query.numPerPage; // Number of items per page
+        if (!hotelId || !page || !numPerPage) {
+            return res.status(404).send('Not Found')
+        }
+
+        // Calculate the start and end indices for the current page
+        let startIndex = (page - 1) * numPerPage;
+        let endIndex = startIndex + numPerPage;
+        let sql_query_getMonthWiseData = `SELECT
+                                            COALESCE(ROUND(SUM(
+                                            CASE 
+                                                WHEN bod.billPayType = 'debit' AND bod.billStatus != 'Cancel' THEN bod.settledAmount 
+                                                ELSE 0 
+                                            END), 0), 0) AS amount,
+                                            COALESCE(ROUND(SUM(
+                                            CASE
+                                                WHEN bod.billPayType = 'debit' AND bod.billStatus != 'Cancel' THEN bod.settledAmount
+                                                ELSE 0
+                                            END), 0), 0) AS amt,
+                                            CONCAT(MONTHNAME(bod.billDate), '-', YEAR(bod.billDate)) AS date
+                                          FROM
+                                            billing_hotel_data AS bhd
+                                          LEFT JOIN billing_hotelInfo_data AS hid ON hid.hotelId = bhd.hotelId
+                                          LEFT JOIN billing_Official_data AS bod ON bod.billId = hid.billId 
+                                          WHERE bhd.hotelId = '${hotelId}'
+                                          GROUP BY 
+                                            YEAR(bod.billDate), 
+                                            MONTH(bod.billDate)
+                                          ORDER BY 
+                                            YEAR(bod.billDate) ASC, 
+                                            MONTH(bod.billDate) ASC;
+                                          SELECT COALESCE(ROUND(SUM(paidAmount)),0) AS totalPaidAmount FROM billing_hotelTransaction_data WHERE hotelId = '${hotelId}'`;
+        pool.query(sql_query_getMonthWiseData, (err, data) => {
+            if (err) {
+                console.error("An error occurd in SQL Queery", err);
+                return res.status(500).send('Database Error');
+            } else {
+                const creditAmtJson = data && data[0] ? Object.values(JSON.parse(JSON.stringify(data[0]))) : [];
+                const debitAmtSum = data && data[1] ? data[1][0].totalPaidAmount : 0;
+                const arr = MonthWiseData(creditAmtJson, debitAmtSum);
+                const result = arr.sort((a, b) => {
+                    let dateA = new Date(a.date);
+                    let dateB = new Date(b.date);
+                    return dateB - dateA;
+                });
+                const rows = result.slice(startIndex, endIndex);
+                const numRows = arr.length
+                return res.status(200).send({ rows, numRows });
+            }
+        })
+    } catch (error) {
+        console.error('An error occurd', error);
+        res.status(500).send('Internal Server Error');
+    }
+}
+
+// Catrers Month Wise Data Function
+
+function MonthWiseData(arr, cutAmt) {
+    let array = arr;
+    let value = cutAmt;
+
+    let newArray = array.map(item => {
+        if (value > 0 && item.amt > 0) {
+            if (item.amt >= value) {
+                item.amt -= value;
+                value = 0;
+            } else {
+                value -= item.amt;
+                item.amt = 0;
+            }
+        }
+        return item;
+    });
+
+    return newArray;
+}
+
 module.exports = {
     getHotelList,
     getHotelDataById,
@@ -708,5 +961,9 @@ module.exports = {
     removeHotelData,
     updateHotelData,
     ddlHotelList,
-    exportPdfBillDataById
+    exportPdfBillDataById,
+    addHotelTransactionData,
+    removeHotelTransactionById,
+    getMonthWiseTransactionForHotel,
+    getHotelTransactionListById
 }

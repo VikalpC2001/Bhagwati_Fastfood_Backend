@@ -5,6 +5,19 @@ const { generateToken } = require('../../utils/genrateToken');
 const multer = require('multer');
 const path = require('path');
 
+// Define the deleteFile function based on your file storage setup
+
+function deleteFile(filePath) {
+    const fullPath = process.env.EMPLOYEE_PHOTO_PATH + '/' + filePath;
+    fs.unlink(fullPath, (err) => {
+        if (err) {
+            console.error('Failed to delete file:', err);
+        } else {
+            console.log(`File deleted: ${filePath}`);
+        }
+    });
+}
+
 const isImage = (file) => {
     const filetypes = /jpeg|jpg|png/;
     const mimetype = filetypes.test(file.mimetype);
@@ -706,7 +719,6 @@ const calculateDueSalary = (employeeId) => {
     });
 };
 
-
 // Get Image Using API
 
 const imageFolderPath = path.join(process.env.EMPLOYEE_PHOTO_PATH);
@@ -742,7 +754,6 @@ const getImagebyName = (req, res) => {
     }
 };
 
-
 // ADD Employe API
 
 const addEmployeedetails = (req, res) => {
@@ -753,7 +764,6 @@ const addEmployeedetails = (req, res) => {
                 return res.status(500).send('File Upload Error');
             }
             const { files } = req;
-            console.log("Uploaded Files:", files);
             if (!files || files.length === 0) {
                 return res.status(400).send("Please Select File");
             }
@@ -798,6 +808,7 @@ const addEmployeedetails = (req, res) => {
                 !data.employeeMobileNumber || !data.presentAddress ||
                 !data.homeAddress || !data.category || !data.designation ||
                 !data.salary || !data.maxLeave || !data.joiningDate || !data.employeeStatus) {
+                deleteFile(filePath);
                 return res.status(400).send("Please Fill all the feilds");
             }
 
@@ -805,10 +816,12 @@ const addEmployeedetails = (req, res) => {
             pool.query(`SELECT employeeNickName FROM staff_employee_data WHERE employeeNickName = '${data.employeeNickName}'`, function (err, rows) {
                 if (err) {
                     console.error('An error occurred in SQL Query', err);
+                    deleteFile(filePath);
                     return res.status(500).send('Database Error');
                 }
 
                 if (rows.length > 0) {
+                    deleteFile(filePath);
                     return res.status(400).send('Employee is Already Added');
                 }
 
@@ -875,6 +888,7 @@ const addEmployeedetails = (req, res) => {
                 pool.query(sql_query_addEmployeeData, (err, result) => {
                     if (err) {
                         console.error('An error occurred in SQL Query', err);
+                        deleteFile(filePath);
                         return res.status(500).send('Database Error');
                     }
                     sql_query_addSalaryhistory = `INSERT INTO salary_history_data(
@@ -892,6 +906,7 @@ const addEmployeedetails = (req, res) => {
                     pool.query(sql_query_addSalaryhistory, (err, result) => {
                         if (err) {
                             console.error('An error occurred in SQL Query', err);
+                            deleteFile(filePath);
                             return res.status(500).send('Database Error');
                         }
                         console.log('><><>', data.maxLeave);
@@ -910,6 +925,7 @@ const addEmployeedetails = (req, res) => {
                         pool.query(sql_query_addSalaryhistory, (err, data) => {
                             if (err) {
                                 console.error('An error occurred in SQL Query', err);
+                                deleteFile(filePath);
                                 return res.status(500).send('Database Error');
                             }
                             console.log('Data inserted successfully');

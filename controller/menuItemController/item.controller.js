@@ -4,6 +4,7 @@ const jwt = require("jsonwebtoken");
 const { generateUpdateQuery, varientDatas } = require('./menuFunction.controller');
 const { jsPDF } = require('jspdf');
 require('jspdf-autotable');
+
 async function createPDF(res, datas) {
     try {
         const doc = new jsPDF();
@@ -603,6 +604,78 @@ const getItemSalesReport = (req, res) => {
     }
 }
 
+// Update Item Price By Billing Category
+
+const updateItemPriceByMenuId = (req, res) => {
+    try {
+        const itemId = {
+            "menuId": "menuCategory_1719236714602",
+            "itemsData": [
+                {
+                    "itemId": "item_1716218327955",
+                    "qty": 2,
+                    "unit": "No",
+                    "itemPrice": 200,
+                    "price": 300,
+                    "comment": "Tikkha"
+                },
+                {
+                    "itemId": "item_1716219703291",
+                    "qty": 1,
+                    "unit": "No",
+                    "itemPrice": 200,
+                    "price": 300,
+                    "comment": "Tikkha"
+                }
+            ]
+        };
+
+        const menuCategoryId = itemId.menuId;
+
+        // Create an array of promises for each item
+        const queries = itemId.itemsData.map((item) => {
+            const { itemId, unit, qty, comment } = item;
+
+            let sql_query_updatePrice = `SELECT
+                                             itemId,
+                                             ${qty} AS qty,
+                                             unit,
+                                             price AS itemPrice,
+                                             ${qty} * price AS price,
+                                             '${comment}' AS comment
+                                         FROM
+                                             item_unitWisePrice_data
+                                         WHERE
+                                             menuCategoryId = '${menuCategoryId}' AND itemId = '${itemId}' AND unit = '${unit}'`;
+
+            // Return a promise for each query
+            return new Promise((resolve, reject) => {
+                pool.query(sql_query_updatePrice, (err, data) => {
+                    if (err) {
+                        return reject(err);
+                    }
+                    resolve(data[0]);
+                });
+            });
+        });
+
+        // Wait for all queries to finish
+        Promise.all(queries)
+            .then(results => {
+                // Combine the results and send in the response
+                res.status(200).send(results);
+            })
+            .catch(error => {
+                console.error('An error occurred in SQL Query', error);
+                res.status(500).send('Database Error');
+            });
+
+    } catch (error) {
+        console.error('An error occurred', error);
+        res.status(500).send('Internal Server Error');
+    }
+}
+
 module.exports = {
     getItemData,
     addItemData,
@@ -610,5 +683,6 @@ module.exports = {
     updateItemData,
     updateMultipleItemPrice,
     updateItemStatus,
-    getItemSalesReport
+    getItemSalesReport,
+    updateItemPriceByMenuId
 }

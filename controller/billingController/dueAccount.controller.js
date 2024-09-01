@@ -1,4 +1,5 @@
 const pool = require('../../database');
+const jwt = require("jsonwebtoken");
 
 // Get Due Customer Account
 
@@ -211,11 +212,11 @@ const getDueStaticsById = (req, res) => {
                                                       ) AS dtd ON dad.accountId = dtd.accountId
                                                       WHERE dad.accountId = '${data.accountId}'`;
         if (req.query.startDate && req.query.endDate) {
-            sql_querry_getDueCount = `SELECT COALESCE(ROUND(SUM(billAmount)),0) AS totalDueAmt FROM due_billAmount_data WHERE accountId = '${data.accountId}' AND transactionDate BETWEEN STR_TO_DATE('${data.startDate}', '%b %d %Y') AND STR_TO_DATE('${data.endDate}', '%b %d %Y');
+            sql_querry_getDueCount = `SELECT COALESCE(ROUND(SUM(billAmount)),0) AS totalDueAmt FROM due_billAmount_data WHERE accountId = '${data.accountId}' AND dueDate BETWEEN STR_TO_DATE('${data.startDate}', '%b %d %Y') AND STR_TO_DATE('${data.endDate}', '%b %d %Y');
                                       SELECT COALESCE(ROUND(SUM(paidAmount)),0) AS totalPaidAmount FROM due_transaction_data WHERE accountId = '${data.accountId}' AND transactionDate BETWEEN STR_TO_DATE('${data.startDate}', '%b %d %Y') AND STR_TO_DATE('${data.endDate}', '%b %d %Y');
                                       ${sql_querry_remainAmount}`;
         } else {
-            sql_querry_getDueCount = `SELECT COALESCE(ROUND(SUM(billAmount)),0) AS totalDueAmt FROM due_billAmount_data WHERE accountId = '${data.accountId}' AND transactionDate BETWEEN STR_TO_DATE('${firstDay}', '%b %d %Y') AND STR_TO_DATE('${lastDay}', '%b %d %Y');
+            sql_querry_getDueCount = `SELECT COALESCE(ROUND(SUM(billAmount)),0) AS totalDueAmt FROM due_billAmount_data WHERE accountId = '${data.accountId}' AND dueDate BETWEEN STR_TO_DATE('${firstDay}', '%b %d %Y') AND STR_TO_DATE('${lastDay}', '%b %d %Y');
                                       SELECT COALESCE(ROUND(SUM(paidAmount)),0) AS totalPaidAmount FROM due_transaction_data WHERE accountId = '${data.accountId}' AND transactionDate BETWEEN STR_TO_DATE('${firstDay}', '%b %d %Y') AND STR_TO_DATE('${lastDay}', '%b %d %Y');
                                       ${sql_querry_remainAmount}`;
         }
@@ -349,7 +350,7 @@ const addDebitDueTransactionData = async (req, res) => {
 
 // Get Month Wise Transaction In Bank
 
-const getMonthWiseTransaction = (req, res) => {
+const getMonthWiseTransactionForDueAccount = (req, res) => {
     try {
         const accountId = req.query.accountId;
         let page = req.query.page; // Page number
@@ -362,12 +363,13 @@ const getMonthWiseTransaction = (req, res) => {
         let startIndex = (page - 1) * numPerPage;
         let endIndex = startIndex + numPerPage;
         let sql_query_getMonthWiseData = `SELECT
-                                            COALESCE(ROUND(SUM(billAmount)),0) AS totalDueAmt,
+                                            COALESCE(ROUND(SUM(billAmount)),0) AS amount,
+                                            COALESCE(ROUND(SUM(billAmount)),0) AS amt,
                                             CONCAT(MONTHNAME(dueDate), '-', YEAR(dueDate)) AS date
                                           FROM
                                             due_billAmount_data
                                           WHERE
-                                            accountId = '98989ihihj'
+                                            accountId = '${accountId}'
                                           GROUP BY YEAR(dueDate), MONTH(dueDate)
                                           ORDER BY YEAR(dueDate) ASC, MONTH(dueDate) ASC;
                                           SELECT COALESCE(ROUND(SUM(paidAmount)),0) AS totalPaidAmount FROM due_transaction_data WHERE accountId = '${accountId}'`;
@@ -698,7 +700,7 @@ module.exports = {
     getDueStaticsById,
     addDueBillData,
     addDebitDueTransactionData,
-    getMonthWiseTransaction,
+    getMonthWiseTransactionForDueAccount,
     getDueBillDataById,
     getDueDebitTransactionListById,
     removeDueBillDataById,

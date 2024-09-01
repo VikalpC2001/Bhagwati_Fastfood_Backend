@@ -1034,7 +1034,7 @@ const addPickUpBillData = (req, res) => {
                                                                                 });
                                                                             }
                                                                         });
-                                                                    } else if (customerData && customerData.customerId && customerData.address) {
+                                                                    } else if (customerData && customerData.customerId && customerData.address?.trim()) {
                                                                         let sql_queries_chkOldAdd = `SELECT addressId, customerId FROM billing_customerAddress_data WHERE customerAddress = TRIM('${customerData.address}') AND customerLocality = '${customerData.locality}'`;
                                                                         connection.query(sql_queries_chkOldAdd, (err, oldAdd) => {
                                                                             if (err) {
@@ -1228,7 +1228,7 @@ const addPickUpBillData = (req, res) => {
                                                                                                 }
                                                                                             }
                                                                                         })
-                                                                                    } else if (customerData.address) {
+                                                                                    } else if (customerData.address?.trim()) {
                                                                                         let sql_querry_addNewCustomer = `INSERT INTO billing_customer_data(customerId, customerName, customerMobileNumber, birthDate, anniversaryDate)
                                                                                                                          VALUES ('${newCustomerId}', ${customerData.customerName ? `TRIM('${customerData.customerName}')` : null}, ${customerData.mobileNo ? `'${customerData.mobileNo}'` : null}, ${customerData.birthDate ? `STR_TO_DATE('${customerData.birthDate}','%b %d %Y')` : null}, ${customerData.aniversaryDate ? `STR_TO_DATE('${customerData.aniversaryDate}','%b %d %Y')` : null})`;
                                                                                         connection.query(sql_querry_addNewCustomer, (err) => {
@@ -1371,7 +1371,7 @@ const addPickUpBillData = (req, res) => {
                                                                                     }
                                                                                 }
                                                                             })
-                                                                        } else if (customerData.address || customerData.locality) {
+                                                                        } else if (customerData.address?.trim() || customerData.locality?.trim()) {
                                                                             let sql_query_addAddressRelation = `INSERT INTO billing_billWiseCustomer_data(bwcId, billId, customerId, addressId, mobileNo, customerName, address, locality)
                                                                                                                 VALUES ('${bwcId}', '${billId}', NULL, NULL, ${customerData.mobileNo ? `TRIM('${customerData.mobileNo}')` : null}, ${customerData.customerName ? `TRIM('${customerData.customerName}')` : null}, ${customerData.address ? `'${customerData.address}'` : null}, ${customerData.locality ? `'${customerData.locality}'` : null})`;
                                                                             connection.query(sql_query_addAddressRelation, (err) => {
@@ -1625,7 +1625,7 @@ const addDeliveryBillData = (req, res) => {
                                                                                 });
                                                                             }
                                                                         });
-                                                                    } else if (customerData && customerData.customerId && customerData.address) {
+                                                                    } else if (customerData && customerData.customerId && customerData.address?.trim()) {
                                                                         let sql_queries_chkOldAdd = `SELECT addressId, customerId FROM billing_customerAddress_data WHERE customerAddress = TRIM('${customerData.address}') AND customerLocality = '${customerData.locality}'`;
                                                                         connection.query(sql_queries_chkOldAdd, (err, oldAdd) => {
                                                                             if (err) {
@@ -1814,7 +1814,7 @@ const addDeliveryBillData = (req, res) => {
                                                                                                 }
                                                                                             }
                                                                                         })
-                                                                                    } else if (customerData.address) {
+                                                                                    } else if (customerData.address?.trim()) {
                                                                                         let sql_querry_addNewCustomer = `INSERT INTO billing_customer_data(customerId, customerName, customerMobileNumber, birthDate, anniversaryDate)
                                                                                                                          VALUES ('${newCustomerId}', ${customerData.customerName ? `TRIM('${customerData.customerName}')` : null}, ${customerData.mobileNo ? `'${customerData.mobileNo}'` : null}, ${customerData.birthDate ? `STR_TO_DATE('${customerData.birthDate}','%b %d %Y')` : null}, ${customerData.aniversaryDate ? `STR_TO_DATE('${customerData.aniversaryDate}','%b %d %Y')` : null})`;
                                                                                         connection.query(sql_querry_addNewCustomer, (err) => {
@@ -1953,7 +1953,7 @@ const addDeliveryBillData = (req, res) => {
                                                                                     }
                                                                                 }
                                                                             })
-                                                                        } else if (customerData.address || customerData.locality) {
+                                                                        } else if (customerData.address?.trim() || customerData.locality?.trim()) {
                                                                             let sql_query_addAddressRelation = `INSERT INTO billing_billWiseCustomer_data(bwcId, billId, customerId, addressId, mobileNo, customerName, address, locality)
                                                                                                                 VALUES ('${bwcId}', '${billId}', NULL, NULL, ${customerData.mobileNo ? `TRIM('${customerData.mobileNo}')` : null}, ${customerData.customerName ? `TRIM('${customerData.customerName}')` : null}, ${customerData.address ? `'${customerData.address}'` : null}, ${customerData.locality ? `'${customerData.locality}'` : null})`;
                                                                             connection.query(sql_query_addAddressRelation, (err) => {
@@ -2431,7 +2431,7 @@ const updatePickUpBillData = (req, res) => {
                                                                                             });
                                                                                         }
                                                                                     });
-                                                                                } else if (customerData && customerData.customerId && customerData.address) {
+                                                                                } else if (customerData && customerData.customerId && customerData.address?.trim()) {
                                                                                     let sql_queries_chkOldAdd = `SELECT addressId, customerId FROM billing_customerAddress_data WHERE customerAddress = TRIM('${customerData.address}') AND customerLocality = '${customerData.locality}'`;
                                                                                     connection.query(sql_queries_chkOldAdd, (err, oldAdd) => {
                                                                                         if (err) {
@@ -2630,7 +2630,7 @@ const updatePickUpBillData = (req, res) => {
                                                                                                             }
                                                                                                         }
                                                                                                     })
-                                                                                                } else if (customerData.address) {
+                                                                                                } else if (customerData.address?.trim()) {
                                                                                                     let sql_querry_addNewCustomer = `INSERT INTO billing_customer_data(customerId, customerName, customerMobileNumber, birthDate, anniversaryDate)
                                                                                                                                      VALUES ('${newCustomerId}', ${customerData.customerName ? `TRIM('${customerData.customerName}')` : null}, ${customerData.mobileNo ? `'${customerData.mobileNo}'` : null}, ${customerData.birthDate ? `STR_TO_DATE('${customerData.birthDate}','%b %d %Y')` : null}, ${customerData.aniversaryDate ? `STR_TO_DATE('${customerData.aniversaryDate}','%b %d %Y')` : null})`;
                                                                                                     connection.query(sql_querry_addNewCustomer, (err) => {
@@ -2777,7 +2777,7 @@ const updatePickUpBillData = (req, res) => {
                                                                                                 }
                                                                                             }
                                                                                         })
-                                                                                    } else if (customerData.address || customerData.locality) {
+                                                                                    } else if (customerData.address?.trim() || customerData.locality?.trim()) {
                                                                                         let sql_query_addAddressRelation = `DELETE FROM billing_billWiseCustomer_data WHERE billId = '${billData.billId}';
                                                                                                                             INSERT INTO billing_billWiseCustomer_data(bwcId, billId, customerId, addressId, mobileNo, customerName, address, locality)
                                                                                                                             VALUES ('${bwcId}', '${billData.billId}', NULL, NULL, ${customerData.mobileNo ? `TRIM('${customerData.mobileNo}')` : null}, ${customerData.customerName ? `TRIM('${customerData.customerName}')` : null}, ${customerData.address ? `'${customerData.address}'` : null}, ${customerData.locality ? `'${customerData.locality}'` : null})`;
@@ -3068,7 +3068,7 @@ const updateDeliveryBillData = (req, res) => {
                                                                                             });
                                                                                         }
                                                                                     });
-                                                                                } else if (customerData && customerData.customerId && customerData.address) {
+                                                                                } else if (customerData && customerData.customerId && customerData.address?.trim()) {
                                                                                     let sql_queries_chkOldAdd = `SELECT addressId, customerId FROM billing_customerAddress_data WHERE customerAddress = TRIM('${customerData.address}') AND customerLocality = '${customerData.locality}'`;
                                                                                     connection.query(sql_queries_chkOldAdd, (err, oldAdd) => {
                                                                                         if (err) {
@@ -3262,7 +3262,7 @@ const updateDeliveryBillData = (req, res) => {
                                                                                                             }
                                                                                                         }
                                                                                                     })
-                                                                                                } else if (customerData.address) {
+                                                                                                } else if (customerData.address?.trim()) {
                                                                                                     let sql_querry_addNewCustomer = `INSERT INTO billing_customer_data(customerId, customerName, customerMobileNumber, birthDate, anniversaryDate)
                                                                                                                                      VALUES ('${newCustomerId}', ${customerData.customerName ? `TRIM('${customerData.customerName}')` : null}, ${customerData.mobileNo ? `'${customerData.mobileNo}'` : null}, ${customerData.birthDate ? `STR_TO_DATE('${customerData.birthDate}','%b %d %Y')` : null}, ${customerData.aniversaryDate ? `STR_TO_DATE('${customerData.aniversaryDate}','%b %d %Y')` : null})`;
                                                                                                     connection.query(sql_querry_addNewCustomer, (err) => {
@@ -3405,7 +3405,7 @@ const updateDeliveryBillData = (req, res) => {
                                                                                                 }
                                                                                             }
                                                                                         })
-                                                                                    } else if (customerData.address || customerData.locality) {
+                                                                                    } else if (customerData.address?.trim() || customerData.locality?.trim()) {
                                                                                         let sql_query_addAddressRelation = `DELETE FROM billing_billWiseCustomer_data WHERE billId = '${billData.billId}';
                                                                                                                             INSERT INTO billing_billWiseCustomer_data(bwcId, billId, customerId, addressId, mobileNo, customerName, address, locality)
                                                                                                                             VALUES ('${bwcId}', '${billData.billId}', NULL, NULL, ${customerData.mobileNo ? `TRIM('${customerData.mobileNo}')` : null}, ${customerData.customerName ? `TRIM('${customerData.customerName}')` : null}, ${customerData.address ? `'${customerData.address}'` : null}, ${customerData.locality ? `'${customerData.locality}'` : null})`;
@@ -3619,7 +3619,6 @@ const printBillInAdminSystem = (req, res) => {
         res.status(500).json('Internal Server Error');
     }
 }
-
 
 module.exports = {
     // Get Bill Data

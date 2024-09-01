@@ -44,7 +44,11 @@ router.post('/addHotelData', protect, hotelController.addHotelData);
 router.delete('/removeHotelData', protect, hotelController.removeHotelData);
 router.post('/updateHotelData', protect, hotelController.updateHotelData);
 router.get('/ddlHotelList', protect, hotelController.ddlHotelList);
-router.get('/exportPdfBillDataById', hotelController.exportPdfBillDataById);
+router.get('/exportPdfBillDataById', protect, hotelController.exportPdfBillDataById);
+router.post('/addHotelTransactionData', protect, hotelController.addHotelTransactionData);
+router.delete('/removeHotelTransactionById', protect, hotelController.removeHotelTransactionById);
+router.get('/getMonthWiseTransactionForHotel', protect, hotelController.getMonthWiseTransactionForHotel);
+router.get('/getHotelTransactionListById', protect, hotelController.getHotelTransactionListById);
 
 // Firm Routs
 
@@ -55,6 +59,7 @@ router.post('/addFirmData', protect, firmController.addFirmData);
 router.delete('/removeFirmData', protect, firmController.removeFirmData);
 router.post('/updateFirmData', protect, firmController.updateFirmData);
 router.get('/ddlFirmData', protect, firmController.ddlFirmData);
+router.get('/getTaxReportByFirmId', firmController.getTaxReportByFirmId);
 
 // Billing Routs
 
@@ -130,11 +135,11 @@ router.post('/addDueBillData', protect, accountConntroller.addDueBillData);
 router.post('/addDebitDueTransactionData', protect, accountConntroller.addDebitDueTransactionData);
 router.get('/getDueBillDataById', protect, accountConntroller.getDueBillDataById);
 router.get('/getDueDebitTransactionListById', protect, accountConntroller.getDueDebitTransactionListById);
-router.get('/getMonthWiseTransaction', protect, accountConntroller.getMonthWiseTransaction);
+router.get('/getMonthWiseTransactionForDueAccount', protect, accountConntroller.getMonthWiseTransactionForDueAccount);
 router.get('/getDueStaticsById', protect, accountConntroller.getDueStaticsById);
 router.delete('/removeDueBillDataById', protect, accountConntroller.removeDueBillDataById);
 router.delete('/removeDueDebitTransactionById', protect, accountConntroller.removeDueDebitTransactionById);
-router.post('/updateCustomerAccount', protect, accountConntroller.updateCustomerAccount);
+router.post('/updateDueBillDataById', protect, accountConntroller.updateDueBillDataById);
 
 // UPI Routs
 

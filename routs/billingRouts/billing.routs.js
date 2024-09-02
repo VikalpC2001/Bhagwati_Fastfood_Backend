@@ -44,7 +44,7 @@ router.post('/addHotelData', protect, hotelController.addHotelData);
 router.delete('/removeHotelData', protect, hotelController.removeHotelData);
 router.post('/updateHotelData', protect, hotelController.updateHotelData);
 router.get('/ddlHotelList', protect, hotelController.ddlHotelList);
-router.get('/exportPdfBillDataById', protect, hotelController.exportPdfBillDataById);
+router.get('/exportPdfBillDataById', hotelController.exportPdfBillDataById);
 router.post('/addHotelTransactionData', protect, hotelController.addHotelTransactionData);
 router.delete('/removeHotelTransactionById', protect, hotelController.removeHotelTransactionById);
 router.get('/getMonthWiseTransactionForHotel', protect, hotelController.getMonthWiseTransactionForHotel);

@@ -678,7 +678,7 @@ const exportPdfBillDataById = (req, res) => {
                 return res.status(400).send('No Data Found');
             }
             const abc = Object.values(JSON.parse(JSON.stringify(rows[1])));
-            const grandTotal = abc.reduce((total, item) => total + Number(item.Amount || 0), 0);
+            const grandTotal = abc.reduce((total, item) => total + Number(item.Amount.replace(/,/g, '') || 0), 0);
             const sumFooterArray = ['Total', '', parseFloat(grandTotal).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })];
 
             let tableHeading = rows && rows[0].length ? rows[0][0].hotelName + ' (' + (data.startDate ? data.startDate : firstDay) + ' To ' + (data.endDate ? data.endDate : lastDay) + ')' : 'NA';

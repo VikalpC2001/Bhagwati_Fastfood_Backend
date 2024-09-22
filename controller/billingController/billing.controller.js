@@ -610,12 +610,19 @@ const getBillDataById = (req, res) => {
                                                      FROM 
                                                         billing_firm_data 
                                                      WHERE 
-                                                        firmId = (SELECT firmId FROM billing_data WHERE billId = '${billId}')`
+                                                        firmId = (SELECT firmId FROM billing_data WHERE billId = '${billId}')`;
+                        let sql_query_getTableData = `SELECT
+                                                        tableNo,
+                                                        assignCaptain
+                                                      FROM
+                                                        billing_billWiseTableNo_data
+                                                      WHERE billId = '${billId}'`;
                         const sql_query_getBillData = `${sql_query_getBillingData};
                                                        ${sql_query_getBillwiseItem};
                                                        ${sql_query_getFirmData};
                                                        ${billType == 'Hotel' ? sql_query_getHotelInfo + ';' : ''}
-                                                       ${billType == 'Pick Up' || billType == 'Delivery' ? sql_query_getCustomerInfo : ''}`;
+                                                       ${['Pick Up', 'Delivery', 'Dine In'].includes(billType) ? sql_query_getCustomerInfo + ';' : ''}
+                                                       ${billType == 'Dine In' ? sql_query_getTableData : ''}`;
                         pool.query(sql_query_getBillData, (err, billData) => {
                             if (err) {
                                 console.error("An error occurd in SQL Queery", err);
@@ -626,7 +633,8 @@ const getBillDataById = (req, res) => {
                                     itemData: billData && billData[1] ? billData[1] : [],
                                     firmData: billData && billData[2] ? billData[2][0] : [],
                                     ...(billType === 'Hotel' ? { hotelDetails: billData[3][0] } : ''),
-                                    ...(billType == 'Pick Up' || billType == 'Delivery' ? { customerDetails: billData && billData[3][0] ? billData[3][0] : '' } : '')
+                                    ...(['Pick Up', 'Delivery', 'Dine In'].includes(billType) ? { customerDetails: billData && billData[3][0] ? billData[3][0] : '' } : ''),
+                                    ...(billType === 'Dine In' ? { tableInfo: billData[4][0] } : ''),
                                 }
                                 return res.status(200).send(json);
                             }

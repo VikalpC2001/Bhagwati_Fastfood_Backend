@@ -11,5 +11,6 @@ router.get('/ddlRights', protect, userController.ddlRights);
 router.delete('/removeUser', protect, userController.removeUserDetails);
 router.post('/updateUserDetails', protect, userController.updateUserDetails);
 router.get('/fillUserDetails', protect, userController.fillUserDetails);
+router.get('/ddlUsersList', protect, userController.ddlUsersList);
 
 module.exports = router;

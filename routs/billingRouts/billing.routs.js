@@ -151,4 +151,17 @@ router.delete('/removeCustomerAccount', protect, upiConntroller.removeUPI);
 router.post('/updateCustomerAccount', protect, upiConntroller.updateUPI);
 router.get('/ddlUPI', protect, upiConntroller.ddlUPI);
 
+// Dine In Routs
+
+const dineInController = require("../../controller/billingController/dineIn.controller.js");
+
+router.get('/getSubTokensByBillId', protect, dineInController.getSubTokensByBillId);
+router.get('/getAllTableView', protect, dineInController.getAllTableView);
+router.post('/addDineInOrder', protect, dineInController.addDineInOrder);
+router.delete('/removeSubTokenDataById', protect, dineInController.removeSubTokenDataById);
+router.post('/updateSubTokenDataById', protect, dineInController.updateSubTokenDataById);
+router.get('/updateStaticTableNumbers', protect, dineInController.updateStaticTableNumbers);
+router.get('/printTableBill', protect, dineInController.printTableBill);
+router.post('/updateDineInBillData', protect, dineInController.updateDineInBillData);
+
 module.exports = router;

@@ -285,6 +285,25 @@ const updateUserDetails = async (req, res) => {
     }
 }
 
+// DDL User Name List
+
+const ddlUsersList = (req, res) => {
+    try {
+        let sql_query_getUserList = `SELECT CONCAT(userFirstName,' ',userLastName) AS userName FROM user_details`;
+        pool.query(sql_query_getUserList, (err, data) => {
+            if (err) {
+                console.error("An error occurd in SQL Queery", err);
+                return res.status(500).send('Database Error');
+            } else {
+                return res.status(200).send(data);
+            }
+        })
+    } catch (error) {
+        console.error('An error occurd', error);
+        res.status(500).json('Internal Server Error');
+    }
+}
+
 module.exports = {
     authUser,
     getUserDetails,
@@ -292,5 +311,6 @@ module.exports = {
     addUserDetails,
     removeUserDetails,
     updateUserDetails,
-    fillUserDetails
+    fillUserDetails,
+    ddlUsersList
 }

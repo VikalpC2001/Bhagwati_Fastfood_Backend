@@ -26,7 +26,7 @@ const getItemDataForApp = (req, res) => {
             return res.status(404).send('menuId Not Found');
         } else {
             let sql_querry_getItem = `${sql_query_staticQuery}
-                                  ORDER BY itemCode ASC`;
+                                  ORDER BY imd.itemCode ASC`;
 
             pool.query(sql_querry_getItem, (err, rows) => {
                 if (err) {
@@ -50,13 +50,13 @@ const getItemDataForApp = (req, res) => {
                                 const result = combinedData.reduce((acc, item) => {
                                     const key = item.subCategoryName;
                                     if (!acc[key]) {
-                                        acc[key] = {
-                                            items: [],
-                                        };
+                                        acc[key] = []; // Initialize as an array directly
                                     }
-                                    acc[key].items.push(item);
+                                    acc[key].push(item); // Push the item directly into the array
                                     return acc;
                                 }, {});
+
+
                                 const newJson = {
                                     category: Object.keys(result),
                                     categoryWiseItem: result

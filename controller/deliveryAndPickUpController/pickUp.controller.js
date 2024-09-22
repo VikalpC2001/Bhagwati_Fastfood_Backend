@@ -1,6 +1,5 @@
 const pool = require('../../database');
 const jwt = require("jsonwebtoken");
-const { get } = require('../../routs/deliveryAndPickUpRouts/deliveryAndPickUp.routs');
 
 // Get Date Function 4 Hour
 

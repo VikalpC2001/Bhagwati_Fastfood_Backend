@@ -1,7 +1,6 @@
 const pool = require('../../database');
 const jwt = require("jsonwebtoken");
 const excelJS = require("exceljs");
-const { all } = require('../../routs/inventoryRouts/inventory.routs');
 
 // StockOUT List API
 

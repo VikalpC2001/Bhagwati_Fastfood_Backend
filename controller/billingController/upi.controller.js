@@ -12,7 +12,7 @@ const getUPIList = (req, res) => {
         sql_querry_getCountDetails = `SELECT count(*) as numRows FROM billing_onlineUPI_data`;
         pool.query(sql_querry_getCountDetails, (err, rows, fields) => {
             if (err) {
-                console.error("An error occurd in SQL Queery", err);
+                console.error("An error occurred in SQL Queery", err);
                 return res.status(500).send('Database Error');
             } else {
                 const numRows = rows[0].numRows;
@@ -28,7 +28,7 @@ const getUPIList = (req, res) => {
                                               LIMIT ${limit}`;
                 pool.query(sql_query_getDetails, (err, rows, fields) => {
                     if (err) {
-                        console.error("An error occurd in SQL Queery", err);
+                        console.error("An error occurred in SQL Queery", err);
                         return res.status(500).send('Database Error');;
                     } else {
                         console.log(rows);
@@ -47,7 +47,7 @@ const getUPIList = (req, res) => {
             }
         })
     } catch (error) {
-        console.error('An error occurd', error);
+        console.error('An error occurred', error);
         res.status(500).json('Internal Server Error');
     }
 }
@@ -79,7 +79,7 @@ const addUPI = async (req, res) => {
                                                 SELECT upiId FROM billing_onlineUPI_data WHERE holderName = '${data.upiId}';`
                     pool.query(sql_query_checkExist, (err, row) => {
                         if (err) {
-                            console.error("An error occurd in SQL Queery", err);
+                            console.error("An error occurred in SQL Queery", err);
                             return res.status(500).send('Database Error');
                         } else {
                             const oldData = Object.values(JSON.parse(JSON.stringify(row)));
@@ -94,7 +94,7 @@ const addUPI = async (req, res) => {
                                                                 VALUES ('${onlineId}','${data.holderName}', '${data.holderNumber}', '${data.upiId}', ${data.isOfficial})`;
                                 pool.query(sql_querry_addCategory, (err, data) => {
                                     if (err) {
-                                        console.error("An error occurd in SQL Queery", err);
+                                        console.error("An error occurred in SQL Queery", err);
                                         return res.status(500).send('Database Error');
                                     }
                                     return res.status(200).send("UPI Added Successfully");
@@ -110,7 +110,7 @@ const addUPI = async (req, res) => {
             return res.status(404).send('Please Login First...!');
         }
     } catch (error) {
-        console.error('An error occurd', error);
+        console.error('An error occurred', error);
         res.status(500).send('Internal Server Error');
     }
 }
@@ -128,14 +128,14 @@ const removeUPI = async (req, res) => {
                 const onlineId = req.query.onlineId.trim();
                 req.query.onlineId = pool.query(`SELECT onlineId FROM billing_onlineUPI_data WHERE onlineId = '${onlineId}'`, (err, row) => {
                     if (err) {
-                        console.error("An error occurd in SQL Queery", err);
+                        console.error("An error occurred in SQL Queery", err);
                         return res.status(500).send('Database Error');
                     }
                     if (row && row.length) {
                         const sql_querry_removedetails = `DELETE FROM billing_onlineUPI_data WHERE onlineId = '${onlineId}'`;
                         pool.query(sql_querry_removedetails, (err, data) => {
                             if (err) {
-                                console.error("An error occurd in SQL Queery", err);
+                                console.error("An error occurred in SQL Queery", err);
                                 return res.status(500).send('Database Error');
                             }
                             return res.status(200).send("UPI Deleted Successfully");
@@ -151,7 +151,7 @@ const removeUPI = async (req, res) => {
             return res.status(404).send('Please Login First...!');
         }
     } catch (error) {
-        console.error('An error occurd', error);
+        console.error('An error occurred', error);
         res.status(500).send('Internal Server Error');
     }
 }
@@ -181,7 +181,7 @@ const updateUPI = async (req, res) => {
                                                 SELECT upiId FROM billing_onlineUPI_data WHERE holderName = '${data.upiId}' AND onlineId != '${data.onlineId}';`
                     pool.query(sql_query_checkExist, (err, row) => {
                         if (err) {
-                            console.error("An error occurd in SQL Queery", err);
+                            console.error("An error occurred in SQL Queery", err);
                             return res.status(500).send('Database Error');
                         } else {
                             const oldData = Object.values(JSON.parse(JSON.stringify(row)));
@@ -202,7 +202,7 @@ const updateUPI = async (req, res) => {
                                                                   WHERE onlineId = '${data.onlineId}'`;
                                 pool.query(sql_querry_updatedetails, (err, data) => {
                                     if (err) {
-                                        console.error("An error occurd in SQL Queery", err);
+                                        console.error("An error occurred in SQL Queery", err);
                                         return res.status(500).send('Database Error');
                                     }
                                     return res.status(200).send("UPI Updated Successfully");
@@ -218,7 +218,7 @@ const updateUPI = async (req, res) => {
             return res.status(404).send('Please Login First...!');
         }
     } catch (error) {
-        console.error('An error occurd', error);
+        console.error('An error occurred', error);
         res.status(500).send('Internal Server Error');
     }
 }
@@ -235,7 +235,7 @@ const ddlUPI = (req, res) => {
                                           billing_onlineUPI_data`;
         pool.query(sql_query_getDetails, (err, rows, fields) => {
             if (err) {
-                console.error("An error occurd in SQL Queery", err);
+                console.error("An error occurred in SQL Queery", err);
                 return res.status(500).send('Database Error');;
             } else {
                 if (rows.length == 0) {
@@ -249,7 +249,7 @@ const ddlUPI = (req, res) => {
             }
         });
     } catch (error) {
-        console.error('An error occurd', error);
+        console.error('An error occurred', error);
         res.status(500).json('Internal Server Error');
     }
 }

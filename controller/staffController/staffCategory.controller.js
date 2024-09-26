@@ -61,14 +61,14 @@ const removeStaffCategory = async (req, res) => {
         var staffCategoryId = req.query.staffCategoryId.trim();
         req.query.staffCategoryId = pool.query(`SELECT staffCategoryId FROM staff_category_data WHERE staffCategoryId = '${staffCategoryId}'`, (err, row) => {
             if (err) {
-                console.error("An error occurd in SQL Queery", err);
+                console.error("An error occurred in SQL Queery", err);
                 return res.status(500).send('Database Error');
             }
             if (row && row.length) {
                 const sql_querry_removedetails = `DELETE FROM staff_category_data WHERE staffCategoryId = '${staffCategoryId}'`;
                 pool.query(sql_querry_removedetails, (err, data) => {
                     if (err) {
-                        console.error("An error occurd in SQL Queery", err);
+                        console.error("An error occurred in SQL Queery", err);
                         return res.status(500).send('Database Error');
                     }
                     return res.status(200).send("Category Deleted Successfully");
@@ -78,7 +78,7 @@ const removeStaffCategory = async (req, res) => {
             }
         })
     } catch (error) {
-        console.error('An error occurd', error);
+        console.error('An error occurred', error);
         res.status(500).send('Internal Server Error');
     }
 }
@@ -90,13 +90,13 @@ const ddlStaffCategory = (req, res) => {
         sql_query_getddlCategory = `SELECT staffCategoryId, staffCategoryName FROM staff_category_data ORDER BY staffCategoryPosition`;
         pool.query(sql_query_getddlCategory, (err, data) => {
             if (err) {
-                console.error("An error occurd in SQL Queery", err);
+                console.error("An error occurred in SQL Queery", err);
                 return res.status(500).send('Database Error');
             }
             return res.status(200).send(data);
         });
     } catch (error) {
-        console.error('An error occurd', error);
+        console.error('An error occurred', error);
         res.status(500).send('Internal Server Error');
     }
 }
@@ -110,7 +110,7 @@ const getStaffCategoryList = (req, res) => {
         sql_query_getTotallCategory = `SELECT count(*) AS numRows FROM staff_category_data`;
         pool.query(sql_query_getTotallCategory, (err, rows) => {
             if (err) {
-                console.error("An error occurd in SQL Queery", err);
+                console.error("An error occurred in SQL Queery", err);
                 return res.status(500).send('Database Error');
             } else {
                 const numRows = rows[0].numRows;
@@ -138,7 +138,7 @@ const getStaffCategoryList = (req, res) => {
                                         LIMIT ${limit}`;
                 pool.query(sql_querry_getdetails, (err, rows) => {
                     if (err) {
-                        console.error("An error occurd in SQL Queery", err);
+                        console.error("An error occurred in SQL Queery", err);
                         return res.status(500).send('Database Error');
                     } else {
                         console.log(rows);
@@ -157,7 +157,7 @@ const getStaffCategoryList = (req, res) => {
             }
         });
     } catch (error) {
-        console.error('An error occurd', error);
+        console.error('An error occurred', error);
         res.status(500).send('Internal Server Error');
     }
 }
@@ -214,7 +214,7 @@ const updateStaffCategory = (req, res) => {
             }
         })
     } catch (error) {
-        console.error('An error occurd', error);
+        console.error('An error occurred', error);
         res.status(500).send('Internal Server Error');
     }
 }
@@ -241,7 +241,7 @@ const getStaffCategoryWithEmployeeNumber = (req, res) => {
             return res.status(200).send(categoryDataWithNum);
         })
     } catch (error) {
-        console.log('An error occurd', error);
+        console.log('An error occurred', error);
         res.status(500).send('Internal Server Error');
     }
 }
@@ -449,7 +449,7 @@ const getEmployeeStatisticsByCategoryId = (req, res) => {
             return res.status(200).send(staticsJson);
         })
     } catch (error) {
-        console.log('An error occurd', error);
+        console.log('An error occurred', error);
         res.status(500).send('Internal Server Error');
     }
 }

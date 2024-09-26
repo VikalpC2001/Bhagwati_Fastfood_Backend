@@ -27,7 +27,7 @@ const getCashTransactionCounter = (req, res) => {
         }
         pool.query(sql_querry_getCashCount, (err, data) => {
             if (err) {
-                console.error("An error occurd in SQL Queery", err);
+                console.error("An error occurred in SQL Queery", err);
                 return res.status(500).send('Database Error');
             }
             else if (data == '') {
@@ -44,7 +44,7 @@ const getCashTransactionCounter = (req, res) => {
             }
         })
     } catch (error) {
-        console.error('An error occurd', error);
+        console.error('An error occurred', error);
         res.status(500).json('Internal Server Error');
     }
 }
@@ -96,7 +96,7 @@ const getDebitTransactionCounter = (req, res) => {
         }
         pool.query(sql_querry_getDebitCount, (err, data) => {
             if (err) {
-                console.error("An error occurd in SQL Queery", err);
+                console.error("An error occurred in SQL Queery", err);
                 return res.status(500).send('Database Error');
             }
             else if (data == '') {
@@ -115,7 +115,7 @@ const getDebitTransactionCounter = (req, res) => {
             }
         })
     } catch (error) {
-        console.error('An error occurd', error);
+        console.error('An error occurred', error);
         res.status(500).json('Internal Server Error');
     }
 }
@@ -152,7 +152,7 @@ const getDebitTransactionList = async (req, res) => {
         console.log('><>?//', sql_querry_getCountdetails);
         pool.query(sql_querry_getCountdetails, (err, rows, fields) => {
             if (err) {
-                console.error("An error occurd in SQL Queery", err);
+                console.error("An error occurred in SQL Queery", err);
                 return res.status(500).send('Database Error');
             } else {
                 const numRows = rows[0].numRows;
@@ -184,7 +184,7 @@ const getDebitTransactionList = async (req, res) => {
                 }
                 pool.query(sql_queries_getdetails, (err, rows, fields) => {
                     if (err) {
-                        console.error("An error occurd in SQL Queery", err);
+                        console.error("An error occurred in SQL Queery", err);
                         return res.status(500).send('Database Error');;
                     } else {
                         console.log(rows);
@@ -203,7 +203,7 @@ const getDebitTransactionList = async (req, res) => {
             }
         })
     } catch (error) {
-        console.error('An error occurd', error);
+        console.error('An error occurred', error);
         res.status(500).json('Internal Server Error');
     }
 }
@@ -351,7 +351,7 @@ const getCashTransactionList = async (req, res) => {
         }
         pool.query(sql_querry_getCountdetails, (err, rows, fields) => {
             if (err) {
-                console.error("An error occurd in SQL Queery", err);
+                console.error("An error occurred in SQL Queery", err);
                 return res.status(500).send('Database Error');
             } else {
                 const numRows = rows[0].numRows;
@@ -373,7 +373,7 @@ const getCashTransactionList = async (req, res) => {
                 }
                 pool.query(sql_queries_getdetails, (err, rows, fields) => {
                     if (err) {
-                        console.error("An error occurd in SQL Queery", err);
+                        console.error("An error occurred in SQL Queery", err);
                         return res.status(500).send('Database Error');;
                     } else {
                         console.log(rows);
@@ -392,7 +392,7 @@ const getCashTransactionList = async (req, res) => {
             }
         })
     } catch (error) {
-        console.error('An error occurd', error);
+        console.error('An error occurred', error);
         res.status(500).json('Internal Server Error');
     }
 }
@@ -664,7 +664,7 @@ const addSupplierTransactionDetails = async (req, res) => {
                                                      WHERE sd.supplierId = '${supplierId}'`;
             pool.query(get_remaining_amount, (err, data) => {
                 if (err) {
-                    console.error("An error occurd in SQL Queery", err);
+                    console.error("An error occurred in SQL Queery", err);
                     return res.status(500).send('Database Error');
                 }
                 const remainingAmount = data[0].remainingAmount
@@ -676,7 +676,7 @@ const addSupplierTransactionDetails = async (req, res) => {
                                                    VALUES ('${supplierTransactionId}', '${userId}', '${supplierId}', '${receivedBy}', ${remainingAmount}, ${paidAmount}, NULLIF('${transactionNote}','null'), STR_TO_DATE('${transactionDate}','%b %d %Y'))`;
                 pool.query(sql_querry_addTransaction, (err, data) => {
                     if (err) {
-                        console.error("An error occurd in SQL Queery", err);
+                        console.error("An error occurred in SQL Queery", err);
                         return res.status(500).send('Database Error');
                     }
                     return res.status(200).send("Transaction Added Successfully");
@@ -688,7 +688,7 @@ const addSupplierTransactionDetails = async (req, res) => {
             res.send("Please Login Firest.....!");
         }
     } catch (error) {
-        console.error('An error occurd', error);
+        console.error('An error occurred', error);
         res.status(500).json('Internal Server Error');
     }
 }
@@ -701,14 +701,14 @@ const removeSupplierTransactionDetails = async (req, res) => {
         const supplierTransactionId = req.query.supplierTransactionId
         req.query.supplierTransactionId = pool.query(`SELECT supplierTransactionId FROM inventory_supplierTransaction_data WHERE supplierTransactionId = '${supplierTransactionId}'`, (err, row) => {
             if (err) {
-                console.error("An error occurd in SQL Queery", err);
+                console.error("An error occurred in SQL Queery", err);
                 return res.status(500).send('Database Error');
             }
             if (row && row.length) {
                 const sql_querry_removedetails = `DELETE FROM inventory_supplierTransaction_data WHERE supplierTransactionId = '${supplierTransactionId}'`;
                 pool.query(sql_querry_removedetails, (err, data) => {
                     if (err) {
-                        console.error("An error occurd in SQL Queery", err);
+                        console.error("An error occurred in SQL Queery", err);
                         return res.status(500).send('Database Error');
                     }
                     return res.status(200).send("Transaction Deleted Successfully");
@@ -718,7 +718,7 @@ const removeSupplierTransactionDetails = async (req, res) => {
             }
         })
     } catch (error) {
-        console.error('An error occurd', error);
+        console.error('An error occurred', error);
         res.status(500).send('Internal Server Error');
     }
 }
@@ -731,13 +731,13 @@ const fillSupplieTransactionrDetails = (req, res) => {
         sql_querry_fillUser = `SELECT supplierTransactionId, supplierId, receivedBy, pendingAmount, paidAmount, transactionNote FROM inventory_supplierTransaction_data WHERE supplierTransactionId = '${supplierTransactionId}'`;
         pool.query(sql_querry_fillUser, (err, data) => {
             if (err) {
-                console.error("An error occurd in SQL Queery", err);
+                console.error("An error occurred in SQL Queery", err);
                 return res.status(500).send('Database Error');
             }
             return res.status(200).send(data);
         })
     } catch (error) {
-        console.error('An error occurd', error);
+        console.error('An error occurred', error);
         res.status(500).json('Internal Server Error');
     }
 }
@@ -764,7 +764,7 @@ const updateSupplierTransactionDetails = async (req, res) => {
             const get_remaining_amount = `SELECT pendingAmount AS remainingAmount FROM inventory_supplierTransaction_data WHERE supplierTransactionId = '${supplierTransactionId}'`;
             pool.query(get_remaining_amount, (err, data) => {
                 if (err) {
-                    console.error("An error occurd in SQL Queery", err);
+                    console.error("An error occurred in SQL Queery", err);
                     return res.status(500).send('Database Error');
                 }
                 const remainingAmount = data[0].remainingAmount
@@ -781,7 +781,7 @@ const updateSupplierTransactionDetails = async (req, res) => {
                                                                                                   WHERE supplierTransactionId = '${supplierTransactionId}'`;
                     pool.query(sql_querry_updateTransaction, (err, data) => {
                         if (err) {
-                            console.error("An error occurd in SQL Queery", err);
+                            console.error("An error occurred in SQL Queery", err);
                             return res.status(500).send('Database Error');
                         }
                         return res.status(200).send("Transaction Updated Successfully");
@@ -793,7 +793,7 @@ const updateSupplierTransactionDetails = async (req, res) => {
             res.send("Please Login Firest.....!");
         }
     } catch (error) {
-        console.error('An error occurd', error);
+        console.error('An error occurred', error);
         res.status(500).json('Internal Server Error');
     }
 }
@@ -938,7 +938,7 @@ async function createPDF(res, data) {
 
         stream.pipe(res);
     } catch (error) {
-        console.error('An error occurd', error);
+        console.error('An error occurred', error);
         res.status(500).json('Internal Server Error');
     }
     // writeFileSync("jane-doe.pdf", await document.save());
@@ -962,7 +962,7 @@ const exportTransactionInvoice = async (req, res) => {
                                                 WHERE istd.supplierTransactionId = '${transactionId}'`;
         pool.query(sql_queries_getInvoiceDetails, (err, data) => {
             if (err) {
-                console.error("An error occurd in SQL Queery", err);
+                console.error("An error occurred in SQL Queery", err);
                 return res.status(500).send('Database Error');
             }
             createPDF(res, data)
@@ -976,7 +976,7 @@ const exportTransactionInvoice = async (req, res) => {
                 });
         })
     } catch (error) {
-        console.error('An error occurd', error);
+        console.error('An error occurred', error);
         res.status(500).json('Internal Server Error');
     }
 }

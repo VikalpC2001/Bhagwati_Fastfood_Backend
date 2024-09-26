@@ -16,14 +16,14 @@ const getMenuCategory = async (req, res) => {
 
         pool.query(sql_queries_getCategoryTable, (err, rows, fields) => {
             if (err) {
-                console.error("An error occurd in SQL Queery", err);
+                console.error("An error occurred in SQL Queery", err);
                 return res.status(500).send('Database Error');;
             } else {
                 return res.status(200).send(rows);
             }
         });
     } catch (error) {
-        console.error('An error occurd', error);
+        console.error('An error occurred', error);
         res.status(500).json('Internal Server Error');
     }
 }
@@ -64,7 +64,7 @@ const addMenuCategory = async (req, res) => {
                                 if (err) {
                                     conn.rollback(() => {
                                         conn.release();
-                                        console.error("An error occurd in SQL Queery", err);
+                                        console.error("An error occurred in SQL Queery", err);
                                         return res.status(500).send('Database Error');
                                     })
                                 } else if (row && row.length) {
@@ -79,7 +79,7 @@ const addMenuCategory = async (req, res) => {
                                         if (err) {
                                             conn.rollback(() => {
                                                 conn.release();
-                                                console.error("An error occurd in SQL Queery", err);
+                                                console.error("An error occurred in SQL Queery", err);
                                                 return res.status(500).send('Database Error');
                                             })
                                         }
@@ -97,7 +97,7 @@ const addMenuCategory = async (req, res) => {
                                                 if (err) {
                                                     conn.rollback(() => {
                                                         conn.release();
-                                                        console.error("An error occurd in SQL Queery", err);
+                                                        console.error("An error occurred in SQL Queery", err);
                                                         return res.status(500).send('Database Error');
                                                     })
                                                 } else {
@@ -135,7 +135,7 @@ const addMenuCategory = async (req, res) => {
         } catch (error) {
             conn.rollback(() => {
                 conn.release();
-                console.error('An error occurd', error);
+                console.error('An error occurred', error);
                 res.status(500).send('Internal Server Error');
             })
         }
@@ -155,7 +155,7 @@ const removeMenuCategory = async (req, res) => {
                 const menuCategoryId = req.query.menuCategoryId.trim();
                 req.query.menuCategoryId = pool.query(`SELECT menuCategoryId FROM item_menuCategory_data WHERE menuCategoryId = '${menuCategoryId}'`, (err, row) => {
                     if (err) {
-                        console.error("An error occurd in SQL Queery", err);
+                        console.error("An error occurred in SQL Queery", err);
                         return res.status(500).send('Database Error');
                     } else if (baseMenuId == menuCategoryId) {
                         return res.status(400).send('You Can Not Delete Base Menu');
@@ -163,7 +163,7 @@ const removeMenuCategory = async (req, res) => {
                         const sql_querry_removedetails = `DELETE FROM item_menuCategory_data WHERE menuCategoryId = '${menuCategoryId}'`;
                         pool.query(sql_querry_removedetails, (err, data) => {
                             if (err) {
-                                console.error("An error occurd in SQL Queery", err);
+                                console.error("An error occurred in SQL Queery", err);
                                 return res.status(500).send('Database Error');
                             }
                             return res.status(200).send("Category Deleted Successfully");
@@ -179,7 +179,7 @@ const removeMenuCategory = async (req, res) => {
             return res.status(404).send('Please Login First...!');
         }
     } catch (error) {
-        console.error('An error occurd', error);
+        console.error('An error occurred', error);
         res.status(500).send('Internal Server Error');
     }
 }
@@ -201,14 +201,14 @@ const updateMenuCategory = async (req, res) => {
                                               WHERE menuCategoryId = '${data.menuCategoryId}'`;
             pool.query(sql_querry_updatedetails, (err, data) => {
                 if (err) {
-                    console.error("An error occurd in SQL Queery", err);
+                    console.error("An error occurred in SQL Queery", err);
                     return res.status(500).send('Database Error');
                 }
                 return res.status(200).send("Category Updated Successfully");
             })
         }
     } catch (error) {
-        console.error('An error occurd', error);
+        console.error('An error occurred', error);
         res.status(500).send('Internal Server Error');
     }
 }
@@ -247,7 +247,7 @@ const copyPriceAndStatusByMenuId = (req, res) => {
             }
             pool.query(sql_query_copyData, (err, copy) => {
                 if (err) {
-                    console.error("An error occurd in SQL Queery", err);
+                    console.error("An error occurred in SQL Queery", err);
                     return res.status(500).send('Database Error');
                 }
                 return res.status(200).send(`Menu Updated Successfully Like ${sourceId}`);
@@ -256,7 +256,7 @@ const copyPriceAndStatusByMenuId = (req, res) => {
             return res.status(404).send('Target Or Source Not Found');
         }
     } catch (error) {
-        console.error('An error occurd', error);
+        console.error('An error occurred', error);
         res.status(500).send('Internal Server Error');
     }
 }

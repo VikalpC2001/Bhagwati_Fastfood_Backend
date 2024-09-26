@@ -183,7 +183,7 @@ const addOnlineHotelBillData = (req, res) => {
                 }
             });
         } catch (error) {
-            console.error('An error occurd', error);
+            console.error('An error occurred', error);
             connection.rollback(() => {
                 connection.release();
                 return res.status(500).json('Internal Server Error');
@@ -400,7 +400,7 @@ const addOnlinePickUpBillData = (req, res) => {
                 }
             });
         } catch (error) {
-            console.error('An error occurd', error);
+            console.error('An error occurred', error);
             connection.rollback(() => {
                 connection.release();
                 return res.status(500).json('Internal Server Error');

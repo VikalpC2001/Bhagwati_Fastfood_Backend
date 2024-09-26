@@ -15,7 +15,7 @@ const getHotelList = (req, res) => {
         sql_querry_getCountDetails = `SELECT count(*) as numRows FROM billing_hotel_data WHERE hotelName LIKE '%` + searchWord + `%'`;
         pool.query(sql_querry_getCountDetails, (err, rows, fields) => {
             if (err) {
-                console.error("An error occurd in SQL Queery", err);
+                console.error("An error occurred in SQL Queery", err);
                 return res.status(500).send('Database Error');
             } else {
                 const numRows = rows[0].numRows;
@@ -42,7 +42,7 @@ const getHotelList = (req, res) => {
                                               LIMIT ${limit}`;
                 pool.query(sql_query_getDetails, (err, rows, fields) => {
                     if (err) {
-                        console.error("An error occurd in SQL Queery", err);
+                        console.error("An error occurred in SQL Queery", err);
                         return res.status(500).send('Database Error');;
                     } else {
                         console.log(rows);
@@ -61,7 +61,7 @@ const getHotelList = (req, res) => {
             }
         })
     } catch (error) {
-        console.error('An error occurd', error);
+        console.error('An error occurred', error);
         res.status(500).json('Internal Server Error');
     }
 }
@@ -94,7 +94,7 @@ const getHotelDataById = (req, res) => {
                                           WHERE hotelId = '${hotelId}'`;
             pool.query(sql_querry_getCountDetails, (err, data) => {
                 if (err) {
-                    console.error("An error occurd in SQL Queery", err);
+                    console.error("An error occurred in SQL Queery", err);
                     return res.status(500).send('Database Error');
                 } else {
                     return res.status(200).send(data[0]);
@@ -102,7 +102,7 @@ const getHotelDataById = (req, res) => {
             })
         }
     } catch (error) {
-        console.error('An error occurd', error);
+        console.error('An error occurred', error);
         res.status(500).json('Internal Server Error');
     }
 }
@@ -130,7 +130,7 @@ const addHotelData = (req, res) => {
         } else {
             pool.query(`SELECT hotelName FROM billing_hotel_data WHERE hotelName = '${data.hotelName}'`, function (err, row) {
                 if (err) {
-                    console.error("An error occurd in SQL Queery", err);
+                    console.error("An error occurred in SQL Queery", err);
                     return res.status(500).send('Database Error');
                 } else if (row && row.length) {
                     return res.status(400).send('Hotel is Already In Use');
@@ -139,7 +139,7 @@ const addHotelData = (req, res) => {
                                                      VALUES ('${hotelId}', '${data.hotelName}', ${data.hotelAddress ? `'${data.hotelAddress}'` : null}, ${data.hotelLocality ? `'${data.hotelLocality}'` : null}, ${data.hotelPincode ? `${data.hotelPincode}` : null}, '${data.hotelMobileNo}',${data.otherMobileNo ? `'${data.otherMobileNo}'` : null}, '${data.payType}', '${data.discountType}', ${data.discount})`;
                     pool.query(sql_querry_addHotelData, (err, data) => {
                         if (err) {
-                            console.error("An error occurd in SQL Queery", err);
+                            console.error("An error occurred in SQL Queery", err);
                             return res.status(500).send('Database Error');
                         }
                         return res.status(200).send("Hotel Added Successfully");
@@ -148,7 +148,7 @@ const addHotelData = (req, res) => {
             })
         }
     } catch (error) {
-        console.error('An error occurd', error);
+        console.error('An error occurred', error);
         res.status(500).json('Internal Server Error');
     }
 }
@@ -166,14 +166,14 @@ const removeHotelData = (req, res) => {
                 const hotelId = req.query.hotelId.trim();
                 req.query.hotelId = pool.query(`SELECT hotelId FROM billing_hotel_data WHERE hotelId = '${hotelId}'`, (err, row) => {
                     if (err) {
-                        console.error("An error occurd in SQL Queery", err);
+                        console.error("An error occurred in SQL Queery", err);
                         return res.status(500).send('Database Error');
                     }
                     if (row && row.length) {
                         const sql_querry_removedetails = `DELETE FROM billing_hotel_data WHERE hotelId = '${hotelId}'`;
                         pool.query(sql_querry_removedetails, (err, data) => {
                             if (err) {
-                                console.error("An error occurd in SQL Queery", err);
+                                console.error("An error occurred in SQL Queery", err);
                                 return res.status(500).send('Database Error');
                             }
                             return res.status(200).send("Hotel Deleted Successfully");
@@ -189,7 +189,7 @@ const removeHotelData = (req, res) => {
             return res.status(404).send('Please Login First...!');
         }
     } catch (error) {
-        console.error('An error occurd', error);
+        console.error('An error occurred', error);
         res.status(500).json('Internal Server Error');
     }
 }
@@ -216,7 +216,7 @@ const updateHotelData = (req, res) => {
         } else {
             pool.query(`SELECT hotelName FROM billing_hotel_data WHERE hotelName = '${data.hotelName}' AND hotelId != '${data.hotelId}'`, function (err, row) {
                 if (err) {
-                    console.error("An error occurd in SQL Queery", err);
+                    console.error("An error occurred in SQL Queery", err);
                     return res.status(500).send('Database Error');
                 } else if (row && row.length) {
                     return res.status(400).send('Hotel is Already In Use');
@@ -236,7 +236,7 @@ const updateHotelData = (req, res) => {
                                                         WHERE hotelId = '${data.hotelId}'`;
                     pool.query(sql_querry_updateHotelData, (err, data) => {
                         if (err) {
-                            console.error("An error occurd in SQL Queery", err);
+                            console.error("An error occurred in SQL Queery", err);
                             return res.status(500).send('Database Error');
                         }
                         return res.status(200).send("Hotel Updated Successfully");
@@ -245,7 +245,7 @@ const updateHotelData = (req, res) => {
             })
         }
     } catch (error) {
-        console.error('An error occurd', error);
+        console.error('An error occurred', error);
         res.status(500).json('Internal Server Error');
     }
 }
@@ -270,7 +270,7 @@ const ddlHotelList = (req, res) => {
                                       ORDER BY hotelName ASC`;
         pool.query(sql_query_getDetails, (err, rows, fields) => {
             if (err) {
-                console.error("An error occurd in SQL Queery", err);
+                console.error("An error occurred in SQL Queery", err);
                 return res.status(500).send('Database Error');;
             } else {
                 if (rows.length == 0) {
@@ -284,7 +284,7 @@ const ddlHotelList = (req, res) => {
             }
         });
     } catch (error) {
-        console.error('An error occurd', error);
+        console.error('An error occurred', error);
         res.status(500).json('Internal Server Error');
     }
 }
@@ -345,7 +345,7 @@ const getHotelBillDataById = (req, res) => {
         console.log(sql_querry_getCountDetails);
         pool.query(sql_querry_getCountDetails, (err, rows, fields) => {
             if (err) {
-                console.error("An error occurd in SQL Queery", err);
+                console.error("An error occurred in SQL Queery", err);
                 return res.status(500).send('Database Error');
             } else {
                 const numRows = rows[0].numRows;
@@ -410,7 +410,7 @@ const getHotelBillDataById = (req, res) => {
                 }
                 pool.query(sql_query_getDetails, (err, rows, fields) => {
                     if (err) {
-                        console.error("An error occurd in SQL Queery", err);
+                        console.error("An error occurred in SQL Queery", err);
                         return res.status(500).send('Database Error');;
                     } else {
                         console.log(rows);
@@ -429,7 +429,7 @@ const getHotelBillDataById = (req, res) => {
             }
         })
     } catch (error) {
-        console.error('An error occurd', error);
+        console.error('An error occurred', error);
         res.status(500).json('Internal Server Error');
     }
 }
@@ -478,14 +478,14 @@ const getHotelStaticsData = (req, res) => {
         }
         pool.query(sql_query_hotelStatics, (err, statics) => {
             if (err) {
-                console.error("An error occurd in SQL Queery", err);
+                console.error("An error occurred in SQL Queery", err);
                 return res.status(500).send('Database Error');;
             } else {
                 return res.status(200).send(statics[0])
             }
         })
     } catch (error) {
-        console.error('An error occurd', error);
+        console.error('An error occurred', error);
         res.status(500).json('Internal Server Error');
     }
 }
@@ -615,7 +615,7 @@ async function createBillPDF(res, datas, sumFooterArray, tableHeading) {
         // fs.writeFileSync(pdfFilename, doc.output());
         // console.log(`PDF saved as ${pdfFilename}`);
     } catch (error) {
-        console.error('An error occurd', error);
+        console.error('An error occurred', error);
         res.status(500).json('Internal Server Error');
     }
 }
@@ -672,7 +672,7 @@ const exportPdfBillDataById = (req, res) => {
         }
         pool.query(sql_query_getDetails, (err, rows) => {
             if (err) {
-                console.error("An error occurd in SQL Queery", err);
+                console.error("An error occurred in SQL Queery", err);
                 return res.status(500).send('Database Error');
             } else if (rows && rows[1].length <= 0) {
                 return res.status(400).send('No Data Found');
@@ -695,7 +695,7 @@ const exportPdfBillDataById = (req, res) => {
                 });
         });
     } catch (error) {
-        console.error('An error occurd', error);
+        console.error('An error occurred', error);
         res.status(500).json('Internal Server Error');
     }
 }
@@ -735,7 +735,7 @@ const addHotelTransactionData = async (req, res) => {
                                           GROUP BY bhd.hotelName`;
             pool.query(get_remaining_amount, (err, data) => {
                 if (err) {
-                    console.error("An error occurd in SQL Queery", err);
+                    console.error("An error occurred in SQL Queery", err);
                     return res.status(500).send('Database Error');
                 }
                 const remainingAmount = data[0].remainingAmount
@@ -744,7 +744,7 @@ const addHotelTransactionData = async (req, res) => {
                                                    VALUES ('${transactionId}', '${hotelId}', '${cashier}', ${givenBy ? `'${givenBy}'` : null}, ${remainingAmount}, ${paidAmount}, ${transactionNote ? `'${transactionNote}'` : null}, STR_TO_DATE('${transactionDate}','%b %d %Y'))`;
                 pool.query(sql_querry_addTransaction, (err, data) => {
                     if (err) {
-                        console.error("An error occurd in SQL Queery", err);
+                        console.error("An error occurred in SQL Queery", err);
                         return res.status(500).send('Database Error');
                     }
                     return res.status(200).send("Transaction Added Successfully");
@@ -754,7 +754,7 @@ const addHotelTransactionData = async (req, res) => {
             return res.status(401).send("Please Login Firest.....!");
         }
     } catch (error) {
-        console.error('An error occurd', error);
+        console.error('An error occurred', error);
         return res.status(500).json('Internal Server Error');
     }
 }
@@ -775,14 +775,14 @@ const removeHotelTransactionById = (req, res) => {
             } else {
                 req.query.transactionId = pool.query(`SELECT transactionId FROM billing_hotelTransaction_data WHERE transactionId = '${transactionId}'`, (err, row) => {
                     if (err) {
-                        console.error("An error occurd in SQL Queery", err);
+                        console.error("An error occurred in SQL Queery", err);
                         return res.status(500).send('Database Error');
                     }
                     if (row && row.length) {
                         const sql_querry_removedetails = `DELETE FROM billing_hotelTransaction_data WHERE transactionId = '${transactionId}'`;
                         pool.query(sql_querry_removedetails, (err, data) => {
                             if (err) {
-                                console.error("An error occurd in SQL Queery", err);
+                                console.error("An error occurred in SQL Queery", err);
                                 return res.status(500).send('Database Error');
                             }
                             return res.status(200).send("Transaction Deleted Successfully");
@@ -796,7 +796,7 @@ const removeHotelTransactionById = (req, res) => {
             return res.status(404).send('Please Login First...!');
         }
     } catch (error) {
-        console.error('An error occurd', error);
+        console.error('An error occurred', error);
         res.status(500).send('Internal Server Error');
     }
 }
@@ -826,7 +826,7 @@ const getHotelTransactionListById = (req, res) => {
         }
         pool.query(sql_querry_getCountDetails, (err, rows, fields) => {
             if (err) {
-                console.error("An error occurd in SQL Queery", err);
+                console.error("An error occurred in SQL Queery", err);
                 return res.status(500).send('Database Error');
             } else {
                 const numRows = rows[0].numRows;
@@ -847,7 +847,7 @@ const getHotelTransactionListById = (req, res) => {
                 }
                 pool.query(sql_query_getDetails, (err, rows, fields) => {
                     if (err) {
-                        console.error("An error occurd in SQL Queery", err);
+                        console.error("An error occurred in SQL Queery", err);
                         return res.status(500).send('Database Error');;
                     } else {
                         if (numRows === 0) {
@@ -863,7 +863,7 @@ const getHotelTransactionListById = (req, res) => {
             }
         })
     } catch (error) {
-        console.error('An error occurd', error);
+        console.error('An error occurred', error);
         res.status(500).json('Internal Server Error');
     }
 }
@@ -908,7 +908,7 @@ const getMonthWiseTransactionForHotel = (req, res) => {
                                           SELECT COALESCE(ROUND(SUM(paidAmount)),0) AS totalPaidAmount FROM billing_hotelTransaction_data WHERE hotelId = '${hotelId}'`;
         pool.query(sql_query_getMonthWiseData, (err, data) => {
             if (err) {
-                console.error("An error occurd in SQL Queery", err);
+                console.error("An error occurred in SQL Queery", err);
                 return res.status(500).send('Database Error');
             } else {
                 const creditAmtJson = data && data[0] ? Object.values(JSON.parse(JSON.stringify(data[0]))) : [];
@@ -925,7 +925,7 @@ const getMonthWiseTransactionForHotel = (req, res) => {
             }
         })
     } catch (error) {
-        console.error('An error occurd', error);
+        console.error('An error occurred', error);
         res.status(500).send('Internal Server Error');
     }
 }

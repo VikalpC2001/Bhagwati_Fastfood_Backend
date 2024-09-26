@@ -30,7 +30,7 @@ const getDeliveryPersonList = (req, res) => {
         sql_querry_getCountDetails = `SELECT count(*) as numRows FROM delivery_person_data`;
         pool.query(sql_querry_getCountDetails, (err, rows, fields) => {
             if (err) {
-                console.error("An error occurd in SQL Queery", err);
+                console.error("An error occurred in SQL Queery", err);
                 return res.status(500).send('Database Error');
             } else {
                 const numRows = rows[0].numRows;
@@ -61,7 +61,7 @@ const getDeliveryPersonList = (req, res) => {
                                               LIMIT ${limit}`;
                 pool.query(sql_query_getDetails, (err, rows, fields) => {
                     if (err) {
-                        console.error("An error occurd in SQL Queery", err);
+                        console.error("An error occurred in SQL Queery", err);
                         return res.status(500).send('Database Error');;
                     } else {
                         console.log(rows);
@@ -80,7 +80,7 @@ const getDeliveryPersonList = (req, res) => {
             }
         })
     } catch (error) {
-        console.error('An error occurd', error);
+        console.error('An error occurred', error);
         res.status(500).json('Internal Server Error');
     }
 }
@@ -102,7 +102,7 @@ const addDeliveryPerson = async (req, res) => {
         } else {
             pool.query(`SELECT shortName FROM delivery_person_data WHERE shortName = '${data.shortName}'`, function (err, row) {
                 if (err) {
-                    console.error("An error occurd in SQL Queery", err);
+                    console.error("An error occurred in SQL Queery", err);
                     return res.status(500).send('Database Error');
                 } else if (row && row.length) {
                     return res.status(400).send('Short Name is Already In Use');
@@ -111,7 +111,7 @@ const addDeliveryPerson = async (req, res) => {
                                                     VALUES ('${personId}','${data.personName}', '${data.shortName}', ${data.isAvailable})`;
                     pool.query(sql_querry_addCategory, (err, data) => {
                         if (err) {
-                            console.error("An error occurd in SQL Queery", err);
+                            console.error("An error occurred in SQL Queery", err);
                             return res.status(500).send('Database Error');
                         }
                         return res.status(200).send("Person Added Successfully");
@@ -120,7 +120,7 @@ const addDeliveryPerson = async (req, res) => {
             })
         }
     } catch (error) {
-        console.error('An error occurd', error);
+        console.error('An error occurred', error);
         res.status(500).send('Internal Server Error');
     }
 }
@@ -138,14 +138,14 @@ const removeDeliveryPerson = async (req, res) => {
                 const personId = req.query.personId.trim();
                 req.query.personId = pool.query(`SELECT personId FROM delivery_person_data WHERE personId = '${personId}'`, (err, row) => {
                     if (err) {
-                        console.error("An error occurd in SQL Queery", err);
+                        console.error("An error occurred in SQL Queery", err);
                         return res.status(500).send('Database Error');
                     }
                     if (row && row.length) {
                         const sql_querry_removedetails = `DELETE FROM delivery_person_data WHERE personId = '${personId}'`;
                         pool.query(sql_querry_removedetails, (err, data) => {
                             if (err) {
-                                console.error("An error occurd in SQL Queery", err);
+                                console.error("An error occurred in SQL Queery", err);
                                 return res.status(500).send('Database Error');
                             }
                             return res.status(200).send("Person Deleted Successfully");
@@ -161,7 +161,7 @@ const removeDeliveryPerson = async (req, res) => {
             return res.status(404).send('Please Login First...!');
         }
     } catch (error) {
-        console.error('An error occurd', error);
+        console.error('An error occurred', error);
         res.status(500).send('Internal Server Error');
     }
 }
@@ -181,7 +181,7 @@ const updateDeliveryPerson = async (req, res) => {
         } else {
             pool.query(`SELECT shortName FROM delivery_person_data WHERE shortName = '${data.shortName}' AND personId != '${data.personId}'`, function (err, row) {
                 if (err) {
-                    console.error("An error occurd in SQL Queery", err);
+                    console.error("An error occurred in SQL Queery", err);
                     return res.status(500).send('Database Error');
                 } else if (row && row.length) {
                     return res.status(400).send('Short Name is Already In Use');
@@ -195,7 +195,7 @@ const updateDeliveryPerson = async (req, res) => {
                                                       WHERE personId = '${data.personId}'`;
                     pool.query(sql_querry_updatedetails, (err, data) => {
                         if (err) {
-                            console.error("An error occurd in SQL Queery", err);
+                            console.error("An error occurred in SQL Queery", err);
                             return res.status(500).send('Database Error');
                         }
                         return res.status(200).send("Person Updated Successfully");
@@ -204,7 +204,7 @@ const updateDeliveryPerson = async (req, res) => {
             })
         }
     } catch (error) {
-        console.error('An error occurd', error);
+        console.error('An error occurred', error);
         res.status(500).send('Internal Server Error');
     }
 }
@@ -216,13 +216,13 @@ const ddlPersonData = (req, res) => {
         const sql_querry_getddlCategory = `SELECT personId, personName FROM delivery_person_data WHERE isAvailable = 1`;
         pool.query(sql_querry_getddlCategory, (err, data) => {
             if (err) {
-                console.error("An error occurd in SQL Queery", err);
+                console.error("An error occurred in SQL Queery", err);
                 return res.status(500).send('Database Error');
             }
             return res.status(200).send(data);
         })
     } catch (error) {
-        console.error('An error occurd', error);
+        console.error('An error occurred', error);
         res.status(500).send('Internal Server Error');
     }
 }
@@ -265,7 +265,7 @@ const getStaticsForPerson = (req, res) => {
                                                 AND bwd.bwdDate BETWEEN STR_TO_DATE('${data.startDate ? data.startDate : data.currentDate}','%b %d %Y') AND STR_TO_DATE('${data.endDate ? data.endDate : data.currentDate}','%b %d %Y')`;
             pool.query(sql_query_getPersonStaticsData, (err, statics) => {
                 if (err) {
-                    console.error("An error occurd in SQL Queery", err);
+                    console.error("An error occurred in SQL Queery", err);
                     return res.status(500).send('Database Error');
                 } else {
                     let json = {
@@ -277,7 +277,7 @@ const getStaticsForPerson = (req, res) => {
             })
         }
     } catch (error) {
-        console.error('An error occurd', error);
+        console.error('An error occurred', error);
         res.status(500).send('Internal Server Error');
     }
 }

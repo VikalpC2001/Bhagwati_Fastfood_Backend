@@ -14,7 +14,7 @@ const getSubCategoryList = (req, res) => {
         sql_querry_getCountDetails = `SELECT count(*) as numRows FROM item_subCategory_data`;
         pool.query(sql_querry_getCountDetails, (err, rows, fields) => {
             if (err) {
-                console.error("An error occurd in SQL Queery", err);
+                console.error("An error occurred in SQL Queery", err);
                 return res.status(500).send('Database Error');
             } else {
                 const numRows = rows[0].numRows;
@@ -22,7 +22,7 @@ const getSubCategoryList = (req, res) => {
                 const sql_query_getDetails = `SELECT subCategoryId, subCategoryName, categoryId AS mainCategory, displayRank FROM item_subCategory_data LIMIT ${limit}`;
                 pool.query(sql_query_getDetails, (err, rows, fields) => {
                     if (err) {
-                        console.error("An error occurd in SQL Queery", err);
+                        console.error("An error occurred in SQL Queery", err);
                         return res.status(500).send('Database Error');;
                     } else {
                         console.log(rows);
@@ -55,7 +55,7 @@ const getSubCategoryList = (req, res) => {
             }
         })
     } catch (error) {
-        console.error('An error occurd', error);
+        console.error('An error occurred', error);
         res.status(500).json('Internal Server Error');
     }
 }
@@ -67,7 +67,7 @@ const getSubCategoryListForMobile = (req, res) => {
         const sql_query_getDetails = `SELECT subCategoryId, subCategoryName, displayRank FROM item_subCategory_data`;
         pool.query(sql_query_getDetails, (err, rows, fields) => {
             if (err) {
-                console.error("An error occurd in SQL Queery", err);
+                console.error("An error occurred in SQL Queery", err);
                 return res.status(500).send('Database Error');
             } else {
                 if (!rows.length) {
@@ -95,7 +95,7 @@ const getSubCategoryListForMobile = (req, res) => {
             }
         })
     } catch (error) {
-        console.error('An error occurd', error);
+        console.error('An error occurred', error);
         res.status(500).json('Internal Server Error');
     }
 }
@@ -141,13 +141,13 @@ const ddlSubCategory = (req, res) => {
 
         pool.query(sql_querry_getddlCategory, (err, data) => {
             if (err) {
-                console.error("An error occurd in SQL Queery", err);
+                console.error("An error occurred in SQL Queery", err);
                 return res.status(500).send('Database Error');
             }
             return res.status(200).send(data);
         })
     } catch (error) {
-        console.error('An error occurd', error);
+        console.error('An error occurred', error);
         res.status(500).send('Internal Server Error');
     }
 }
@@ -169,7 +169,7 @@ const addSubCategoryData = (req, res) => {
         } else {
             req.body.productName = pool.query(`SELECT subCategoryName FROM item_subCategory_data WHERE subCategoryName = '${data.subCategoryName}'`, function (err, row) {
                 if (err) {
-                    console.error("An error occurd in SQL Queery", err);
+                    console.error("An error occurred in SQL Queery", err);
                     return res.status(500).send('Database Error');
                 }
                 if (row && row.length) {
@@ -179,7 +179,7 @@ const addSubCategoryData = (req, res) => {
                                                     VALUES ('${subCategoryId}', '${data.categoryId}', '${data.subCategoryName}', ${data.displayRank})`;
                     pool.query(sql_querry_addCategory, (err, data) => {
                         if (err) {
-                            console.error("An error occurd in SQL Queery", err);
+                            console.error("An error occurred in SQL Queery", err);
                             return res.status(500).send('Database Error');
                         }
                         return res.status(200).send("SubCategory Added Successfully");
@@ -188,7 +188,7 @@ const addSubCategoryData = (req, res) => {
             })
         }
     } catch (error) {
-        console.error('An error occurd', error);
+        console.error('An error occurred', error);
         res.status(500).json('Internal Server Error');
     }
 }
@@ -206,14 +206,14 @@ const removeSubCategoryData = (req, res) => {
                 const subCategoryId = req.query.subCategoryId.trim();
                 req.query.subCategoryId = pool.query(`SELECT subCategoryId FROM item_subCategory_data WHERE subCategoryId = '${subCategoryId}'`, (err, row) => {
                     if (err) {
-                        console.error("An error occurd in SQL Queery", err);
+                        console.error("An error occurred in SQL Queery", err);
                         return res.status(500).send('Database Error');
                     }
                     if (row && row.length) {
                         const sql_querry_removedetails = `DELETE FROM item_subCategory_data WHERE subCategoryId = '${subCategoryId}'`;
                         pool.query(sql_querry_removedetails, (err, data) => {
                             if (err) {
-                                console.error("An error occurd in SQL Queery", err);
+                                console.error("An error occurred in SQL Queery", err);
                                 return res.status(500).send('Database Error');
                             }
                             return res.status(200).send("SubCategory Deleted Successfully");
@@ -229,7 +229,7 @@ const removeSubCategoryData = (req, res) => {
             return res.status(404).send('Please Login First...!');
         }
     } catch (error) {
-        console.error('An error occurd', error);
+        console.error('An error occurred', error);
         res.status(500).json('Internal Server Error');
     }
 }
@@ -256,13 +256,13 @@ const updateSubCategoryData = (req, res) => {
                                           WHERE subCategoryId = '${data.subCategoryId}'`;
         pool.query(sql_querry_updatedetails, (err, data) => {
             if (err) {
-                console.error("An error occurd in SQL Queery", err);
+                console.error("An error occurred in SQL Queery", err);
                 return res.status(500).send('Database Error');
             }
             return res.status(200).send("subCategory Updated Successfully");
         })
     } catch (error) {
-        console.error('An error occurd', error);
+        console.error('An error occurred', error);
         res.status(500).json('Internal Server Error');
     }
 }
@@ -288,7 +288,7 @@ const addSubCategoryPeriod = (req, res) => {
                                                 VALUES ${addPeriodData}`;
                 pool.query(sql_querry_addCategory, (err, data) => {
                     if (err) {
-                        console.error("An error occurd in SQL Queery", err);
+                        console.error("An error occurred in SQL Queery", err);
                         return res.status(500).send('Database Error');
                     }
                     return res.status(200).send("Perioad Added Successfully");
@@ -299,7 +299,7 @@ const addSubCategoryPeriod = (req, res) => {
         }
 
     } catch (error) {
-        console.error('An error occurd', error);
+        console.error('An error occurred', error);
         res.status(500).json('Internal Server Error');
     }
 }
@@ -326,7 +326,7 @@ const updateSubCategoryPeriod = (req, res) => {
                     conn.query(sql_querry_removeOldPeriods, (err, data) => {
                         if (err) {
                             conn.rollback(() => {
-                                console.error("An error occurd in SQL Queery 1", err);
+                                console.error("An error occurred in SQL Queery 1", err);
                                 conn.release();
                                 return res.status(500).send('Database Error 1');
                             })
@@ -341,7 +341,7 @@ const updateSubCategoryPeriod = (req, res) => {
                             conn.query(sql_querry_addCategory, (err, data) => {
                                 if (err) {
                                     conn.rollback(() => {
-                                        console.error("An error occurd in SQL Queery 2", err);
+                                        console.error("An error occurred in SQL Queery 2", err);
                                         conn.release();
                                         return res.status(500).send('Database Error');
                                     })
@@ -349,7 +349,7 @@ const updateSubCategoryPeriod = (req, res) => {
                                     conn.commit((err) => {
                                         if (err) {
                                             conn.rollback(() => {
-                                                console.error("An error occurd in SQL Queery 1", err);
+                                                console.error("An error occurred in SQL Queery 1", err);
                                                 conn.release();
                                                 return res.status(500).send('Database Error');
                                             })
@@ -364,7 +364,7 @@ const updateSubCategoryPeriod = (req, res) => {
                             conn.commit((err) => {
                                 if (err) {
                                     conn.rollback(() => {
-                                        console.error("An error occurd in SQL Queery", err);
+                                        console.error("An error occurred in SQL Queery", err);
                                         conn.release();
                                         return res.status(500).send('Database Error');
                                     })
@@ -385,7 +385,7 @@ const updateSubCategoryPeriod = (req, res) => {
             })
         } catch (error) {
             conn.rollback(() => {
-                console.error('An error occurd', error);
+                console.error('An error occurred', error);
                 conn.release();
                 return res.status(500).json('Internal Server Error');
             })
@@ -417,7 +417,7 @@ const addRollBackTransaction = (req, res) => {
                 conn.query(sql_querry_addData, (err, row) => {
                     if (err) {
                         conn.rollback((e, d) => {
-                            console.error("An error occurd in SQL Queery 1", err);
+                            console.error("An error occurred in SQL Queery 1", err);
                             conn.release();
                             return res.status(500).send('Database Error 1');
                         })
@@ -427,7 +427,7 @@ const addRollBackTransaction = (req, res) => {
                         conn.query(sql_querry_addPeriod, (err, per) => {
                             if (err) {
                                 conn.rollback((e, d) => {
-                                    console.error("An error occurd in SQL Queery 2", err);
+                                    console.error("An error occurred in SQL Queery 2", err);
                                     conn.release();
                                     return res.status(500).send('Database Error 2');
                                 })
@@ -435,7 +435,7 @@ const addRollBackTransaction = (req, res) => {
                                 conn.commit((err, done) => {
                                     if (err) {
                                         conn.rollback((e, d) => {
-                                            console.error("An error occurd in SQL Commit", err);
+                                            console.error("An error occurred in SQL Commit", err);
                                             conn.release();
                                             return res.status(500).send('Database Error In Commit');
                                         })
@@ -451,7 +451,7 @@ const addRollBackTransaction = (req, res) => {
                 })
             })
         } catch (error) {
-            console.error('An error occurd', error);
+            console.error('An error occurred', error);
             res.status(500).json('Internal Server Error');
         }
     })

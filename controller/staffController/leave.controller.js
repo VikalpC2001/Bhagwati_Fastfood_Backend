@@ -43,7 +43,7 @@ const addEmployeeLeave = (req, res) => {
                                                                 )`;
             pool.query(sql_query_addLeave, (err, data) => {
                 if (err) {
-                    console.error("An error occurd in SQL Queery", err);
+                    console.error("An error occurred in SQL Queery", err);
                     return res.status(500).send('Database Error');
                 }
                 return res.status(200).send("Data Added Successfully");
@@ -52,7 +52,7 @@ const addEmployeeLeave = (req, res) => {
             res.status(401).send("Please Login Firest.....!");
         }
     } catch (error) {
-        console.error('An error occurd', error);
+        console.error('An error occurred', error);
         res.status(500).send('Internal Server Error');
     }
 }
@@ -79,7 +79,7 @@ const addLeaveForAllEmployee = (req, res) => {
             sql_query_getAllActiveEmployeeId = `SELECT employeeId FROM staff_employee_data WHERE employeeStatus = 1`;
             pool.query(sql_query_getAllActiveEmployeeId, (err, data) => {
                 if (err) {
-                    console.error("An error occurd in SQL Queery", err);
+                    console.error("An error occurred in SQL Queery", err);
                     return res.status(500).send('Database Error');
                 }
                 const employeeIdsArray = data.map(item => item.employeeId);
@@ -105,7 +105,7 @@ const addLeaveForAllEmployee = (req, res) => {
                 INSERT INTO staff_leave_data (leaveId, userId, employeeId, numLeave, leaveReason, leaveStatus, leaveDate) VALUES ${addAllLeave()}`;
                 pool.query(sql_query_addLeave, (err, data) => {
                     if (err) {
-                        console.error("An error occurd in SQL Queery", err);
+                        console.error("An error occurred in SQL Queery", err);
                         return res.status(500).send('Database Error');
                     }
                     return res.status(200).send('Holiday Add Success Fully');

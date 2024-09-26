@@ -441,7 +441,7 @@ async function createPDF(res, data) {
 
         stream.pipe(res);
     } catch (error) {
-        console.error('An error occurd', error);
+        console.error('An error occurred', error);
         res.status(500).json('Internal Server Error');
     }
     // writeFileSync("jane-doe.pdf", await document.save());
@@ -714,7 +714,7 @@ const getEmployeeInvoice = (req, res) => {
                                             ${sqlQuery_leaveData}`;
         pool.query(sql_query_transactionTable, (err, data) => {
             if (err) {
-                console.error("An error occurd in SQL Queery", err);
+                console.error("An error occurred in SQL Queery", err);
                 return res.status(500).send('Database Error');
             }
             createPDF(res, data)
@@ -728,7 +728,7 @@ const getEmployeeInvoice = (req, res) => {
                 });
         })
     } catch (error) {
-        console.error('An error occurd', error);
+        console.error('An error occurred', error);
         res.status(500).send('Internal Server Error');
     }
 }

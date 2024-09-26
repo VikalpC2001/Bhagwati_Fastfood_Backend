@@ -15,7 +15,7 @@ const getPrinterList = (req, res) => {
             sql_query_chkMacAddress = `SELECT macAddress FROM billing_setPrinter_data WHERE macAddress = '${data.macAddress}'`;
             pool.query(sql_query_chkMacAddress, (err, row) => {
                 if (err) {
-                    console.error("An error occurd in SQL Queery", err);
+                    console.error("An error occurred in SQL Queery", err);
                     return res.status(500).send('Database Error');
                 } else {
                     let getPrinterDataByMacAddress = `SELECT
@@ -35,7 +35,7 @@ const getPrinterList = (req, res) => {
                     if (row && row.length) {
                         pool.query(getPrinterDataByMacAddress, (err, printer) => {
                             if (err) {
-                                console.error("An error occurd in SQL Queery", err);
+                                console.error("An error occurred in SQL Queery", err);
                                 return res.status(500).send('Database Error');
                             } else {
                                 return res.status(200).send(printer);
@@ -46,12 +46,12 @@ const getPrinterList = (req, res) => {
                                                          SELECT CONCAT('Printer_',LEFT(UUID(), 8)), categoryId, NULL, '${data.macAddress}',0, 0, 0, 0  FROM billing_categoryPrinter_data`;
                         pool.query(sql_querry_addPrinterCategory, (err, category) => {
                             if (err) {
-                                console.error("An error occurd in SQL Queery", err);
+                                console.error("An error occurred in SQL Queery", err);
                                 return res.status(500).send('Database Error');
                             } else {
                                 pool.query(getPrinterDataByMacAddress, (err, printer) => {
                                     if (err) {
-                                        console.error("An error occurd in SQL Queery", err);
+                                        console.error("An error occurred in SQL Queery", err);
                                         return res.status(500).send('Database Error');
                                     } else {
                                         return res.status(200).send(printer);
@@ -64,7 +64,7 @@ const getPrinterList = (req, res) => {
             })
         }
     } catch (error) {
-        console.error('An error occurd', error);
+        console.error('An error occurred', error);
         res.status(500).send('Internal Server Error');
     }
 }
@@ -96,14 +96,14 @@ const updatePrinterData = async (req, res) => {
                                               WHERE categoryId = '${data.categoryId}' AND macAddress = '${data.macAddress}'`;
             pool.query(sql_querry_updatedetails, (err, data) => {
                 if (err) {
-                    console.error("An error occurd in SQL Queery", err);
+                    console.error("An error occurred in SQL Queery", err);
                     return res.status(500).send('Database Error');
                 }
                 return res.status(200).send("Printer Updated Successfully");
             })
         }
     } catch (error) {
-        console.error('An error occurd', error);
+        console.error('An error occurred', error);
         res.status(500).send('Internal Server Error');
     }
 }

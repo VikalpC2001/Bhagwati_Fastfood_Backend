@@ -30,7 +30,7 @@ const getItemDataForApp = (req, res) => {
 
             pool.query(sql_querry_getItem, (err, rows) => {
                 if (err) {
-                    console.error("An error occurd in SQL Queery", err);
+                    console.error("An error occurred in SQL Queery", err);
                     return res.status(500).send('Database Error');
                 } else {
                     const datas = Object.values(JSON.parse(JSON.stringify(rows)));
@@ -74,7 +74,7 @@ const getItemDataForApp = (req, res) => {
             })
         }
     } catch (error) {
-        console.error('An error occurd', error);
+        console.error('An error occurred', error);
         res.status(500).json('Internal Server Error');
     }
 }

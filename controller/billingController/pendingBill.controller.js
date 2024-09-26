@@ -21,14 +21,14 @@ const getPendingCount = (req, res) => {
         let sql_query_getPendingNumber = `SELECT COUNT(*) AS pendingNo FROM pending_data`;
         pool.query(sql_query_getPendingNumber, (err, data) => {
             if (err) {
-                console.error("An error occurd in SQL Queery", err);
+                console.error("An error occurred in SQL Queery", err);
                 return res.status(500).send('Database Error');
             } else {
                 return res.status(200).send(data[0]);
             }
         })
     } catch (error) {
-        console.error('An error occurd', error);
+        console.error('An error occurred', error);
         res.status(500).json('Internal Server Error');
     }
 }
@@ -49,7 +49,7 @@ const getPendingBillData = (req, res) => {
                                      ORDER BY pd.billCreationDate DESC;`;
         pool.query(sql_query_getPendingBill, (err, data) => {
             if (err) {
-                console.error("An error occurd in SQL Queery", err);
+                console.error("An error occurred in SQL Queery", err);
                 return res.status(500).send('Database Error');
             } else {
                 if (data && data.length) {
@@ -60,7 +60,7 @@ const getPendingBillData = (req, res) => {
             }
         })
     } catch (error) {
-        console.error('An error occurd', error);
+        console.error('An error occurred', error);
         res.status(500).json('Internal Server Error');
     }
 }
@@ -76,7 +76,7 @@ const getPendingBillDataById = (req, res) => {
             let sql_query_chkBillExist = `SELECT pendingId, billType FROM pending_data WHERE pendingId = '${pendingId}'`;
             pool.query(sql_query_chkBillExist, (err, bill) => {
                 if (err) {
-                    console.error("An error occurd in SQL Queery", err);
+                    console.error("An error occurred in SQL Queery", err);
                     return res.status(500).send('Database Error');
                 } else {
                     if (bill && bill.length) {
@@ -158,7 +158,7 @@ const getPendingBillDataById = (req, res) => {
                                                        ${billType == 'Pick Up' || billType == 'Delivery' ? sql_query_getCustomerInfo : ''}`;
                         pool.query(sql_query_getBillData, (err, billData) => {
                             if (err) {
-                                console.error("An error occurd in SQL Queery", err);
+                                console.error("An error occurred in SQL Queery", err);
                                 return res.status(500).send('Database Error'); t
                             } else {
                                 const json = {
@@ -175,13 +175,13 @@ const getPendingBillDataById = (req, res) => {
                                                              DELETE FROM pending_billWiseCustomer_data WHERE pendingId = '${pendingId}'`;
                                 pool.query(sql_query_discardData, (err, data) => {
                                     if (err) {
-                                        console.error("An error occurd in SQL Queery", err);
+                                        console.error("An error occurred in SQL Queery", err);
                                         return res.status(500).send('Database Error');
                                     } else {
                                         let sql_query_getPendingNumber = `SELECT COUNT(*) AS pendingNo FROM pending_data`;
                                         pool.query(sql_query_getPendingNumber, (err, data) => {
                                             if (err) {
-                                                console.error("An error occurd in SQL Queery", err);
+                                                console.error("An error occurred in SQL Queery", err);
                                                 return res.status(500).send('Database Error');
                                             } else {
                                                 const pendingCount = data && data[0] ? data[0].pendingNo : 0;
@@ -200,7 +200,7 @@ const getPendingBillDataById = (req, res) => {
             })
         }
     } catch (error) {
-        console.error('An error occurd', error);
+        console.error('An error occurred', error);
         res.status(500).json('Internal Server Error');
     }
 }
@@ -331,7 +331,7 @@ const addHotelPendingBillData = (req, res) => {
                 }
             });
         } catch (error) {
-            console.error('An error occurd', error);
+            console.error('An error occurred', error);
             connection.rollback(() => {
                 connection.release();
                 return res.status(500).json('Internal Server Error');
@@ -482,7 +482,7 @@ const addPickUpPendingBillData = (req, res) => {
                 }
             });
         } catch (error) {
-            console.error('An error occurd', error);
+            console.error('An error occurred', error);
             connection.rollback(() => {
                 connection.release();
                 return res.status(500).json('Internal Server Error');
@@ -633,7 +633,7 @@ const addDeliveryPendingBillData = (req, res) => {
                 }
             });
         } catch (error) {
-            console.error('An error occurd', error);
+            console.error('An error occurred', error);
             connection.rollback(() => {
                 connection.release();
                 return res.status(500).json('Internal Server Error');
@@ -656,13 +656,13 @@ const discardpendingData = (req, res) => {
                                          DELETE FROM pending_billWiseCustomer_data WHERE pendingId = '${pendingId}'`;
             pool.query(sql_query_discardData, (err, data) => {
                 if (err) {
-                    console.error("An error occurd in SQL Queery", err);
+                    console.error("An error occurred in SQL Queery", err);
                     return res.status(500).send('Database Error');
                 } else {
                     let sql_query_getPendingNumber = `SELECT COUNT(*) AS pendingNo FROM pending_data`;
                     pool.query(sql_query_getPendingNumber, (err, data) => {
                         if (err) {
-                            console.error("An error occurd in SQL Queery", err);
+                            console.error("An error occurred in SQL Queery", err);
                             return res.status(500).send('Database Error');
                         } else {
                             const pendingCount = data && data[0] ? data[0].pendingNo : 0;
@@ -674,7 +674,7 @@ const discardpendingData = (req, res) => {
             })
         }
     } catch (error) {
-        console.error('An error occurd', error);
+        console.error('An error occurred', error);
         return res.status(500).json('Internal Server Error');
     }
 }

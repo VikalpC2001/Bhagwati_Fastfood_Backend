@@ -50,14 +50,14 @@ const getAllTableView = (req, res) => {
                                 ORDER BY LPAD(dt.tableNo, 10, '0')`;
         pool.query(sql_query_getDetails, (err, data) => {
             if (err) {
-                console.error("An error occurd in SQL Queery", err);
+                console.error("An error occurred in SQL Queery", err);
                 return res.status(500).send('Database Error');;
             } else {
                 return res.status(200).send(data);
             }
         })
     } catch (error) {
-        console.error('An error occurd', error);
+        console.error('An error occurred', error);
         res.status(500).json('Internal Server Error');
     }
 }
@@ -93,7 +93,7 @@ const getSubTokensByBillId = async (req, res) => {
                                       ORDER BY bst.subTokenNumber DESC`;
             pool.query(sql_queries_getDetails, (err, data) => {
                 if (err) {
-                    console.error("An error occurd in SQL Queery", err);
+                    console.error("An error occurred in SQL Queery", err);
                     return res.status(500).send('Database Error');
                 } else {
                     const result = data.reduce((acc, item) => {
@@ -143,7 +143,7 @@ const getSubTokensByBillId = async (req, res) => {
             });
         }
     } catch (error) {
-        console.error('An error occurd', error);
+        console.error('An error occurred', error);
         res.status(500).json('Internal Server Error');
     }
 }
@@ -366,7 +366,7 @@ const addDineInOrder = (req, res) => {
                                                                                             'Offline',
                                                                                             'Dine In',
                                                                                             'cash',
-                                                                                            'None',
+                                                                                            'none',
                                                                                             0,
                                                                                             0,
                                                                                             ${billData.subTotal},
@@ -481,7 +481,7 @@ const addDineInOrder = (req, res) => {
                 }
             });
         } catch (error) {
-            console.error('An error occurd', error);
+            console.error('An error occurred', error);
             connection.rollback(() => {
                 connection.release();
                 return res.status(500).json('Internal Server Error');
@@ -603,7 +603,7 @@ const removeSubTokenDataById = (req, res) => {
                 }
             });
         } catch (error) {
-            console.error('An error occurd', error);
+            console.error('An error occurred', error);
             connection.rollback(() => {
                 connection.release();
                 return res.status(500).json('Internal Server Error');
@@ -745,7 +745,7 @@ const updateSubTokenDataById = (req, res) => {
                 }
             });
         } catch (error) {
-            console.error('An error occurd', error);
+            console.error('An error occurred', error);
             connection.rollback(() => {
                 connection.release();
                 return res.status(500).json('Internal Server Error');
@@ -765,7 +765,7 @@ const updateStaticTableNumbers = (req, res) => {
             let sql_query_chkTableActivity = `SELECT tableNo FROM billing_DineInTable_data WHERE billId IS NOT NULL`;
             pool.query(sql_query_chkTableActivity, (err, chk) => {
                 if (err) {
-                    console.error("An error occurd in SQL Queery", err);
+                    console.error("An error occurred in SQL Queery", err);
                     return res.status(500).send('Database Error');;
                 } else if (chk && chk.length) {
                     return res.status(401).send('You cannot modify the data at this time...!')
@@ -773,7 +773,7 @@ const updateStaticTableNumbers = (req, res) => {
                     let sql_query_getTotalNumOfTable = `SELECT tableNo FROM billing_DineInTable_data`;
                     pool.query(sql_query_getTotalNumOfTable, (err, tbl) => {
                         if (err) {
-                            console.error("An error occurd in SQL Queery", err);
+                            console.error("An error occurred in SQL Queery", err);
                             return res.status(500).send('Database Error');;
                         } else {
                             const totalTable = tbl && tbl.length ? tbl.length : 0;
@@ -787,7 +787,7 @@ const updateStaticTableNumbers = (req, res) => {
                                                              VALUES ${result}`;
                                 pool.query(sql_query_addNewTable, (err, tbl) => {
                                     if (err) {
-                                        console.error("An error occurd in SQL Queery", err);
+                                        console.error("An error occurred in SQL Queery", err);
                                         return res.status(500).send('Database Error');;
                                     } else {
                                         return res.status(201).send('Tables have been created.')
@@ -801,7 +801,7 @@ const updateStaticTableNumbers = (req, res) => {
                                 let sql_query_removeNewTable = `DELETE FROM billing_DineInTable_data WHERE tableId IN ${result}`;
                                 pool.query(sql_query_removeNewTable, (err, tbl) => {
                                     if (err) {
-                                        console.error("An error occurd in SQL Queery", err);
+                                        console.error("An error occurred in SQL Queery", err);
                                         return res.status(500).send('Database Error');;
                                     } else {
                                         return res.status(200).send('Tables have been Removed.')
@@ -815,7 +815,7 @@ const updateStaticTableNumbers = (req, res) => {
             })
         }
     } catch (error) {
-        console.error('An error occurd', error);
+        console.error('An error occurred', error);
         res.status(500).json('Internal Server Error');
     }
 }
@@ -848,7 +848,7 @@ const printTableBill = (req, res) => {
                                             bd.discountType AS discountType, 
                                             bd.discountValue AS discountValue, 
                                             bd.totalDiscount AS totalDiscount, 
-                                            bd.totalAmount AS totalAmount, 
+                                            bd.totalAmount AS subTotal, 
                                             bd.settledAmount AS settledAmount, 
                                             bd.billComment AS billComment, 
                                             DATE_FORMAT(bd.billDate,'%d/%m/%Y') AS billDate,
@@ -914,32 +914,33 @@ const printTableBill = (req, res) => {
                                        ${sql_query_getCustomerInfo};
                                        ${sql_query_getTableData};
                                        ${sql_query_getSubTokens}`;
-        pool.query(sql_query_getBillData, (err, billData) => {
+
+        let sql_query_updateTableStatus = `UPDATE billing_data SET billStatus = 'print' WHERE billId = '${billId}'`;
+        pool.query(sql_query_updateTableStatus, (err, raw) => {
             if (err) {
-                console.error("An error occurd in SQL Queery", err);
+                console.error("An error occurred in SQL Queery", err);
                 return res.status(500).send('Database Error');
             } else {
-                const json = {
-                    ...billData[0][0],
-                    itemData: billData && billData[1] ? billData[1] : [],
-                    firmData: billData && billData[2] ? billData[2][0] : [],
-                    ...({ customerDetails: billData && billData[3][0] ? billData[3][0] : '' }),
-                    ...({ tableInfo: billData[4][0] }),
-                    subTokens: billData[5].map(item => item.subTokenNumber).sort((a, b) => a - b).join(", ")
-                }
-                let sql_query_updateTableStatus = `UPDATE billing_data SET billStatus = 'print' WHERE billId = '${billId}'`;
-                pool.query(sql_query_updateTableStatus, (err, raw) => {
+                pool.query(sql_query_getBillData, (err, billData) => {
                     if (err) {
-                        console.error("An error occurd in SQL Queery", err);
+                        console.error("An error occurred in SQL Queery", err);
                         return res.status(500).send('Database Error');
                     } else {
+                        const json = {
+                            ...billData[0][0],
+                            itemData: billData && billData[1] ? billData[1] : [],
+                            firmData: billData && billData[2] ? billData[2][0] : [],
+                            ...({ customerDetails: billData && billData[3][0] ? billData[3][0] : '' }),
+                            ...({ tableInfo: billData[4][0] }),
+                            subTokens: billData[5].map(item => item.subTokenNumber).sort((a, b) => a - b).join(", ")
+                        }
                         return res.status(200).send(json);
                     }
-                })
+                });
             }
         })
     } catch (error) {
-        console.error('An error occurd', error);
+        console.error('An error occurred', error);
         res.status(500).json('Internal Server Error');
     }
 }
@@ -967,14 +968,16 @@ const updateDineInBillData = (req, res) => {
 
                         const currentDate = getCurrentDate();
                         const billData = req.body;
-                        if (!billData.billId || !billData.customerDetails || !billData.subTotal || !billData.settledAmount || !billData.billPayType || !billData.billStatus || !billData.itemsData) {
+
+                        if (!billData.billId || !billData.subTotal || !billData.settledAmount || !billData.billPayType || !billData.billStatus || !billData.tableNo || !billData.itemsData) {
                             connection.rollback(() => {
                                 connection.release();
                                 return res.status(404).send('Please Fill All The Fields..!');
                             })
                         } else {
                             let sql_query_chkOfficial = `SELECT billId, billNumber FROM billing_Official_data WHERE billId = '${billData.billId}';
-                                                         SELECT COALESCE(MAX(billNumber),0) AS officialLastBillNo FROM billing_Official_data WHERE firmId = '${billData.firmId}' AND billCreationDate = (SELECT MAX(billCreationDate) FROM billing_Official_data WHERE firmId = '${billData.firmId}') FOR UPDATE`;
+                                                         SELECT COALESCE(MAX(billNumber),0) AS officialLastBillNo FROM billing_Official_data WHERE firmId = '${billData.firmId}' AND billCreationDate = (SELECT MAX(billCreationDate) FROM billing_Official_data WHERE firmId = '${billData.firmId}') FOR UPDATE;
+                                                         SELECT isFixed FROM billing_DineInTable_data WHERE tableNo = '${billData.tableNo}' AND billId = '${billData.billId}'`;
                             connection.query(sql_query_chkOfficial, (err, chkExist) => {
                                 if (err) {
                                     console.error("Error check official bill exist or not:", err);
@@ -987,6 +990,7 @@ const updateDineInBillData = (req, res) => {
                                     const staticBillNumber = chkExist && chkExist[0].length ? chkExist[0][0].billNumber : 0;
                                     const officialLastBillNo = chkExist && chkExist[1] ? chkExist[1][0].officialLastBillNo : 0;
                                     const nextOfficialBillNo = officialLastBillNo + 1;
+                                    const isTableFixed = chkExist && chkExist[2].length ? chkExist[2][0].isFixed : true;
                                     let sql_query_getBillInfo = `SELECT
                                                                      bd.billId AS billId,
                                                                      bd.billNumber AS billNumber,
@@ -1085,7 +1089,7 @@ const updateDineInBillData = (req, res) => {
                                                                                         WHERE bwid.billId = '${billData.billId}'`;
                                                         connection.query(sql_query_getOldItemJson, (err, oldJson) => {
                                                             if (err) {
-                                                                console.error("Error inserting Bill Wise Item Data:", err);
+                                                                console.error("Error Get Old Bill Wise Item Data:", err);
                                                                 connection.rollback(() => {
                                                                     connection.release();
                                                                     return res.status(500).send('Database Error');
@@ -1132,7 +1136,7 @@ const updateDineInBillData = (req, res) => {
                                                                 let sql_query_adjustItem = `${added.length ? `INSERT INTO billing_billWiseItem_data(iwbId, billId, itemId, qty, unit, itemPrice, price, comment)
                                                                                             VALUES ${addBillWiseItemData};` : ''}
                                                                                             ${removed.length ? `DELETE FROM billing_billWiseItem_data WHERE iwbId IN (${removeJsonIds});` : ''}
-                                                                                            ${modifiedNewJson.length ? `${updateQuery};` : ''}`;
+                                                                                            ${modifiedNewJson.length ? `${updateQuery};` : `${updateQuery};`}`;
                                                                 connection.query(sql_query_adjustItem, (err) => {
                                                                     if (err) {
                                                                         console.error("Error inserting Bill Wise Item Data:", err);
@@ -1158,6 +1162,13 @@ const updateDineInBillData = (req, res) => {
                                                                                                      LEFT JOIN billing_data AS bd ON bd.billId = btd.billId
                                                                                                      WHERE btd.billType = 'Dine In' AND bd.billStatus NOT IN ('complete','Cancel') AND btd.billDate = STR_TO_DATE('${currentDate}','%b %d %Y')
                                                                                                      ORDER BY btd.tokenNo ASC;
+                                                                                                     ${['complete', 'Cancel'].includes(billData.billStatus)
+                                                                                ? isTableFixed == true
+                                                                                    ?
+                                                                                    `UPDATE billing_DineInTable_data SET billId = null WHERE tableNo = '${billData.tableNo}' AND billId = '${billData.billId}';`
+                                                                                    :
+                                                                                    `DELETE FROM billing_DineInTable_data WHERE billId = '${billData.billId}' AND tableNo = '${billData.tableNo}';`
+                                                                                : ''}
                                                                                                      DELETE FROM billing_billWiseUpi_data WHERE billId = '${billData.billId}';
                                                                                                      DELETE FROM due_billAmount_data WHERE billId = '${billData.billId}';
                                                                                              ${billData.billPayType == 'online'
@@ -1179,8 +1190,22 @@ const updateDineInBillData = (req, res) => {
                                                                                     return res.status(500).send('Database Error');
                                                                                 });
                                                                             } else {
+                                                                                const combinedItems = Object.values(billData.itemsData.reduce((acc, item) => {
+                                                                                    const key = `${item.itemId}-${item.unit}`;
+
+                                                                                    if (!acc[key]) {
+                                                                                        acc[key] = { ...item };
+                                                                                    } else {
+                                                                                        acc[key].qty += item.qty;
+                                                                                        acc[key].price += item.price;
+                                                                                    }
+
+                                                                                    return acc;
+                                                                                }, {}));
+
                                                                                 const sendJson = {
                                                                                     ...billData,
+                                                                                    itemsData: combinedItems,
                                                                                     firmData: firm[0][0],
                                                                                     cashier: cashier,
                                                                                     billNo: billNumber,
@@ -1212,7 +1237,6 @@ const updateDineInBillData = (req, res) => {
                                                                                                     });
                                                                                                 } else {
                                                                                                     connection.release();
-                                                                                                    req?.io?.emit('getTokenList', tokenList);
                                                                                                     return res.status(200).send(sendJson);
                                                                                                 }
                                                                                             });
@@ -1250,7 +1274,6 @@ const updateDineInBillData = (req, res) => {
                                                                                                                 });
                                                                                                             } else {
                                                                                                                 connection.release();
-                                                                                                                req?.io?.emit('getTokenList', tokenList);
                                                                                                                 return res.status(200).send(sendJson);
                                                                                                             }
                                                                                                         });
@@ -1287,7 +1310,6 @@ const updateDineInBillData = (req, res) => {
                                                                                                                         });
                                                                                                                     } else {
                                                                                                                         connection.release();
-                                                                                                                        req?.io?.emit('getTokenList', tokenList);
                                                                                                                         return res.status(200).send(sendJson);
                                                                                                                     }
                                                                                                                 });
@@ -1319,7 +1341,6 @@ const updateDineInBillData = (req, res) => {
                                                                                                     });
                                                                                                 } else {
                                                                                                     connection.release();
-                                                                                                    req?.io?.emit('getTokenList', tokenList);
                                                                                                     return res.status(200).send(sendJson);
                                                                                                 }
                                                                                             });
@@ -1369,7 +1390,6 @@ const updateDineInBillData = (req, res) => {
                                                                                                                                 });
                                                                                                                             } else {
                                                                                                                                 connection.release();
-                                                                                                                                req?.io?.emit('getTokenList', tokenList);
                                                                                                                                 return res.status(200).send(sendJson);
                                                                                                                             }
                                                                                                                         });
@@ -1406,7 +1426,6 @@ const updateDineInBillData = (req, res) => {
                                                                                                                                         });
                                                                                                                                     } else {
                                                                                                                                         connection.release();
-                                                                                                                                        req?.io?.emit('getTokenList', tokenList);
                                                                                                                                         return res.status(200).send(sendJson);
                                                                                                                                     }
                                                                                                                                 });
@@ -1458,7 +1477,6 @@ const updateDineInBillData = (req, res) => {
                                                                                                                                     });
                                                                                                                                 } else {
                                                                                                                                     connection.release();
-                                                                                                                                    req?.io?.emit('getTokenList', tokenList);
                                                                                                                                     return res.status(200).send(sendJson);
                                                                                                                                 }
                                                                                                                             });
@@ -1489,7 +1507,6 @@ const updateDineInBillData = (req, res) => {
                                                                                                                     });
                                                                                                                 } else {
                                                                                                                     connection.release();
-                                                                                                                    req?.io?.emit('getTokenList', tokenList);
                                                                                                                     return res.status(200).send(sendJson);
                                                                                                                 }
                                                                                                             });
@@ -1526,7 +1543,6 @@ const updateDineInBillData = (req, res) => {
                                                                                                                             });
                                                                                                                         } else {
                                                                                                                             connection.release();
-                                                                                                                            req?.io?.emit('getTokenList', tokenList);
                                                                                                                             return res.status(200).send(sendJson);
                                                                                                                         }
                                                                                                                     });
@@ -1555,7 +1571,6 @@ const updateDineInBillData = (req, res) => {
                                                                                                                     });
                                                                                                                 } else {
                                                                                                                     connection.release();
-                                                                                                                    req?.io?.emit('getTokenList', tokenList);
                                                                                                                     return res.status(200).send(sendJson);
                                                                                                                 }
                                                                                                             });
@@ -1585,7 +1600,6 @@ const updateDineInBillData = (req, res) => {
                                                                                                         });
                                                                                                     } else {
                                                                                                         connection.release();
-                                                                                                        req?.io?.emit('getTokenList', tokenList);
                                                                                                         return res.status(200).send(sendJson);
                                                                                                     }
                                                                                                 });
@@ -1601,7 +1615,6 @@ const updateDineInBillData = (req, res) => {
                                                                                                 });
                                                                                             } else {
                                                                                                 connection.release();
-                                                                                                req?.io?.emit('getTokenList', tokenList);
                                                                                                 return res.status(200).send(sendJson);
                                                                                             }
                                                                                         });
@@ -1635,7 +1648,7 @@ const updateDineInBillData = (req, res) => {
                 }
             });
         } catch (error) {
-            console.error('An error occurd', error);
+            console.error('An error occurred', error);
             connection.rollback(() => {
                 connection.release();
                 return res.status(500).json('Internal Server Error');
@@ -1644,6 +1657,230 @@ const updateDineInBillData = (req, res) => {
     });
 }
 
+// Sattled Bill Data After Print
+
+const sattledBillDataByID = (req, res) => {
+    pool2.getConnection((err, connection) => {
+        if (err) {
+            console.error("Error getting database connection:", err);
+            return res.status(500).send('Database Error');
+        }
+        try {
+            connection.beginTransaction((err) => {
+                if (err) {
+                    console.error("Error beginning transaction:", err);
+                    connection.release();
+                    return res.status(500).send('Database Error');
+                } else {
+                    let token;
+                    token = req.headers ? req.headers.authorization.split(" ")[1] : null;
+                    if (token) {
+                        const decoded = jwt.verify(token, process.env.JWT_SECRET);
+                        const cashier = decoded.id.firstName;
+
+                        const currentDate = getCurrentDate();
+                        const billData = req.body;
+                        if (!billData.billId || !billData.settledAmount || !billData.billPayType || !billData.billStatus || !billData.tableNo) {
+                            connection.rollback(() => {
+                                connection.release();
+                                return res.status(404).send('Please Fill All The Fields..!');
+                            })
+                        } else {
+                            let sql_query_chkOfficial = `SELECT billId, billNumber FROM billing_Official_data WHERE billId = '${billData.billId}';
+                                                         SELECT COALESCE(MAX(billNumber),0) AS officialLastBillNo FROM billing_Official_data WHERE firmId = '${billData.firmId}' AND billCreationDate = (SELECT MAX(billCreationDate) FROM billing_Official_data WHERE firmId = '${billData.firmId}') FOR UPDATE;
+                                                         SELECT isFixed FROM billing_DineInTable_data WHERE tableNo = '${billData.tableNo}' AND billId = '${billData.billId}'`;
+                            connection.query(sql_query_chkOfficial, (err, chkExist) => {
+                                if (err) {
+                                    console.error("Error check official bill exist or not:", err);
+                                    connection.rollback(() => {
+                                        connection.release();
+                                        return res.status(500).send('Database Error');
+                                    });
+                                } else {
+                                    const isExist = chkExist && chkExist[0].length ? true : false;
+                                    const officialLastBillNo = chkExist && chkExist[1] ? chkExist[1][0].officialLastBillNo : 0;
+                                    const nextOfficialBillNo = officialLastBillNo + 1;
+                                    const isTableFixed = chkExist && chkExist[2].length ? chkExist[2][0].isFixed : true;
+                                    let sql_query_getBillInfo = `SELECT
+                                                                     bd.billId AS billId
+                                                                 FROM
+                                                                     billing_data AS bd
+                                                                 WHERE bd.billId = '${billData.billId}' AND bd.billType = 'Dine In'`;
+                                    connection.query(sql_query_getBillInfo, (err, billInfo) => {
+                                        if (err) {
+                                            console.error("Error inserting new bill number:", err);
+                                            connection.rollback(() => {
+                                                connection.release();
+                                                return res.status(500).send('Database Error');
+                                            });
+                                        } else {
+                                            if (billInfo && billInfo.length) {
+                                                const uid1 = new Date();
+                                                const bwuId = String("bwu_" + uid1.getTime());
+                                                const dabId = String("dab_" + uid1.getTime());
+
+                                                let updateColumnField = `billPayType = '${billData.billPayType}',
+                                                                         discountType = '${billData.discountType}',
+                                                                         discountValue = ${billData.discountValue},
+                                                                         totalDiscount = ${billData.totalDiscount},
+                                                                         settledAmount = ${billData.settledAmount},
+                                                                         billStatus = '${billData.billStatus}'`;
+
+                                                let sql_querry_updateBillInfo = `UPDATE billing_data SET ${updateColumnField} WHERE billId = '${billData.billId}';
+                                                        ${!isExist && billData.isOfficial
+                                                        ?
+                                                        `INSERT INTO billing_Official_data(billId, billNumber, firmId, cashier, menuStatus, billType, billPayType, discountType, discountValue, totalDiscount, totalAmount, settledAmount, billComment, billDate, billStatus)
+                                                         SELECT billId, ${nextOfficialBillNo}, firmId, cashier, menuStatus, billType, '${billData.billPayType}', '${billData.discountType}', ${billData.discountValue}, ${billData.totalDiscount}, totalAmount, ${billData.settledAmount}, billComment, billDate, '${billData.billStatus}', billCreationDate, billModificationDate FROM billing_data WHERE billId = '${billData.billId}'`
+                                                        :
+                                                        `UPDATE billing_Official_data SET ${updateColumnField} WHERE billId = '${billData.billId}'`};
+                                                         UPDATE billing_Complimentary_data SET ${updateColumnField} WHERE billId = '${billData.billId}'`;
+
+                                                connection.query(sql_querry_updateBillInfo, (err) => {
+                                                    if (err) {
+                                                        console.error("Error inserting new bill number:", err);
+                                                        connection.rollback(() => {
+                                                            connection.release();
+                                                            return res.status(500).send('Database Error');
+                                                        });
+                                                    } else {
+                                                        let sql_query_sattledData = `${['complete', 'Cancel'].includes(billData.billStatus)
+                                                            ? isTableFixed == true
+                                                                ?
+                                                                `UPDATE billing_DineInTable_data SET billId = null WHERE tableNo = '${billData.tableNo}' AND billId = '${billData.billId}';`
+                                                                :
+                                                                `DELETE FROM billing_DineInTable_data WHERE billId = '${billData.billId}' AND tableNo = '${billData.tableNo}';`
+                                                            : ''}
+                                                                DELETE FROM billing_billWiseUpi_data WHERE billId = '${billData.billId}';
+                                                                DELETE FROM due_billAmount_data WHERE billId = '${billData.billId}';
+                                                                ${billData.billPayType == 'online'
+                                                                ?
+                                                                `INSERT INTO billing_billWiseUpi_data(bwuId, onlineId, billId, amount, onlineDate)
+                                                                 VALUES('${bwuId}', '${billData.onlineId}', '${billData.billId}', '${billData.settledAmount}', STR_TO_DATE('${currentDate}','%b %d %Y'))`
+                                                                :
+                                                                billData.accountId && billData.billPayType == 'due'
+                                                                    ?
+                                                                    `INSERT INTO due_billAmount_data(dabId, enterBy, accountId, billId, billAmount, dueNote, dueDate)
+                                                                     VALUES('${dabId}','${cashier}','${billData.accountId}','${billId}',${billData.settledAmount},${billData.dueNote ? `'${billData.dueNote}'` : null}, STR_TO_DATE('${currentDate}','%b %d %Y'))`
+                                                                    :
+                                                                    ''}`;
+                                                        connection.query(sql_query_sattledData, (err) => {
+                                                            if (err) {
+                                                                console.error("Error in sattled Data:", err);
+                                                                connection.rollback(() => {
+                                                                    connection.release();
+                                                                    return res.status(500).send('Database Error');
+                                                                });
+                                                            } else {
+                                                                connection.commit((err) => {
+                                                                    if (err) {
+                                                                        console.error("Error committing transaction:", err);
+                                                                        connection.rollback(() => {
+                                                                            connection.release();
+                                                                            return res.status(500).send('Database Error');
+                                                                        });
+                                                                    } else {
+                                                                        connection.release();
+                                                                        return res.status(200).send('Sattled Success');
+                                                                    }
+                                                                });
+                                                            }
+                                                        });
+                                                    }
+                                                });
+                                            } else {
+                                                connection.rollback(() => {
+                                                    connection.release();
+                                                    return res.status(404).send('billId Not Found...!');
+                                                })
+                                            }
+                                        }
+                                    })
+                                }
+                            })
+                        }
+                    } else {
+                        connection.rollback(() => {
+                            connection.release();
+                            return res.status(404).send('Please Login First....!');
+                        });
+                    }
+                }
+            });
+        } catch (error) {
+            console.error('An error occurred', error);
+            connection.rollback(() => {
+                connection.release();
+                return res.status(500).json('Internal Server Error');
+            })
+        }
+    });
+}
+
+// Move Table API
+
+const moveTable = (req, res) => {
+    try {
+        const tableNo = req.query.tableNo;
+        const newTableNo = req.query.newTableNo;
+        const billId = req.query.billId;
+
+        if (!tableNo || !newTableNo || !billId) {
+            return res.status(404).send('Please Fill All The Fields...!');
+        } else if (tableNo == newTableNo) {
+            return res.status(400).send('Table Is Same..!');
+        } else {
+            let sql_query_chkExistTable = `SELECT tableNo FROM billing_DineInTable_data WHERE tableNo = '${newTableNo}'`;
+            pool.query(sql_query_chkExistTable, (err, chk) => {
+                if (err) {
+                    console.error("An error occurred in SQL Queery", err);
+                    return res.status(500).send('Database Error');;
+                } else {
+                    if (chk && chk.length) {
+                        let sql_query_chkTableEmpty = `SELECT tableNo FROM billing_DineInTable_data WHERE tableNo = '${newTableNo}' AND billId IS NULL`;
+                        pool.query(sql_query_chkTableEmpty, (err, isEmpty) => {
+                            if (err) {
+                                console.error("An error occurred in SQL Queery", err);
+                                return res.status(500).send('Database Error');;
+                            } else {
+                                if (isEmpty && isEmpty.length) {
+                                    let sql_query_updateTable = `UPDATE billing_DineInTable_data SET billId = NULL WHERE tableNo = '${tableNo}';
+                                                                 UPDATE billing_DineInTable_data SET billId = '${billId}' WHERE tableNo = '${newTableNo}';
+                                                                 UPDATE billing_billWiseTableNo_data SET tableNo = '${newTableNo}' WHERE billId = '${billId}'`;
+                                    pool.query(sql_query_updateTable, (err) => {
+                                        if (err) {
+                                            console.error("An error occurred in SQL Queery", err);
+                                            return res.status(500).send('Database Error');;
+                                        } else {
+                                            return res.status(200).send(`Table Moved From ${tableNo} ==>> ${newTableNo}`)
+                                        }
+                                    })
+                                } else {
+                                    return res.status(400).send('Table is not empty..!');
+                                }
+                            }
+                        })
+                    } else {
+                        let sql_query_addTempTable = `UPDATE billing_DineInTable_data SET billId = NULL WHERE tableNo = '${tableNo}';
+                                                      UPDATE billing_billWiseTableNo_data SET tableNo = '${newTableNo}' WHERE billId = '${billId}';
+                                                      INSERT INTO billing_DineInTable_data(tableId, tableNo, billId, isFixed)
+                                                      VALUES ('${newTableNo}', '${newTableNo}', '${billId}', 0);`;
+                        pool.query(sql_query_addTempTable, (err) => {
+                            if (err) {
+                                console.error("An error occurred in SQL Queery", err);
+                                return res.status(500).send('Database Error');;
+                            } else {
+                                return res.status(200).send(`Table Moved From ${tableNo} ==>> ${newTableNo}`)
+                            }
+                        })
+                    }
+                }
+            })
+        }
+    } catch (error) {
+        console.error('An error occurred', error);
+        res.status(500).json('Internal Server Error');
+    }
+}
 
 
 module.exports = {
@@ -1654,5 +1891,7 @@ module.exports = {
     getAllTableView,
     updateStaticTableNumbers,
     printTableBill,
-    updateDineInBillData
+    updateDineInBillData,
+    sattledBillDataByID,
+    moveTable
 }

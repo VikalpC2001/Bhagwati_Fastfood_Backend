@@ -12,7 +12,7 @@ const getBusinessCategoryList = (req, res) => {
         sql_querry_getCountdetails = `SELECT count(*) AS numRows FROM business_category_data`;
         pool.query(sql_querry_getCountdetails, (err, rows, fields) => {
             if (err) {
-                console.error("An error occurd in SQL Queery", err);
+                console.error("An error occurred in SQL Queery", err);
                 return res.status(500).send('Database Error');
             } else {
                 const numRows = rows[0].numRows;
@@ -23,7 +23,7 @@ const getBusinessCategoryList = (req, res) => {
                                           Order BY businessName limit ${limit}`;
                 pool.query(sql_queries_getdetails, (err, rows, fields) => {
                     if (err) {
-                        console.error("An error occurd in SQL Queery", err);
+                        console.error("An error occurred in SQL Queery", err);
                         return res.status(500).send('Database Error');
                     } else {
                         if (numRows === 0) {
@@ -40,7 +40,7 @@ const getBusinessCategoryList = (req, res) => {
         })
 
     } catch (error) {
-        console.error('An error occurd', error);
+        console.error('An error occurred', error);
         res.status(500).send('Internal Server Error');
     }
 }
@@ -60,7 +60,7 @@ const addBusinessCategory = (req, res) => {
         } else {
             req.body.businessName = pool.query(`SELECT businessName FROM business_category_data WHERE businessName = '${data.businessName}'`, function (err, row) {
                 if (err) {
-                    console.error("An error occurd in SQL Queery", err);
+                    console.error("An error occurred in SQL Queery", err);
                     return res.status(500).send('Database Error');
                 }
                 if (row && row.length) {
@@ -70,7 +70,7 @@ const addBusinessCategory = (req, res) => {
                                                    VALUES('${businessCategoryId}', '${data.businessName}', '${data.businessType}')`;
                     pool.query(sql_querry_addDetails, (err, data) => {
                         if (err) {
-                            console.error("An error occurd in SQL Queery", err);
+                            console.error("An error occurred in SQL Queery", err);
                             return res.status(500).send('Database Error');
                         }
                         return res.status(200).send("Business Added Successfully");
@@ -79,7 +79,7 @@ const addBusinessCategory = (req, res) => {
             })
         }
     } catch (error) {
-        console.error('An error occurd', error);
+        console.error('An error occurred', error);
         res.status(500).send('Internal Server Error');
     }
 }
@@ -94,14 +94,14 @@ const removeBusinessCategory = (req, res) => {
         }
         req.query.mainCategoryId = pool.query(`SELECT businessCategoryId FROM business_category_data WHERE businessCategoryId = '${businessCategoryId}'`, (err, row) => {
             if (err) {
-                console.error("An error occurd in SQL Queery", err);
+                console.error("An error occurred in SQL Queery", err);
                 return res.status(500).send('Database Error');
             }
             if (row && row.length) {
                 const sql_querry_removedetails = `DELETE FROM business_category_data WHERE businessCategoryId = '${businessCategoryId}'`;
                 pool.query(sql_querry_removedetails, (err, data) => {
                     if (err) {
-                        console.error("An error occurd in SQL Queery", err);
+                        console.error("An error occurred in SQL Queery", err);
                         return res.status(500).send('Database Error');
                     }
                     return res.status(200).send("Business Category Deleted Successfully");
@@ -111,7 +111,7 @@ const removeBusinessCategory = (req, res) => {
             }
         })
     } catch (error) {
-        console.error('An error occurd', error);
+        console.error('An error occurred', error);
         res.status(500).send('Internal Server Error');
     }
 }
@@ -130,7 +130,7 @@ const updateBusinessCategory = (req, res) => {
         } else {
             req.body.categoryName = pool.query(`SELECT businessName FROM business_category_data WHERE businessCategoryId NOT IN ('${businessCategoryId}')`, function (err, row) {
                 if (err) {
-                    console.error("An error occurd in SQL Queery", err);
+                    console.error("An error occurred in SQL Queery", err);
                     return res.status(500).send('Database Error');
                 }
                 const rowarr = Object.values(JSON.parse(JSON.stringify(row)));
@@ -147,7 +147,7 @@ const updateBusinessCategory = (req, res) => {
                                                       WHERE businessCategoryId = '${businessCategoryId}'`;
                     pool.query(sql_querry_updateDetails, (err, data) => {
                         if (err) {
-                            console.error("An error occurd in SQL Queery", err);
+                            console.error("An error occurred in SQL Queery", err);
                             return res.status(500).send('Database Error');
                         }
                         return res.status(200).send("Business Category Update Successfully");
@@ -156,7 +156,7 @@ const updateBusinessCategory = (req, res) => {
             })
         }
     } catch (error) {
-        console.error('An error occurd', error);
+        console.error('An error occurred', error);
         res.status(500).send('Internal Server Error');
     }
 }
@@ -168,13 +168,13 @@ const getBusinessCategory = (req, res) => {
         sql_queries_getdetails = `SELECT businessCategoryId, businessName FROM business_category_data ORDER BY businessName ASC`;
         pool.query(sql_queries_getdetails, (err, data) => {
             if (err) {
-                console.error("An error occurd in SQL Queery", err);
+                console.error("An error occurred in SQL Queery", err);
                 return res.status(500).send('Database Error');
             }
             return res.status(200).send(data);
         })
     } catch (error) {
-        console.error('An error occurd', error);
+        console.error('An error occurred', error);
         res.status(500).send('Internal Server Error');
     }
 }

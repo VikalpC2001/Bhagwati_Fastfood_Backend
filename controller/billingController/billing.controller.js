@@ -76,7 +76,7 @@ const getBillingStaticsData = (req, res) => {
                                      WHERE billType = 'Hotel' AND billDate = STR_TO_DATE('${currentDate}','%b %d %Y');`;
         pool.query(sql_queries_getStatics, (err, data) => {
             if (err) {
-                console.error("An error occurd in SQL Queery", err);
+                console.error("An error occurred in SQL Queery", err);
                 return res.status(500).send('Database Error');
             } else {
                 const json = {
@@ -89,7 +89,7 @@ const getBillingStaticsData = (req, res) => {
             }
         })
     } catch (error) {
-        console.error('An error occurd', error);
+        console.error('An error occurred', error);
         res.status(500).json('Internal Server Error');
     }
 }
@@ -319,11 +319,11 @@ const getRecentBillData = (req, res) => {
                                            
                                            LEFT JOIN billing_hotelInfo_data AS hif ON hif.billId = bd.billId
                                            LEFT JOIN billing_hotel_data AS bhd ON bhd.hotelId = hif.hotelId
-                                           WHERE bd.billType = '${billType}' AND bd.billDate = STR_TO_DATE('${currentDate}','%b %d %Y') AND bd.billStatus != 'Hold'
+                                           WHERE bd.billType = '${billType}' ${billType == 'Dine In' ? `AND bd.billStatus IN ('print','complete')` : ''} AND bd.billDate = STR_TO_DATE('${currentDate}','%b %d %Y') AND bd.billStatus != 'Hold'
                                            ORDER BY btd.tokenNo DESC`;
             pool.query(sql_query_getRecentBill, (err, data) => {
                 if (err) {
-                    console.error("An error occurd in SQL Queery", err);
+                    console.error("An error occurred in SQL Queery", err);
                     return res.status(500).send('Database Error');
                 } else {
                     if (data && data.length) {
@@ -335,7 +335,7 @@ const getRecentBillData = (req, res) => {
             })
         }
     } catch (error) {
-        console.error('An error occurd', error);
+        console.error('An error occurred', error);
         res.status(500).json('Internal Server Error');
     }
 }
@@ -371,7 +371,7 @@ const getBillDataByToken = (req, res) => {
                                                    ORDER BY btd.tokenNo DESC`;
                     pool.query(sql_query_getRecentBill, (err, data) => {
                         if (err) {
-                            console.error("An error occurd in SQL Queery", err);
+                            console.error("An error occurred in SQL Queery", err);
                             return res.status(500).send('Database Error');
                         } else {
                             if (data && data.length) {
@@ -473,7 +473,7 @@ const getBillDataByToken = (req, res) => {
                                                                    ${billType == 'Pick Up' || billType == 'Delivery' ? sql_query_getCustomerInfo : ''}`;
                                     pool.query(sql_query_getBillData, (err, billData) => {
                                         if (err) {
-                                            console.error("An error occurd in SQL Queery", err);
+                                            console.error("An error occurred in SQL Queery", err);
                                             return res.status(500).send('Database Error'); t
                                         } else {
                                             const json = {
@@ -502,7 +502,7 @@ const getBillDataByToken = (req, res) => {
             }
         }
     } catch (error) {
-        console.error('An error occurd', error);
+        console.error('An error occurred', error);
         res.status(500).json('Internal Server Error');
     }
 }
@@ -518,7 +518,7 @@ const getBillDataById = (req, res) => {
             let sql_query_chkBillExist = `SELECT billId, billType FROM billing_data WHERE billId = '${billId}'`;
             pool.query(sql_query_chkBillExist, (err, bill) => {
                 if (err) {
-                    console.error("An error occurd in SQL Queery", err);
+                    console.error("An error occurred in SQL Queery", err);
                     return res.status(500).send('Database Error');
                 } else {
                     if (bill && bill.length) {
@@ -625,7 +625,7 @@ const getBillDataById = (req, res) => {
                                                        ${billType == 'Dine In' ? sql_query_getTableData : ''}`;
                         pool.query(sql_query_getBillData, (err, billData) => {
                             if (err) {
-                                console.error("An error occurd in SQL Queery", err);
+                                console.error("An error occurred in SQL Queery", err);
                                 return res.status(500).send('Database Error'); t
                             } else {
                                 const json = {
@@ -646,7 +646,7 @@ const getBillDataById = (req, res) => {
             })
         }
     } catch (error) {
-        console.error('An error occurd', error);
+        console.error('An error occurred', error);
         res.status(500).json('Internal Server Error');
     }
 }
@@ -832,7 +832,7 @@ const addHotelBillData = (req, res) => {
                 }
             });
         } catch (error) {
-            console.error('An error occurd', error);
+            console.error('An error occurred', error);
             connection.rollback(() => {
                 connection.release();
                 return res.status(500).json('Internal Server Error');
@@ -1441,7 +1441,7 @@ const addPickUpBillData = (req, res) => {
                 }
             });
         } catch (error) {
-            console.error('An error occurd', error);
+            console.error('An error occurred', error);
             connection.rollback(() => {
                 connection.release();
                 return res.status(500).json('Internal Server Error');
@@ -1508,6 +1508,7 @@ const addDeliveryBillData = (req, res) => {
                                     const newCustomerId = String("customer_" + uid1.getTime());
                                     const newAddressId = String("addressId_" + uid1.getTime());
                                     const bwuId = String("bwu_" + uid1.getTime());
+                                    const dabId = String("dab_" + uid1.getTime());
 
                                     const columnData = `billId,
                                                         firmId,
@@ -2021,7 +2022,7 @@ const addDeliveryBillData = (req, res) => {
                 }
             });
         } catch (error) {
-            console.error('An error occurd', error);
+            console.error('An error occurred', error);
             connection.rollback(() => {
                 connection.release();
                 return res.status(500).json('Internal Server Error');
@@ -2200,7 +2201,7 @@ const updateHotelBillData = (req, res) => {
                 }
             });
         } catch (error) {
-            console.error('An error occurd', error);
+            console.error('An error occurred', error);
             connection.rollback(() => {
                 connection.release();
                 return res.status(500).json('Internal Server Error');
@@ -2281,6 +2282,8 @@ const updatePickUpBillData = (req, res) => {
                                                 const newCustomerId = String("customer_" + uid1.getTime());
                                                 const newAddressId = String("addressId_" + uid1.getTime());
                                                 const bwuId = String("bwu_" + uid1.getTime());
+                                                const dabId = String("dab_" + uid1.getTime());
+
                                                 const columnData = `billId,
                                                                     firmId,
                                                                     cashier,
@@ -2856,7 +2859,7 @@ const updatePickUpBillData = (req, res) => {
                 }
             });
         } catch (error) {
-            console.error('An error occurd', error);
+            console.error('An error occurred', error);
             connection.rollback(() => {
                 connection.release();
                 return res.status(500).json('Internal Server Error');
@@ -2938,6 +2941,8 @@ const updateDeliveryBillData = (req, res) => {
                                                 const newCustomerId = String("customer_" + uid1.getTime());
                                                 const newAddressId = String("addressId_" + uid1.getTime());
                                                 const bwuId = String("bwu_" + uid1.getTime());
+                                                const dabId = String("dab_" + uid1.getTime());
+
                                                 const columnData = `billId,
                                                                     firmId,
                                                                     cashier,
@@ -3482,7 +3487,7 @@ const updateDeliveryBillData = (req, res) => {
                 }
             });
         } catch (error) {
-            console.error('An error occurd', error);
+            console.error('An error occurred', error);
             connection.rollback(() => {
                 connection.release();
                 return res.status(500).json('Internal Server Error');
@@ -3502,7 +3507,7 @@ const printBillInAdminSystem = (req, res) => {
             let sql_query_chkBillExist = `SELECT billId, billType FROM billing_data WHERE billId = '${billId}'`;
             pool.query(sql_query_chkBillExist, (err, bill) => {
                 if (err) {
-                    console.error("An error occurd in SQL Queery", err);
+                    console.error("An error occurred in SQL Queery", err);
                     return res.status(500).send('Database Error');
                 } else {
                     if (bill && bill.length) {
@@ -3602,7 +3607,7 @@ const printBillInAdminSystem = (req, res) => {
                                                        ${billType == 'Pick Up' || billType == 'Delivery' ? sql_query_getCustomerInfo : ''}`;
                         pool.query(sql_query_getBillData, (err, billData) => {
                             if (err) {
-                                console.error("An error occurd in SQL Queery", err);
+                                console.error("An error occurred in SQL Queery", err);
                                 return res.status(500).send('Database Error'); t
                             } else {
                                 const json = {
@@ -3623,7 +3628,7 @@ const printBillInAdminSystem = (req, res) => {
             })
         }
     } catch (error) {
-        console.error('An error occurd', error);
+        console.error('An error occurred', error);
         res.status(500).json('Internal Server Error');
     }
 }

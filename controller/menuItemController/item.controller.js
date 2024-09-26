@@ -105,7 +105,7 @@ const getItemData = (req, res) => {
         }
         pool.query(sql_querry_getItem, (err, rows) => {
             if (err) {
-                console.error("An error occurd in SQL Queery", err);
+                console.error("An error occurred in SQL Queery", err);
                 return res.status(500).send('Database Error');
             } else {
                 const datas = Object.values(JSON.parse(JSON.stringify(rows)));
@@ -132,7 +132,7 @@ const getItemData = (req, res) => {
             }
         })
     } catch (error) {
-        console.error('An error occurd', error);
+        console.error('An error occurred', error);
         res.status(500).json('Internal Server Error');
     }
 }
@@ -168,9 +168,9 @@ const addItemData = (req, res) => {
                                                     SELECT menuCategoryId FROM item_menuCategory_data`
                         conn.query(sql_query_getOldData, (err, oldDatas) => {
                             if (err) {
-                                console.error("An error occurd in SQL Queery", err);
+                                console.error("An error occurred in SQL Queery", err);
                                 conn.rollback(() => {
-                                    console.error("An error occurd in SQL Queery 1", err);
+                                    console.error("An error occurred in SQL Queery 1", err);
                                     conn.release();
                                     return res.status(500).send('Database Error');
                                 })
@@ -208,7 +208,7 @@ const addItemData = (req, res) => {
                                     conn.query(sql_querry_addItem, (err, menu) => {
                                         if (err) {
                                             conn.rollback(() => {
-                                                console.error("An error occurd in SQL Queery", err);
+                                                console.error("An error occurred in SQL Queery", err);
                                                 conn.release();
                                                 return res.status(500).send('Database Error');
                                             })
@@ -228,7 +228,7 @@ const addItemData = (req, res) => {
                                             conn.query(sql_querry_addVariants, (err, variant) => {
                                                 if (err) {
                                                     conn.rollback(() => {
-                                                        console.error("An error occurd in SQL Queery", err);
+                                                        console.error("An error occurred in SQL Queery", err);
                                                         conn.release();
                                                         return res.status(500).send('Database Error');
                                                     })
@@ -237,7 +237,7 @@ const addItemData = (req, res) => {
                                                     conn.commit((err) => {
                                                         if (err) {
                                                             conn.rollback(() => {
-                                                                console.error("An error occurd in SQL Queery", err);
+                                                                console.error("An error occurred in SQL Queery", err);
                                                                 conn.release();
                                                                 return res.status(500).send('Database Error');
                                                             })
@@ -258,7 +258,7 @@ const addItemData = (req, res) => {
             })
         } catch (error) {
             conn.rollback(() => {
-                console.error('An error occurd', error);
+                console.error('An error occurred', error);
                 conn.release();
                 return res.status(500).json('Internal Server Error');
             })
@@ -279,14 +279,14 @@ const removeItemData = (req, res) => {
                 const itemId = req.query.itemId.trim();
                 req.query.itemId = pool.query(`SELECT itemId FROM item_menuList_data WHERE itemId = '${itemId}'`, (err, row) => {
                     if (err) {
-                        console.error("An error occurd in SQL Queery", err);
+                        console.error("An error occurred in SQL Queery", err);
                         return res.status(500).send('Database Error');
                     }
                     if (row && row.length) {
                         const sql_querry_removedetails = `DELETE FROM item_menuList_data WHERE itemId = '${itemId}'`;
                         pool.query(sql_querry_removedetails, (err, data) => {
                             if (err) {
-                                console.error("An error occurd in SQL Queery", err);
+                                console.error("An error occurred in SQL Queery", err);
                                 return res.status(500).send('Database Error');
                             }
                             return res.status(200).send("Item Deleted Successfully");
@@ -302,7 +302,7 @@ const removeItemData = (req, res) => {
             return res.status(404).send('Please Login First...!');
         }
     } catch (error) {
-        console.error('An error occurd', error);
+        console.error('An error occurred', error);
         res.status(500).send('Internal Server Error');
     }
 }
@@ -334,9 +334,9 @@ const updateItemData = (req, res) => {
                                                     SELECT itemShortKey FROM item_menuList_data WHERE itemShortKey = '${itemData.itemShortKey}' AND itemId != '${itemData.itemId}'`;
                         conn.query(sql_query_getOldData, (err, oldDatas) => {
                             if (err) {
-                                console.error("An error occurd in SQL Queery", err);
+                                console.error("An error occurred in SQL Queery", err);
                                 conn.rollback(() => {
-                                    console.error("An error occurd in SQL Queery 1", err);
+                                    console.error("An error occurred in SQL Queery 1", err);
                                     conn.release();
                                     return res.status(500).send('Database Error');
                                 })
@@ -379,7 +379,7 @@ const updateItemData = (req, res) => {
                                     conn.query(sql_querry_updateData, (err, data) => {
                                         if (err) {
                                             conn.rollback(() => {
-                                                console.error("An error occurd in SQL Queery", err);
+                                                console.error("An error occurred in SQL Queery", err);
                                                 conn.release();
                                                 return res.status(500).send('Database Error');
                                             })
@@ -388,7 +388,7 @@ const updateItemData = (req, res) => {
                                             conn.query(sql_querry_deleteOldVarients, (err, data) => {
                                                 if (err) {
                                                     conn.rollback(() => {
-                                                        console.error("An error occurd in SQL Queery", err);
+                                                        console.error("An error occurred in SQL Queery", err);
                                                         conn.release();
                                                         return res.status(500).send('Database Error');
                                                     })
@@ -405,7 +405,7 @@ const updateItemData = (req, res) => {
                                                     conn.query(sql_querry_addVariants, (err, variant) => {
                                                         if (err) {
                                                             conn.rollback(() => {
-                                                                console.error("An error occurd in SQL Queery", err);
+                                                                console.error("An error occurred in SQL Queery", err);
                                                                 conn.release();
                                                                 return res.status(500).send('Database Error');
                                                             })
@@ -414,7 +414,7 @@ const updateItemData = (req, res) => {
                                                             conn.commit((err) => {
                                                                 if (err) {
                                                                     conn.rollback(() => {
-                                                                        console.error("An error occurd in SQL Queery", err);
+                                                                        console.error("An error occurred in SQL Queery", err);
                                                                         conn.release();
                                                                         return res.status(500).send('Database Error');
                                                                     })
@@ -437,7 +437,7 @@ const updateItemData = (req, res) => {
             })
         } catch (error) {
             conn.rollback(() => {
-                console.error('An error occurd', error);
+                console.error('An error occurred', error);
                 conn.release();
                 return res.status(500).json('Internal Server Error');
             })
@@ -462,7 +462,7 @@ const updateMultipleItemPrice = (req, res) => {
             const sql_qurey_updatedPrice = generateUpdateQuery(newArray);
             pool.query(sql_qurey_updatedPrice, (err, data) => {
                 if (err) {
-                    console.error("An error occurd in SQL Queery", err);
+                    console.error("An error occurred in SQL Queery", err);
                     return res.status(500).send('Database Error');
                 }
                 return res.status(200).send('Price Updated Successfully');
@@ -472,7 +472,7 @@ const updateMultipleItemPrice = (req, res) => {
             return res.status(401).send('Price can not be zero...!');
         }
     } catch (error) {
-        console.error('An error occurd', error);
+        console.error('An error occurred', error);
         res.status(500).send('Internal Server Error');
     }
 }
@@ -505,13 +505,13 @@ const updateItemStatus = (req, res) => {
         }
         pool.query(sql_querry_updateStatus, (err, data) => {
             if (err) {
-                console.error("An error occurd in SQL Queery", err);
+                console.error("An error occurred in SQL Queery", err);
                 return res.status(500).send('Database Error');
             }
             return res.status(200).send('Status Updated Successfully');
         })
     } catch (error) {
-        console.error('An error occurd', error);
+        console.error('An error occurred', error);
         res.status(500).send('Internal Server Error');
     }
 }
@@ -562,7 +562,7 @@ const getItemSalesReport = (req, res) => {
                                           END`;
         pool.query(sql_querry_getDetails, (err, data) => {
             if (err) {
-                console.error("An error occurd in SQL Queery", err);
+                console.error("An error occurred in SQL Queery", err);
                 return res.status(500).send('Database Error');
             } else {
                 const result = data.reduce((acc, item) => {
@@ -599,7 +599,7 @@ const getItemSalesReport = (req, res) => {
             }
         })
     } catch (error) {
-        console.error('An error occurd', error);
+        console.error('An error occurred', error);
         res.status(500).send('Internal Server Error');
     }
 }

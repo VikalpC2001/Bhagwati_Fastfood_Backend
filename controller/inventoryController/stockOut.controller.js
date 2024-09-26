@@ -26,7 +26,7 @@ const getStockOutList = async (req, res) => {
         }
         pool.query(sql_querry_getCountdetails, (err, rows, fields) => {
             if (err) {
-                console.error("An error occurd in SQL Queery", err);
+                console.error("An error occurred in SQL Queery", err);
                 return res.status(500).send('Database Error');
             } else {
                 const numRows = rows[0].numRows;
@@ -60,7 +60,7 @@ const getStockOutList = async (req, res) => {
                 }
                 pool.query(sql_queries_getdetails, (err, rows, fields) => {
                     if (err) {
-                        console.error("An error occurd in SQL Queery", err);
+                        console.error("An error occurred in SQL Queery", err);
                         return res.status(500).send('Database Error');;
                     } else {
                         if (numRows === 0) {
@@ -76,7 +76,7 @@ const getStockOutList = async (req, res) => {
             }
         })
     } catch (error) {
-        console.error('An error occurd', error);
+        console.error('An error occurred', error);
         res.status(500).json('Internal Server Error');
     }
 }
@@ -154,13 +154,13 @@ const getCategoryWiseUsedByProduct = (req, res) => {
         console.log(">>>><<??", sql_queries_getCategoryUsed);
         pool.query(sql_queries_getCategoryUsed, (err, data) => {
             if (err) {
-                console.error("An error occurd in SQL Queery", err);
+                console.error("An error occurred in SQL Queery", err);
                 return res.status(500).send('Database Error');
             }
             return res.status(200).send(data);
         })
     } catch (error) {
-        console.error('An error occurd', error);
+        console.error('An error occurred', error);
         res.status(500).json('Internal Server Error');
     }
 }
@@ -360,7 +360,7 @@ const addStockOutDetails = async (req, res) => {
                                         WHERE p.productId = '${productId}'`;
             pool.query(get_remaining_stock, (err, data) => {
                 if (err) {
-                    console.error("An error occurd in SQL Queery", err);
+                    console.error("An error occurred in SQL Queery", err);
                     return res.status(500).send('Database Error');
                 }
                 const remainStock = data[0].remainingStock
@@ -371,7 +371,7 @@ const addStockOutDetails = async (req, res) => {
                     sql_querry_getStockIndetail = `SELECT stockInId, productId, productQty, productPrice AS stockInPrice, remainingQty AS stockInQuantity FROM inventory_stockIn_data WHERE productId = '${productId}' AND remainingQty != 0 ORDER BY stockInDate ASC`;
                     pool.query(sql_querry_getStockIndetail, (err, data) => {
                         if (err) {
-                            console.error("An error occurd in SQL Queery", err);
+                            console.error("An error occurred in SQL Queery", err);
                             return res.status(500).send('Database Error');
                         }
                         const orignalStockInData = Object.values(JSON.parse(JSON.stringify(data)));
@@ -447,14 +447,14 @@ const addStockOutDetails = async (req, res) => {
                         const sql_qurey_updatedRemainQty = generateUpdateQuery(sopq);
                         pool.query(sql_qurey_updatedRemainQty, (err, data) => {
                             if (err) {
-                                console.error("An error occurd in SQL Queery", err);
+                                console.error("An error occurred in SQL Queery", err);
                                 return res.status(500).send('Database Error');
                             }
                             const sql_querry_addStockOut = `INSERT INTO inventory_stockOut_data (stockOutId, userId, productId, productQty, productUnit, stockOutPrice, stockOutCategory, stockOutComment, stockOutDate)  
                                                             VALUES ('${stockOutId}', '${userId}', '${productId}', ${productQty}, '${productUnit}', ${stocokOutPrice}, '${stockOutCategory}', NULLIF('${stockOutComment}','null'), STR_TO_DATE('${stockOutDate}','%b %d %Y'))`;
                             pool.query(sql_querry_addStockOut, (err, data) => {
                                 if (err) {
-                                    console.error("An error occurd in SQL Queery", err);
+                                    console.error("An error occurred in SQL Queery", err);
                                     return res.status(500).send('Database Error');
                                 }
                                 const sowsiId = sopq.map((obj) => {
@@ -495,7 +495,7 @@ const addStockOutDetails = async (req, res) => {
                                 sql_querry_addsowsiId = `INSERT INTO inventory_stockOutwiseStockInId_data (stockOutId, stockInId, cutProductQty) VALUES ${stockOutWiseStockInId}`;
                                 pool.query(sql_querry_addsowsiId, (err, data) => {
                                     if (err) {
-                                        console.error("An error occurd in SQL Queery", err);
+                                        console.error("An error occurred in SQL Queery", err);
                                         return res.status(500).send('Database Error');
                                     }
                                     return res.status(200).send("Data Added Successfully");
@@ -509,7 +509,7 @@ const addStockOutDetails = async (req, res) => {
             res.status(401).send("Please Login Firest.....!");
         }
     } catch (error) {
-        console.error('An error occurd', error);
+        console.error('An error occurred', error);
         res.status(500).json('Internal Server Error');
     }
 }
@@ -522,7 +522,7 @@ const removeStockOutTransaction = async (req, res) => {
         const stockOutId = req.query.stockOutId
         req.query.stockOutId = pool.query(`SELECT stockOutId, productQty FROM inventory_stockOut_data WHERE stockOutId = '${stockOutId}'`, (err, row) => {
             if (err) {
-                console.error("An error occurd in SQL Queery", err);
+                console.error("An error occurred in SQL Queery", err);
                 return res.status(500).send('Database Error');
             }
             const prevoiusQuantity = row[0].productQty;
@@ -565,7 +565,7 @@ const removeStockOutTransaction = async (req, res) => {
                 console.log(">>><<<", sql_get_sowsoid);
                 pool.query(sql_get_sowsoid, (err, data) => {
                     if (err) {
-                        console.error("An error occurd in SQL Queery", err);
+                        console.error("An error occurred in SQL Queery", err);
                         return res.status(500).send('Database Error');
                     }
                     const junoJson = Object.values(JSON.parse(JSON.stringify(data)))
@@ -635,13 +635,13 @@ const removeStockOutTransaction = async (req, res) => {
                     const sql_qurey_updatedRemainQty = generateUpdateQuery(sopq);
                     pool.query(sql_qurey_updatedRemainQty, (err, data) => {
                         if (err) {
-                            console.error("An error occurd in SQL Queery", err);
+                            console.error("An error occurred in SQL Queery", err);
                             return res.status(500).send('Database Error');
                         }
                         const sql_querry_removedetails = `DELETE FROM inventory_stockOut_data WHERE stockOutId = '${stockOutId}'`;
                         pool.query(sql_querry_removedetails, (err, data) => {
                             if (err) {
-                                console.error("An error occurd in SQL Queery", err);
+                                console.error("An error occurred in SQL Queery", err);
                                 return res.status(500).send('Database Error');
                             }
                             return res.status(200).send("Transaction Deleted Successfully");
@@ -653,7 +653,7 @@ const removeStockOutTransaction = async (req, res) => {
             }
         })
     } catch (error) {
-        console.error('An error occurd', error);
+        console.error('An error occurred', error);
         res.status(500).send('Internal Server Error');
     }
 }
@@ -667,7 +667,7 @@ const fillStockOutTransaction = (req, res) => {
                                 WHERE stockOutId = '${stockOutId}'`;
         pool.query(sql_querry_fillUser, (err, data) => {
             if (err) {
-                console.error("An error occurd in SQL Queery", err);
+                console.error("An error occurred in SQL Queery", err);
                 return res.status(500).send('Database Error');
             }
             const productId = data[0].productId
@@ -698,7 +698,7 @@ const fillStockOutTransaction = (req, res) => {
                                                                 WHERE p.productId = '${productId}'`;
             pool.query(sql_get_remainStockWithdata, (err, data) => {
                 if (err) {
-                    console.error("An error occurd in SQL Queery", err);
+                    console.error("An error occurred in SQL Queery", err);
                     return res.status(500).send('Database Error');
                 }
                 const stockOutData = data[0][0];
@@ -711,7 +711,7 @@ const fillStockOutTransaction = (req, res) => {
             })
         })
     } catch (error) {
-        console.error('An error occurd', error);
+        console.error('An error occurred', error);
         res.status(500).json('Internal Server Error');
     }
 }
@@ -765,7 +765,7 @@ const updateStockOutTransaction = async (req, res) => {
                                     SELECT productQty FROM inventory_stockOut_data WHERE stockOutId = '${stockOutId}'`;
             pool.query(get_remaining_stock, (err, remaindata) => {
                 if (err) {
-                    console.error("An error occurd in SQL Queery", err);
+                    console.error("An error occurred in SQL Queery", err);
                     return res.status(500).send('Database Error');
                 }
                 const remainStock = remaindata[0][0].remainingStock;
@@ -782,7 +782,7 @@ const updateStockOutTransaction = async (req, res) => {
                                                 WHERE stockOutCategoryId = '${stockOutCategory}'`;
                     pool.query(get_previous_data, (err, data) => {
                         if (err) {
-                            console.error("An error occurd in SQL Queery", err);
+                            console.error("An error occurred in SQL Queery", err);
                             return res.status(500).send('Database Error');
                         }
                         const previousStockOutPrice = data[0][0].stockOutPrice;
@@ -823,7 +823,7 @@ const updateStockOutTransaction = async (req, res) => {
                                                        SELECT stockInId FROM inventory_stockOutwiseStockInId_data WHERE stockOutId = '${stockOutId}'`;
                         pool.query(sql_querry_getStockIndetail, (err, data) => {
                             if (err) {
-                                console.error("An error occurd in SQL Queery", err);
+                                console.error("An error occurred in SQL Queery", err);
                                 return res.status(500).send('Database Error');
                             }
                             console.log(">>>???", prevoiusQuantity);
@@ -929,7 +929,7 @@ const updateStockOutTransaction = async (req, res) => {
                                     sql_qurey_updateExistingId = `UPDATE inventory_stockOutwiseStockInId_data SET cutProductQty = cutProductQty + ${remainStockCutQty[0]} WHERE stockOutId = '${stockOutId}' AND stockInId = '${similarStockInIds[0]}'`;
                                     pool.query(sql_qurey_updateExistingId, (err, result) => {
                                         if (err) {
-                                            console.error("An error occurd in SQL Queery", err);
+                                            console.error("An error occurred in SQL Queery", err);
                                             return res.status(500).send('Database Error');
                                         }
                                         console.log('Existing Data Updated SuccessFully');
@@ -971,7 +971,7 @@ const updateStockOutTransaction = async (req, res) => {
                                     sql_querry_addsowsiId = `INSERT INTO inventory_stockOutwiseStockInId_data (stockOutId, stockInId, cutProductQty) VALUES ${stockOutWiseStockInId}`;
                                     pool.query(sql_querry_addsowsiId, (err, data) => {
                                         if (err) {
-                                            console.error("An error occurd in SQL Queery", err);
+                                            console.error("An error occurred in SQL Queery", err);
                                             return res.status(500).send('Database Error');
                                         }
                                         console.log("Data Added Successfully");
@@ -998,7 +998,7 @@ const updateStockOutTransaction = async (req, res) => {
                                 const sql_qurey_updatedRemainQty = generateUpdateQuery(sopq);
                                 pool.query(sql_qurey_updatedRemainQty, (err, data) => {
                                     if (err) {
-                                        console.error("An error occurd in SQL Queery", err);
+                                        console.error("An error occurred in SQL Queery", err);
                                         return res.status(500).send('Database Error');
                                     }
                                     const editFields = () => {
@@ -1027,7 +1027,7 @@ const updateStockOutTransaction = async (req, res) => {
                                     console.log(">>.....", sql_querry_addPreviousData);
                                     pool.query(sql_querry_addPreviousData, (err, data) => {
                                         if (err) {
-                                            console.error("An error occurd in SQL Queery", err);
+                                            console.error("An error occurred in SQL Queery", err);
                                             return res.status(500).send('Database Error');
                                         }
                                         console.log(">?>?>?>?,,,", stockOutCategory);
@@ -1042,7 +1042,7 @@ const updateStockOutTransaction = async (req, res) => {
                                                                                    WHERE stockOutId = '${stockOutId}'`;
                                         pool.query(sql_querry_updatedetails, (err, data) => {
                                             if (err) {
-                                                console.error("An error occurd in SQL Queery", err);
+                                                console.error("An error occurred in SQL Queery", err);
                                                 return res.status(500).send('Database Error');
                                             }
                                             return res.status(200).send("Transaction Updated Successfully");
@@ -1090,7 +1090,7 @@ const updateStockOutTransaction = async (req, res) => {
                                 console.log(">>><<<", sql_get_sowsoid);
                                 pool.query(sql_get_sowsoid, (err, data) => {
                                     if (err) {
-                                        console.error("An error occurd in SQL Queery", err);
+                                        console.error("An error occurred in SQL Queery", err);
                                         return res.status(500).send('Database Error');
                                     }
                                     const junoJson = Object.values(JSON.parse(JSON.stringify(data)));
@@ -1201,7 +1201,7 @@ const updateStockOutTransaction = async (req, res) => {
                                                                         INSERT INTO inventory_stockOutwiseStockInId_data (stockOutId, stockInId, cutProductQty) VALUES ${stockOutWiseStockInId}`;
                                     pool.query(sql_qurey_updatedRemainQty, (err, data) => {
                                         if (err) {
-                                            console.error("An error occurd in SQL Queery", err);
+                                            console.error("An error occurred in SQL Queery", err);
                                             return res.status(500).send('Database Error');
                                         }
                                         const editFields = () => {
@@ -1230,7 +1230,7 @@ const updateStockOutTransaction = async (req, res) => {
                                         console.log(">>.....", sql_querry_addPreviousData);
                                         pool.query(sql_querry_addPreviousData, (err, data) => {
                                             if (err) {
-                                                console.error("An error occurd in SQL Queery", err);
+                                                console.error("An error occurred in SQL Queery", err);
                                                 return res.status(500).send('Database Error');
                                             }
                                             console.log(">?>?>?>?,,,", stockOutCategory);
@@ -1245,7 +1245,7 @@ const updateStockOutTransaction = async (req, res) => {
                                                                                    WHERE stockOutId = '${stockOutId}'`;
                                             pool.query(sql_querry_updatedetails, (err, data) => {
                                                 if (err) {
-                                                    console.error("An error occurd in SQL Queery", err);
+                                                    console.error("An error occurred in SQL Queery", err);
                                                     return res.status(500).send('Database Error');
                                                 }
                                                 return res.status(200).send("Transaction Updated Successfully");
@@ -1280,7 +1280,7 @@ const updateStockOutTransaction = async (req, res) => {
                                 console.log(">>.....", sql_querry_addPreviousData);
                                 pool.query(sql_querry_addPreviousData, (err, data) => {
                                     if (err) {
-                                        console.error("An error occurd in SQL Queery", err);
+                                        console.error("An error occurred in SQL Queery", err);
                                         return res.status(500).send('Database Error');
                                     }
                                     console.log(">?>?>?>?,,,", stockOutCategory);
@@ -1294,7 +1294,7 @@ const updateStockOutTransaction = async (req, res) => {
                                                                                    WHERE stockOutId = '${stockOutId}'`;
                                     pool.query(sql_querry_updatedetails, (err, data) => {
                                         if (err) {
-                                            console.error("An error occurd in SQL Queery", err);
+                                            console.error("An error occurred in SQL Queery", err);
                                             return res.status(500).send('Database Error');
                                         }
                                         return res.status(200).send("Transaction Updated Successfully");
@@ -1312,7 +1312,7 @@ const updateStockOutTransaction = async (req, res) => {
             res.send("Please Login Firest.....!");
         }
     } catch (error) {
-        console.error('An error occurd', error);
+        console.error('An error occurred', error);
         res.status(500).json('Internal Server Error');
     }
 }
@@ -1329,7 +1329,7 @@ const getUpdateStockOutList = (req, res) => {
                                         SELECT COALESCE(stockOutId,null) FROM inventory_modified_history GROUP BY stockOutId)`;
         pool.query(sql_queries_getNumberOFEdit, (err, rows, fields) => {
             if (err) {
-                console.error("An error occurd in SQL Queery", err);
+                console.error("An error occurred in SQL Queery", err);
                 return res.status(500).send('Database Error');
             } else {
                 const numRows = rows[0].numRows;
@@ -1342,7 +1342,7 @@ const getUpdateStockOutList = (req, res) => {
                                                 WHERE stockOutId IN (SELECT COALESCE(stockOutId,null) FROM inventory_modified_history GROUP BY stockOutId) ORDER BY stockOutModificationDate DESC LIMIT ${limit}`;
                 pool.query(sql_queries_getdetails, (err, rows, fields) => {
                     if (err) {
-                        console.error("An error occurd in SQL Queery", err);
+                        console.error("An error occurred in SQL Queery", err);
                         return res.status(500).send('Database Error');;
                     } else {
                         if (numRows === 0) {
@@ -1360,7 +1360,7 @@ const getUpdateStockOutList = (req, res) => {
         // return res.status(200).send(data);
 
     } catch (error) {
-        console.error('An error occurd', error);
+        console.error('An error occurred', error);
         res.status(500).json('Internal Server Error');
     }
 }
@@ -1378,7 +1378,7 @@ const getUpdateStockOutListById = (req, res) => {
         console.log(">>>.", sql_queries_getNumberOFEdit);
         pool.query(sql_queries_getNumberOFEdit, (err, rows, fields) => {
             if (err) {
-                console.error("An error occurd in SQL Queery", err);
+                console.error("An error occurred in SQL Queery", err);
                 return res.status(500).send('Database Error');
             } else {
                 const numRows = rows[0].numRows;
@@ -1392,7 +1392,7 @@ const getUpdateStockOutListById = (req, res) => {
                 console.log("aaaaa", sql_queries_getdetails);
                 pool.query(sql_queries_getdetails, (err, rows, fields) => {
                     if (err) {
-                        console.error("An error occurd in SQL Queery", err);
+                        console.error("An error occurred in SQL Queery", err);
                         return res.status(500).send('Database Error');;
                     } else {
                         if (numRows === 0) {
@@ -1410,7 +1410,7 @@ const getUpdateStockOutListById = (req, res) => {
         // return res.status(200).send(data);
 
     } catch (error) {
-        console.error('An error occurd', error);
+        console.error('An error occurred', error);
         res.status(500).json('Internal Server Error');
     }
 }
@@ -1435,7 +1435,7 @@ const getStockOutDataByCategory = (req, res) => {
         }
         pool.query(sql_querry_getCountdetails, (err, rows, fields) => {
             if (err) {
-                console.error("An error occurd in SQL Queery", err);
+                console.error("An error occurred in SQL Queery", err);
                 return res.status(500).send('Database Error');
             } else {
                 const numRows = rows[0].numRows;
@@ -1463,7 +1463,7 @@ const getStockOutDataByCategory = (req, res) => {
                 }
                 pool.query(sql_queries_getdetails, (err, rows, fields) => {
                     if (err) {
-                        console.error("An error occurd in SQL Queery", err);
+                        console.error("An error occurred in SQL Queery", err);
                         return res.status(500).send('Database Error');;
                     } else {
                         if (numRows === 0) {
@@ -1480,7 +1480,7 @@ const getStockOutDataByCategory = (req, res) => {
         })
 
     } catch (error) {
-        console.error('An error occurd', error);
+        console.error('An error occurred', error);
         res.status(500).json('Internal Server Error');
     }
 }
@@ -1847,13 +1847,13 @@ const getAllStockOutTransaction = (req, res) => {
                                 ORDER by stockOutDate ASC, stockOutCreationDate ASC`;
         pool.query(sql_queries_getAllData, (err, data) => {
             if (err) {
-                console.error("An error occurd in SQL Queery", err);
+                console.error("An error occurred in SQL Queery", err);
                 return res.status(500).send('Database Error');
             }
             return res.status(200).send(data);
         })
     } catch (error) {
-        console.error('An error occurd', error);
+        console.error('An error occurred', error);
         res.status(500).json('Internal Server Error');
     }
 }

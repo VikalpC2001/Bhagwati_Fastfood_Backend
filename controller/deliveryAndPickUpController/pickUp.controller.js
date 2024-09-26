@@ -35,14 +35,14 @@ const getTokenList = (req, res) => {
                                   WHERE btd.billType = 'Pick Up' AND bd.billStatus NOT IN ('complete','cancel') AND btd.billDate = STR_TO_DATE('${currentDate}','%b %d %Y')`;
         pool.query(sql_querry_getlist, (err, data) => {
             if (err) {
-                console.error("An error occurd in SQL Queery", err);
+                console.error("An error occurred in SQL Queery", err);
                 return res.status(500).send('Database Error');
             } else {
                 return res.status(200).send(data);
             }
         })
     } catch (error) {
-        console.error('An error occurd', error);
+        console.error('An error occurred', error);
         res.status(500).json('Internal Server Error');
     }
 }
@@ -57,14 +57,14 @@ const getDisplayTokenNumbr = (req, res) => {
                                         WHERE btd.billType = 'Pick Up' AND bd.billStatus = 'Food Ready' AND btd.billDate = STR_TO_DATE('${currentDate}','%b %d %Y')`;
         pool.query(sql_querry_getReadyToken, (err, data) => {
             if (err) {
-                console.error("An error occurd in SQL Queery", err);
+                console.error("An error occurred in SQL Queery", err);
                 return res.status(500).send('Database Error');
             } else {
                 return res.status(200).send(data);
             }
         })
     } catch (error) {
-        console.error('An error occurd', error);
+        console.error('An error occurred', error);
         res.status(500).json('Internal Server Error');
     }
 }
@@ -84,7 +84,7 @@ const updateTokenToDisplay = (req, res) => {
                                                WHERE tokenNo = ${tokenNo} AND billType = 'Pick Up' AND billDate = STR_TO_DATE('${currentDate}','%b %d %Y');`;
             pool.query(sql_querry_getBillIdByToken, (err, token) => {
                 if (err) {
-                    console.error("An error occurd in SQL Queery", err);
+                    console.error("An error occurred in SQL Queery", err);
                     return res.status(500).send('Database Error');
                 } else if (token && token.length) {
                     const billId = token[0] && token[0].billId ? token[0].billId : null;
@@ -92,7 +92,7 @@ const updateTokenToDisplay = (req, res) => {
                                                 WHERE billId = '${billId}' AND billType = 'Pick Up' AND billDate = STR_TO_DATE('${currentDate}','%b %d %Y')`;
                     pool.query(sql_querry_chkStatus, (err, bill) => {
                         if (err) {
-                            console.error("An error occurd in SQL Queery", err);
+                            console.error("An error occurred in SQL Queery", err);
                             return res.status(500).send('Database Error');
                         } else {
                             if (bill && bill.length) {
@@ -109,7 +109,7 @@ const updateTokenToDisplay = (req, res) => {
                                 }
                                 pool.query(sql_querry_update, (err, update) => {
                                     if (err) {
-                                        console.error("An error occurd in SQL Queery", err);
+                                        console.error("An error occurred in SQL Queery", err);
                                         return res.status(500).send('Database Error');
                                     } else {
                                         let sql_querry_getlist = `SELECT 
@@ -129,7 +129,7 @@ const updateTokenToDisplay = (req, res) => {
                                                                   WHERE btd.billType = 'Pick Up' AND bd.billStatus NOT IN ('complete','cancel') AND btd.billDate = STR_TO_DATE('${currentDate}','%b %d %Y')`;
                                         pool.query(sql_querry_getlist, (err, data) => {
                                             if (err) {
-                                                console.error("An error occurd in SQL Queery", err);
+                                                console.error("An error occurred in SQL Queery", err);
                                                 return res.status(500).send('Database Error');
                                             } else {
                                                 req?.io?.emit('getTokenList', data);
@@ -152,7 +152,7 @@ const updateTokenToDisplay = (req, res) => {
             })
         }
     } catch (error) {
-        console.error('An error occurd', error);
+        console.error('An error occurred', error);
         res.status(500).json('Internal Server Error');
     }
 }
@@ -170,7 +170,7 @@ const revertTokenStatus = (req, res) => {
                                  UPDATE billing_Official_data SET billStatus = 'Print' WHERE billId = '${billId}'`;
             pool.query(sql_querry_update, (err, update) => {
                 if (err) {
-                    console.error("An error occurd in SQL Queery", err);
+                    console.error("An error occurred in SQL Queery", err);
                     return res.status(500).send('Database Error');
                 } else {
                     let sql_querry_getlist = `SELECT 
@@ -190,7 +190,7 @@ const revertTokenStatus = (req, res) => {
                                               WHERE btd.billType = 'Pick Up' AND bd.billStatus NOT IN ('complete','cancel') AND btd.billDate = STR_TO_DATE('${currentDate}','%b %d %Y')`;
                     pool.query(sql_querry_getlist, (err, data) => {
                         if (err) {
-                            console.error("An error occurd in SQL Queery", err);
+                            console.error("An error occurred in SQL Queery", err);
                             return res.status(500).send('Database Error');
                         } else {
                             req?.io?.emit('getTokenList', data);
@@ -202,7 +202,7 @@ const revertTokenStatus = (req, res) => {
             })
         }
     } catch (error) {
-        console.error('An error occurd', error);
+        console.error('An error occurred', error);
         res.status(500).json('Internal Server Error');
     }
 }
@@ -218,7 +218,7 @@ const setAllTokenComplete = (req, res) => {
                                                  WHERE billId IN (SELECT COALESCE(billId,NULL) FROM billing_data WHERE billType = 'Pick Up' AND billStatus NOT IN ('complete','Cancel') AND billDate = STR_TO_DATE('${currentDate}','%b %d %Y'))`;
         pool.query(sql_query_updateAllStatusComplete, (err, data) => {
             if (err) {
-                console.error("An error occurd in SQL Queery", err);
+                console.error("An error occurred in SQL Queery", err);
                 return res.status(500).send('Database Error');
             } else {
                 let sql_querry_getlist = `SELECT 
@@ -238,7 +238,7 @@ const setAllTokenComplete = (req, res) => {
                                           WHERE btd.billType = 'Pick Up' AND bd.billStatus NOT IN ('complete','cancel') AND btd.billDate = STR_TO_DATE('${currentDate}','%b %d %Y')`;
                 pool.query(sql_querry_getlist, (err, data) => {
                     if (err) {
-                        console.error("An error occurd in SQL Queery", err);
+                        console.error("An error occurred in SQL Queery", err);
                         return res.status(500).send('Database Error');
                     } else {
                         req?.io?.emit('getTokenList', data);
@@ -249,7 +249,7 @@ const setAllTokenComplete = (req, res) => {
             }
         })
     } catch (error) {
-        console.error('An error occurd', error);
+        console.error('An error occurred', error);
         res.status(500).json('Internal Server Error');
     }
 }
@@ -265,7 +265,7 @@ const clearAllDisplayToken = (req, res) => {
                                                  WHERE billId IN (SELECT COALESCE(billId,NULL) FROM billing_data WHERE billType = 'Pick Up' AND billStatus = 'Food Ready' AND billDate = STR_TO_DATE('${currentDate}','%b %d %Y'))`;
         pool.query(sql_query_updateAllStatusComplete, (err, data) => {
             if (err) {
-                console.error("An error occurd in SQL Queery", err);
+                console.error("An error occurred in SQL Queery", err);
                 return res.status(500).send('Database Error');
             } else {
                 let sql_querry_getlist = `SELECT 
@@ -285,7 +285,7 @@ const clearAllDisplayToken = (req, res) => {
                                           WHERE btd.billType = 'Pick Up' AND bd.billStatus NOT IN ('complete','cancel') AND btd.billDate = STR_TO_DATE('${currentDate}','%b %d %Y')`;
                 pool.query(sql_querry_getlist, (err, data) => {
                     if (err) {
-                        console.error("An error occurd in SQL Queery", err);
+                        console.error("An error occurred in SQL Queery", err);
                         return res.status(500).send('Database Error');
                     } else {
                         req?.io?.emit('getTokenList', data);
@@ -296,7 +296,7 @@ const clearAllDisplayToken = (req, res) => {
             }
         })
     } catch (error) {
-        console.error('An error occurd', error);
+        console.error('An error occurred', error);
         res.status(500).json('Internal Server Error');
     }
 }
@@ -310,7 +310,7 @@ const speakTokenNumber = (req, res) => {
         req?.io?.emit('speakToken', tokenNo);
         res.status(200).send('Speak Success');
     } catch (error) {
-        console.error('An error occurd', error);
+        console.error('An error occurred', error);
         res.status(500).json('Internal Server Error');
     }
 }

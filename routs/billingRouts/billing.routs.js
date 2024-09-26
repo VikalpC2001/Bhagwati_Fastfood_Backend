@@ -163,5 +163,6 @@ router.post('/updateSubTokenDataById', protect, dineInController.updateSubTokenD
 router.get('/updateStaticTableNumbers', protect, dineInController.updateStaticTableNumbers);
 router.get('/printTableBill', protect, dineInController.printTableBill);
 router.post('/updateDineInBillData', protect, dineInController.updateDineInBillData);
+router.post('/sattledBillDataByID', protect, dineInController.sattledBillDataByID);
 
 module.exports = router;

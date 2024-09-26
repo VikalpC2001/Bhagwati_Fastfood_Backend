@@ -143,7 +143,7 @@ const getBankTransactionById = (req, res) => {
 
         pool.query(sql_querry_getCountdetails, (err, rows, fields) => {
             if (err) {
-                console.error("An error occurd in SQL Queery", err);
+                console.error("An error occurred in SQL Queery", err);
                 return res.status(500).send('Database Error');
             } else {
                 const numRows = rows[0].numRows;
@@ -239,7 +239,7 @@ const getBankTransactionById = (req, res) => {
                 }
                 pool.query(sql_queries_getdetails, (err, rows, fields) => {
                     if (err) {
-                        console.error("An error occurd in SQL Queery", err);
+                        console.error("An error occurred in SQL Queery", err);
                         return res.status(500).send('Database Error');
                     } else {
                         if (numRows === 0) {
@@ -255,7 +255,7 @@ const getBankTransactionById = (req, res) => {
             }
         })
     } catch (error) {
-        console.error('An error occurd', error);
+        console.error('An error occurred', error);
         res.status(500).send('Internal Server Error');
     }
 }
@@ -293,7 +293,7 @@ const getBankCreditTransaction = (req, res) => {
 
         pool.query(sql_querry_getCountdetails, (err, rows, fields) => {
             if (err) {
-                console.error("An error occurd in SQL Queery", err);
+                console.error("An error occurred in SQL Queery", err);
                 return res.status(500).send('Database Error');
             } else {
                 const numRows = rows[0].numRows;
@@ -327,7 +327,7 @@ const getBankCreditTransaction = (req, res) => {
                 }
                 pool.query(sql_queries_getdetails, (err, rows, fields) => {
                     if (err) {
-                        console.error("An error occurd in SQL Queery", err);
+                        console.error("An error occurred in SQL Queery", err);
                         return res.status(500).send('Database Error');
                     } else {
                         if (numRows === 0) {
@@ -343,7 +343,7 @@ const getBankCreditTransaction = (req, res) => {
             }
         })
     } catch (error) {
-        console.error('An error occurd', error);
+        console.error('An error occurred', error);
         res.status(500).send('Internal Server Error');
     }
 }
@@ -393,7 +393,7 @@ const addTransactionData = (req, res) => {
                 }
                 pool.query(sql_querry_addData, (err, data) => {
                     if (err) {
-                        console.error("An error occurd in SQL Queery", err);
+                        console.error("An error occurred in SQL Queery", err);
                         return res.status(500).send('Database Error');
                     }
                     return res.status(200).send("Data Added Successfully");
@@ -403,7 +403,7 @@ const addTransactionData = (req, res) => {
             res.status(401).send("Please Login Firest.....!");
         }
     } catch (error) {
-        console.error('An error occurd', error);
+        console.error('An error occurred', error);
         res.status(500).send('Internal Server Error');
     }
 }
@@ -420,7 +420,7 @@ const removeTransactionData = (req, res) => {
                                 SELECT fromId, debitAmount FROM debit_transaction_data WHERE transactionId = '${transactionId}'`;
         pool.query(sql_querry_getBankId, (err, result) => {
             if (err) {
-                console.error("An error occurd in SQL Queery", err);
+                console.error("An error occurred in SQL Queery", err);
                 return res.status(500).send('Database Error');
             }
             const creditBankId = result && result[0][0] && result[0][0].toId ? result[0][0].toId : null;
@@ -434,14 +434,14 @@ const removeTransactionData = (req, res) => {
                                               DELETE FROM transactionId_with_date WHERE transactionId = '${transactionId}'`;
             pool.query(sql_querry_removedetails, (err, data) => {
                 if (err) {
-                    console.error("An error occurd in SQL Queery", err);
+                    console.error("An error occurred in SQL Queery", err);
                     return res.status(500).send('Database Error');
                 }
                 return res.status(200).send("Transaction Deleted Successfully");
             })
         })
     } catch (error) {
-        console.error('An error occurd', error);
+        console.error('An error occurred', error);
         res.status(500).send('Internal Server Error');
     }
 }
@@ -468,7 +468,7 @@ const updateBankTransaction = (req, res) => {
                                         SELECT fromId, debitAmount FROM debit_transaction_data WHERE transactionId = '${transactionId}'`;
                 pool.query(sql_querry_getOldAmt, (err, result) => {
                     if (err) {
-                        console.error("An error occurd in SQL Queery", err);
+                        console.error("An error occurred in SQL Queery", err);
                         return res.status(500).send('Database Error');
                     }
                     const creditBankId = result && result[0][0] && result[0][0].toId ? result[0][0].toId : null;
@@ -501,7 +501,7 @@ const updateBankTransaction = (req, res) => {
                                             UPDATE transactionId_with_date SET transactionValue = ${data.transactionAmount} WHERE transactionId = '${transactionId}'`;
                     pool.query(sql_querry_updateData, (err, data) => {
                         if (err) {
-                            console.error("An error occurd in SQL Queery", err);
+                            console.error("An error occurred in SQL Queery", err);
                             return res.status(500).send('Database Error');
                         }
                         return res.status(200).send("Transaction Updated Successfully");
@@ -512,7 +512,7 @@ const updateBankTransaction = (req, res) => {
             res.status(401).send("Please Login Firest.....!");
         }
     } catch (error) {
-        console.error('An error occurd', error);
+        console.error('An error occurred', error);
         res.status(500).send('Internal Server Error');
     }
 }
@@ -889,7 +889,7 @@ async function createPDF(res, datas, sumFooterArray, tableHeading) {
         // fs.writeFileSync(pdfFilename, doc.output());
         // console.log(`PDF saved as ${pdfFilename}`);
     } catch (error) {
-        console.error('An error occurd', error);
+        console.error('An error occurred', error);
         res.status(500).json('Internal Server Error');
     }
 }
@@ -1051,7 +1051,7 @@ const exportPdfForBankTransactionById = (req, res) => {
         }
         pool.query(sql_queries_getdetails, (err, rows) => {
             if (err) {
-                console.error("An error occurd in SQL Queery", err);
+                console.error("An error occurred in SQL Queery", err);
                 return res.status(500).send('Database Error');
             } else if (rows && rows.length <= 0) {
                 return res.status(400).send('No Data Found');
@@ -1070,7 +1070,7 @@ const exportPdfForBankTransactionById = (req, res) => {
                                       SELECT bankDisplayName FROM bank_data WHERE bankId = '${bankId}'`;
             pool.query(sql_query_getParamsDetails, (err, result) => {
                 if (err) {
-                    console.error("An error occurd in SQL Queery", err);
+                    console.error("An error occurred in SQL Queery", err);
                     return res.status(500).send('Database Error');
                 }
                 if (req.query.startDate && req.query.endDate && req.query.bankId2 && req.query.transactionType) {
@@ -1104,7 +1104,7 @@ const exportPdfForBankTransactionById = (req, res) => {
             })
         });
     } catch (error) {
-        console.error('An error occurd', error);
+        console.error('An error occurred', error);
         res.status(500).send('Internal Server Error');
     }
 }
@@ -1295,7 +1295,7 @@ async function createPDFforFunds(res, datas, sumFooterArray, tableHeading) {
         // fs.writeFileSync(pdfFilename, doc.output());
         // console.log(`PDF saved as ${pdfFilename}`);
     } catch (error) {
-        console.error('An error occurd', error);
+        console.error('An error occurred', error);
         res.status(500).json('Internal Server Error');
     }
 }
@@ -1343,7 +1343,7 @@ const exportPdfForFundTransfer = (req, res) => {
         }
         pool.query(sql_queries_getdetails, (err, rows) => {
             if (err) {
-                console.error("An error occurd in SQL Queery", err);
+                console.error("An error occurred in SQL Queery", err);
                 return res.status(500).send('Database Error');
             } else if (rows && rows.length <= 0) {
                 return res.status(400).send('No Data Found');
@@ -1369,7 +1369,7 @@ const exportPdfForFundTransfer = (req, res) => {
                 });
         });
     } catch (error) {
-        console.error('An error occurd', error);
+        console.error('An error occurred', error);
         res.status(500).send('Internal Server Error');
     }
 }
@@ -1400,7 +1400,7 @@ const getMonthWiseTransaction = (req, res) => {
                                           SELECT SUM(debitAmount) AS debitAmt FROM debit_transaction_data WHERE fromId = '${bankId}'`;
         pool.query(sql_query_getMonthWiseData, (err, data) => {
             if (err) {
-                console.error("An error occurd in SQL Queery", err);
+                console.error("An error occurred in SQL Queery", err);
                 return res.status(500).send('Database Error');
             } else {
                 const creditAmtJson = data && data[0] ? Object.values(JSON.parse(JSON.stringify(data[0]))) : [];
@@ -1417,7 +1417,7 @@ const getMonthWiseTransaction = (req, res) => {
             }
         })
     } catch (error) {
-        console.error('An error occurd', error);
+        console.error('An error occurred', error);
         res.status(500).send('Internal Server Error');
     }
 }

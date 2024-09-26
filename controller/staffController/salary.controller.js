@@ -102,7 +102,7 @@ const addAmountOfSFA = (req, res) => {
                                             SELECT remainFineAmount FROM staff_fine_data WHERE employeeId = '${data.employeeId}' AND fineStatus = 1 AND remainFineAmount != 0 ORDER BY fineDate ASC`;
                     pool.query(sql_querry_getMsdata, (err, msdata) => {
                         if (err) {
-                            console.error("An error occurd in SQL Queery", err);
+                            console.error("An error occurred in SQL Queery", err);
                             return res.status(500).send('Database Error');
                         }
 
@@ -148,7 +148,7 @@ const addAmountOfSFA = (req, res) => {
 
                         pool.query(sql_querry_addRemainSlaryHistory, (err, addData) => {
                             if (err) {
-                                console.error("An error occurd in SQL Queery", err);
+                                console.error("An error occurred in SQL Queery", err);
                                 return res.status(500).send('Database Error');
                             }
                             console.log('remain Salary Added success');
@@ -159,7 +159,7 @@ const addAmountOfSFA = (req, res) => {
                                         sql_querry_getFinedetail = `SELECT fineId, fineAmount, remainFineAmount AS remainFine FROM staff_fine_data WHERE employeeId = '${data.employeeId}' AND fineStatus = 1 AND remainFineAmount != 0 ORDER BY fineDate ASC`;
                                         pool.query(sql_querry_getFinedetail, (err, datas) => {
                                             if (err) {
-                                                console.error("An error occurd in SQL Queery", err);
+                                                console.error("An error occurred in SQL Queery", err);
                                                 return res.status(500).send('Database Error');
                                             }
                                             const oldFineData = Object.values(JSON.parse(JSON.stringify(datas)));
@@ -266,14 +266,14 @@ const addAmountOfSFA = (req, res) => {
                                                                 INSERT INTO salary_salaryWiseFineId_data (salaryId, fineId, cutFineAmount) VALUES ${sallaryWiseFineId}`;
                                                 pool.query(sql_query_addDetail, (err, add) => {
                                                     if (err) {
-                                                        console.error("An error occurd in SQL Queery", err);
+                                                        console.error("An error occurred in SQL Queery", err);
                                                         return res.status(500).send('Database Error');
                                                     }
                                                     if (req.body.amountType == '1') {
                                                         sql_querry_getFinedetail = `SELECT monthlySalaryId, totalSalary, remainSalary AS remainSalary FROM staff_monthlySalary_data WHERE employeeId = '${data.employeeId}' AND remainSalary != 0 ORDER BY msStartDate ASC`;
                                                         pool.query(sql_querry_getFinedetail, (err, datas) => {
                                                             if (err) {
-                                                                console.error("An error occurd in SQL Queery", err);
+                                                                console.error("An error occurred in SQL Queery", err);
                                                                 return res.status(500).send('Database Error');
                                                             }
                                                             const oldMsdData = Object.values(JSON.parse(JSON.stringify(datas)));
@@ -366,7 +366,7 @@ const addAmountOfSFA = (req, res) => {
                                                                     sql_querry_getFinedetail = `SELECT monthlySalaryId, totalSalary, remainSalary AS remainSalary FROM staff_monthlySalary_data WHERE employeeId = '${data.employeeId}' AND remainSalary != 0 ORDER BY msStartDate ASC`;
                                                                     pool.query(sql_querry_getFinedetail, (err, datas) => {
                                                                         if (err) {
-                                                                            console.error("An error occurd in SQL Queery", err);
+                                                                            console.error("An error occurred in SQL Queery", err);
                                                                             return res.status(500).send('Database Error');
                                                                         }
                                                                         const oldMsdData = Object.values(JSON.parse(JSON.stringify(datas)));
@@ -489,13 +489,13 @@ const addAmountOfSFA = (req, res) => {
                                                                         )`;
                                         pool.query(sql_query_allZeroRemainFine, (err, result) => {
                                             if (err) {
-                                                console.error("An error occurd in SQL Queery", err);
+                                                console.error("An error occurred in SQL Queery", err);
                                                 return res.status(500).send('Database Error');
                                             }
                                             sql_querry_getFinedetail = `SELECT monthlySalaryId, totalSalary, remainSalary AS remainSalary FROM staff_monthlySalary_data WHERE employeeId = '${data.employeeId}' AND remainSalary != 0 ORDER BY msStartDate ASC`;
                                             pool.query(sql_querry_getFinedetail, (err, datas) => {
                                                 if (err) {
-                                                    console.error("An error occurd in SQL Queery", err);
+                                                    console.error("An error occurred in SQL Queery", err);
                                                     return res.status(500).send('Database Error');
                                                 }
                                                 const oldMsdData = Object.values(JSON.parse(JSON.stringify(datas)));
@@ -589,7 +589,7 @@ const addAmountOfSFA = (req, res) => {
                                                                 sql_querry_getAdvanceDetails = `SELECT advanceId, advanceAmount, remainAdvanceAmount AS remainAdvance FROM staff_advance_data WHERE employeeId = '${data.employeeId}' AND remainAdvanceAmount != 0 ORDER BY advanceDate ASC`;
                                                                 pool.query(sql_querry_getAdvanceDetails, (err, datas) => {
                                                                     if (err) {
-                                                                        console.error("An error occurd in SQL Queery", err);
+                                                                        console.error("An error occurred in SQL Queery", err);
                                                                         return res.status(500).send('Database Error');
                                                                     }
                                                                     const oldAdvanceData = Object.values(JSON.parse(JSON.stringify(datas)));
@@ -701,7 +701,7 @@ const addAmountOfSFA = (req, res) => {
                                                                         INSERT INTO salary_salaryWiseAdvanceId_data (salaryId, advanceId, cutAdvanceAmount) VALUES ${sallaryWiseAdvanceId}`
                                                                         pool.query(sql_query_addDetail, (err, add) => {
                                                                             if (err) {
-                                                                                console.error("An error occurd in SQL Queery", err);
+                                                                                console.error("An error occurred in SQL Queery", err);
                                                                                 return res.status(500).send('Database Error');
                                                                             }
                                                                             console.log('Advance CutOff');
@@ -709,7 +709,7 @@ const addAmountOfSFA = (req, res) => {
                                                                             sql_querry_getFinedetail = `SELECT monthlySalaryId, totalSalary, remainSalary AS remainSalary FROM staff_monthlySalary_data WHERE employeeId = '${data.employeeId}' AND remainSalary != 0 ORDER BY msStartDate ASC`;
                                                                             pool.query(sql_querry_getFinedetail, (err, datas) => {
                                                                                 if (err) {
-                                                                                    console.error("An error occurd in SQL Queery", err);
+                                                                                    console.error("An error occurred in SQL Queery", err);
                                                                                     return res.status(500).send('Database Error');
                                                                                 }
                                                                                 const oldMsdData = Object.values(JSON.parse(JSON.stringify(datas)));
@@ -799,7 +799,7 @@ const addAmountOfSFA = (req, res) => {
                                                                                         sql_querry_getFinedetail = `SELECT monthlySalaryId, totalSalary, remainSalary AS remainSalary FROM staff_monthlySalary_data WHERE employeeId = '${data.employeeId}' AND remainSalary != 0 ORDER BY msStartDate ASC`;
                                                                                         pool.query(sql_querry_getFinedetail, (err, datas) => {
                                                                                             if (err) {
-                                                                                                console.error("An error occurd in SQL Queery", err);
+                                                                                                console.error("An error occurred in SQL Queery", err);
                                                                                                 return res.status(500).send('Database Error');
                                                                                             }
                                                                                             const oldMsdData = Object.values(JSON.parse(JSON.stringify(datas)));
@@ -917,7 +917,7 @@ const addAmountOfSFA = (req, res) => {
                                                                     )`;
                                                                 pool.query(sql_query_allZeroRemainFine, (err, result) => {
                                                                     if (err) {
-                                                                        console.error("An error occurd in SQL Queery", err);
+                                                                        console.error("An error occurred in SQL Queery", err);
                                                                         return res.status(500).send('Database Error');
                                                                     }
                                                                     console.log(result[0])
@@ -962,7 +962,7 @@ const addAmountOfSFA = (req, res) => {
                                                                     INSERT INTO salary_salaryWiseAdvanceId_data (salaryId, advanceId, cutAdvanceAmount) VALUES ${sallaryWiseAllAdvanceId}`;
                                                                     pool.query(sql_query_addDetail, (err, add) => {
                                                                         if (err) {
-                                                                            console.error("An error occurd in SQL Queery", err);
+                                                                            console.error("An error occurred in SQL Queery", err);
                                                                             return res.status(500).send('Database Error');
                                                                         }
                                                                         // console.log('All Advance Is Done');
@@ -970,7 +970,7 @@ const addAmountOfSFA = (req, res) => {
                                                                     sql_querry_getFinedetail = `SELECT monthlySalaryId, totalSalary, remainSalary AS remainSalary FROM staff_monthlySalary_data WHERE employeeId = '${data.employeeId}' AND remainSalary != 0 ORDER BY msStartDate ASC`;
                                                                     pool.query(sql_querry_getFinedetail, (err, datas) => {
                                                                         if (err) {
-                                                                            console.error("An error occurd in SQL Queery", err);
+                                                                            console.error("An error occurred in SQL Queery", err);
                                                                             return res.status(500).send('Database Error');
                                                                         }
                                                                         const oldMsdData = Object.values(JSON.parse(JSON.stringify(datas)));
@@ -1059,7 +1059,7 @@ const addAmountOfSFA = (req, res) => {
                                                                                 sql_querry_getFinedetail = `SELECT monthlySalaryId, totalSalary, remainSalary AS remainSalary FROM staff_monthlySalary_data WHERE employeeId = '${data.employeeId}' AND remainSalary != 0 ORDER BY msStartDate ASC`;
                                                                                 pool.query(sql_querry_getFinedetail, (err, datas) => {
                                                                                     if (err) {
-                                                                                        console.error("An error occurd in SQL Queery", err);
+                                                                                        console.error("An error occurred in SQL Queery", err);
                                                                                         return res.status(500).send('Database Error');
                                                                                     }
                                                                                     const oldMsdData = Object.values(JSON.parse(JSON.stringify(datas)));;
@@ -1159,7 +1159,7 @@ const addAmountOfSFA = (req, res) => {
                                                             sql_querry_getFinedetail = `SELECT monthlySalaryId, totalSalary, remainSalary AS remainSalary FROM staff_monthlySalary_data WHERE employeeId = '${data.employeeId}' AND remainSalary != 0 ORDER BY msStartDate ASC`;
                                                             pool.query(sql_querry_getFinedetail, (err, datas) => {
                                                                 if (err) {
-                                                                    console.error("An error occurd in SQL Queery", err);
+                                                                    console.error("An error occurred in SQL Queery", err);
                                                                     return res.status(500).send('Database Error');
                                                                 }
                                                                 const oldMsdData = Object.values(JSON.parse(JSON.stringify(datas)));
@@ -1295,7 +1295,7 @@ const addAmountOfSFA = (req, res) => {
                                                                 INSERT INTO salary_salaryWiseFineId_data (salaryId, fineId, cutFineAmount) VALUES ${sallaryWiseAllFineId}`;
                                             pool.query(sql_query_addDetail, (err, add) => {
                                                 if (err) {
-                                                    console.error("An error occurd in SQL Queery", err);
+                                                    console.error("An error occurred in SQL Queery", err);
                                                 }
                                                 // console.log('Fine CutOff');
                                             })
@@ -1309,7 +1309,7 @@ const addAmountOfSFA = (req, res) => {
                                         sql_querry_getAdvanceDetails = `SELECT advanceId, advanceAmount, remainAdvanceAmount AS remainAdvance FROM staff_advance_data WHERE employeeId = '${data.employeeId}' AND remainAdvanceAmount != 0 ORDER BY advanceDate ASC`;
                                         pool.query(sql_querry_getAdvanceDetails, (err, datas) => {
                                             if (err) {
-                                                console.error("An error occurd in SQL Queery", err);
+                                                console.error("An error occurred in SQL Queery", err);
                                                 return res.status(500).send('Database Error');
                                             }
                                             const oldAdvanceData = Object.values(JSON.parse(JSON.stringify(datas)));
@@ -1422,7 +1422,7 @@ const addAmountOfSFA = (req, res) => {
                                                                 INSERT INTO salary_salaryWiseAdvanceId_data (salaryId, advanceId, cutAdvanceAmount) VALUES ${sallaryWiseAdvanceId}`
                                                 pool.query(sql_query_addDetail, (err, add) => {
                                                     if (err) {
-                                                        console.error("An error occurd in SQL Queery", err);
+                                                        console.error("An error occurred in SQL Queery", err);
                                                         return res.status(500).send('Database Error');
                                                     }
                                                     console.log('Advance CutOff');
@@ -1430,7 +1430,7 @@ const addAmountOfSFA = (req, res) => {
                                                     sql_querry_getFinedetail = `SELECT monthlySalaryId, totalSalary, remainSalary AS remainSalary FROM staff_monthlySalary_data WHERE employeeId = '${data.employeeId}' AND remainSalary != 0 ORDER BY msStartDate ASC`;
                                                     pool.query(sql_querry_getFinedetail, (err, datas) => {
                                                         if (err) {
-                                                            console.error("An error occurd in SQL Queery", err);
+                                                            console.error("An error occurred in SQL Queery", err);
                                                             return res.status(500).send('Database Error');
                                                         }
                                                         const oldMsdData = Object.values(JSON.parse(JSON.stringify(datas)));
@@ -1520,7 +1520,7 @@ const addAmountOfSFA = (req, res) => {
                                                                 sql_querry_getFinedetail = `SELECT monthlySalaryId, totalSalary, remainSalary AS remainSalary FROM staff_monthlySalary_data WHERE employeeId = '${data.employeeId}' AND remainSalary != 0 ORDER BY msStartDate ASC`;
                                                                 pool.query(sql_querry_getFinedetail, (err, datas) => {
                                                                     if (err) {
-                                                                        console.error("An error occurd in SQL Queery", err);
+                                                                        console.error("An error occurred in SQL Queery", err);
                                                                         return res.status(500).send('Database Error');
                                                                     }
                                                                     const oldMsdData = Object.values(JSON.parse(JSON.stringify(datas)));
@@ -1638,7 +1638,7 @@ const addAmountOfSFA = (req, res) => {
                                                                     )`;
                                         pool.query(sql_query_allZeroRemainFine, (err, result) => {
                                             if (err) {
-                                                console.error("An error occurd in SQL Queery", err);
+                                                console.error("An error occurred in SQL Queery", err);
                                                 return res.status(500).send('Database Error');
                                             }
                                             console.log(result[0])
@@ -1696,7 +1696,7 @@ const addAmountOfSFA = (req, res) => {
                                                                 INSERT INTO salary_salaryWiseAdvanceId_data (salaryId, advanceId, cutAdvanceAmount) VALUES ${sallaryWiseAllAdvanceId}`;
                                             pool.query(sql_query_addDetail, (err, add) => {
                                                 if (err) {
-                                                    console.error("An error occurd in SQL Queery", err);
+                                                    console.error("An error occurred in SQL Queery", err);
                                                     return res.status(500).send('Database Error');
                                                 }
                                                 console.log('All Advance Is Done');
@@ -1704,7 +1704,7 @@ const addAmountOfSFA = (req, res) => {
                                             sql_querry_getFinedetail = `SELECT monthlySalaryId, totalSalary, remainSalary AS remainSalary FROM staff_monthlySalary_data WHERE employeeId = '${data.employeeId}' AND remainSalary != 0 ORDER BY msStartDate ASC`;
                                             pool.query(sql_querry_getFinedetail, (err, datas) => {
                                                 if (err) {
-                                                    console.error("An error occurd in SQL Queery", err);
+                                                    console.error("An error occurred in SQL Queery", err);
                                                     return res.status(500).send('Database Error');
                                                 }
                                                 const oldMsdData = Object.values(JSON.parse(JSON.stringify(datas)));
@@ -1795,7 +1795,7 @@ const addAmountOfSFA = (req, res) => {
                                                         sql_querry_getFinedetail = `SELECT monthlySalaryId, totalSalary, remainSalary AS remainSalary FROM staff_monthlySalary_data WHERE employeeId = '${data.employeeId}' AND remainSalary != 0 ORDER BY msStartDate ASC`;
                                                         pool.query(sql_querry_getFinedetail, (err, datas) => {
                                                             if (err) {
-                                                                console.error("An error occurd in SQL Queery", err);
+                                                                console.error("An error occurred in SQL Queery", err);
                                                                 return res.status(500).send('Database Error');
                                                             }
                                                             const oldMsdData = Object.values(JSON.parse(JSON.stringify(datas)));;
@@ -1911,14 +1911,14 @@ const addAmountOfSFA = (req, res) => {
                                                                 )`;
                                     pool.query(sql_query_addAdvanceDetail, (err, rest) => {
                                         if (err) {
-                                            console.error("An error occurd in SQL Queery", err);
+                                            console.error("An error occurred in SQL Queery", err);
                                             return res.status(500).send('Database Error');
                                         }
                                         else if (data.payAmount != 0 && req.body.amountType == '1' && data.totalSalary > 0) {
                                             sql_querry_getFinedetail = `SELECT monthlySalaryId, totalSalary, remainSalary AS remainSalary FROM staff_monthlySalary_data WHERE employeeId = '${data.employeeId}' AND remainSalary != 0 ORDER BY msStartDate ASC`;
                                             pool.query(sql_querry_getFinedetail, (err, datas) => {
                                                 if (err) {
-                                                    console.error("An error occurd in SQL Queery", err);
+                                                    console.error("An error occurred in SQL Queery", err);
                                                     return res.status(500).send('Database Error');
                                                 }
                                                 const oldMsdData = Object.values(JSON.parse(JSON.stringify(datas)));
@@ -2016,7 +2016,7 @@ const addAmountOfSFA = (req, res) => {
                                     sql_querry_getFinedetail = `SELECT monthlySalaryId, totalSalary, remainSalary AS remainSalary FROM staff_monthlySalary_data WHERE employeeId = '${data.employeeId}' AND remainSalary != 0 ORDER BY msStartDate ASC`;
                                     pool.query(sql_querry_getFinedetail, (err, datas) => {
                                         if (err) {
-                                            console.error("An error occurd in SQL Queery", err);
+                                            console.error("An error occurred in SQL Queery", err);
                                             return res.status(500).send('Database Error');
                                         }
                                         const oldMsdData = Object.values(JSON.parse(JSON.stringify(datas)));
@@ -2138,7 +2138,7 @@ const addAmountOfSFA = (req, res) => {
                             }
                             pool.query(sql_query_addDetail, (err, data) => {
                                 if (err) {
-                                    console.error("An error occurd in SQL Queery", err);
+                                    console.error("An error occurred in SQL Queery", err);
                                     return res.status(500).send('Database Error');
                                 }
                                 sql_update_lastPaymentDate = `UPDATE
@@ -2149,7 +2149,7 @@ const addAmountOfSFA = (req, res) => {
                                                         employeeId = '${data.employeeId}'`;
                                 pool.query(sql_update_lastPaymentDate, (err, updateLpd) => {
                                     if (err) {
-                                        console.error("An error occurd in SQL Queery", err);
+                                        console.error("An error occurred in SQL Queery", err);
                                         return res.status(500).send('Database Error');
                                     }
                                     console.log('Date Updated');
@@ -2202,7 +2202,7 @@ const addAmountOfSFA = (req, res) => {
                     }
                     pool.query(sql_query_addDetail, (err, data) => {
                         if (err) {
-                            console.error("An error occurd in SQL Queery", err);
+                            console.error("An error occurred in SQL Queery", err);
                             return res.status(500).send('Database Error');
                         }
                         return res.status(200).send("Data Added Successfully");
@@ -2212,7 +2212,7 @@ const addAmountOfSFA = (req, res) => {
                         sql_querry_getAdvanceDetails = `SELECT advanceId, advanceAmount, remainAdvanceAmount AS remainAdvance FROM staff_advance_data WHERE employeeId = '${data.employeeId}' AND remainAdvanceAmount != 0 ORDER BY advanceDate ASC`;
                         pool.query(sql_querry_getAdvanceDetails, (err, datas) => {
                             if (err) {
-                                console.error("An error occurd in SQL Queery", err);
+                                console.error("An error occurred in SQL Queery", err);
                                 return res.status(500).send('Database Error');
                             }
                             const orignalAdvanceData = Object.values(JSON.parse(JSON.stringify(datas)));
@@ -2321,7 +2321,7 @@ const addAmountOfSFA = (req, res) => {
                                                    INSERT INTO staff_creditWiseAdvanceId_data (creditId, advanceId, cutCreditAmount) VALUES ${creditWiseAdvanceId}`
                                 pool.query(sql_query_addDetail, (err, add) => {
                                     if (err) {
-                                        console.error("An error occurd in SQL Queery", err);
+                                        console.error("An error occurred in SQL Queery", err);
                                         return res.status(500).send('Database Error');
                                     }
                                     return res.status(200).send('Your Amount is Credited Successfully');
@@ -2337,7 +2337,7 @@ const addAmountOfSFA = (req, res) => {
                         sql_querry_getFinedetail = `SELECT fineId, fineAmount,remainFineAmount AS remainFine FROM staff_fine_data WHERE employeeId = '${data.employeeId}' AND fineStatus = 1 AND remainFineAmount != 0 ORDER BY fineDate ASC`;
                         pool.query(sql_querry_getFinedetail, (err, datas) => {
                             if (err) {
-                                console.error("An error occurd in SQL Queery", err);
+                                console.error("An error occurred in SQL Queery", err);
                                 return res.status(500).send('Database Error');
                             }
                             const orignalFineData = Object.values(JSON.parse(JSON.stringify(datas)));
@@ -2456,7 +2456,7 @@ const addAmountOfSFA = (req, res) => {
                                                    INSERT INTO staff_creditWiseFineId_data (creditId, fineId, cutCreditAmount) VALUES ${creditWiseFineId}`
                                 pool.query(sql_query_addDetail, (err, add) => {
                                     if (err) {
-                                        console.error("An error occurd in SQL Queery", err);
+                                        console.error("An error occurred in SQL Queery", err);
                                         return res.status(500).send('Database Error');
                                     }
                                     return res.status(200).send('Your Amount is Credited Successfully');
@@ -2488,7 +2488,7 @@ const addAmountOfSFA = (req, res) => {
                                                                     )`;
                     pool.query(sql_query_addDetail, (err, add) => {
                         if (err) {
-                            console.error("An error occurd in SQL Queery", err);
+                            console.error("An error occurred in SQL Queery", err);
                             return res.status(500).send('Database Error');
                         }
                         return res.status(200).send('Your Amount is Credited Successfully');
@@ -2504,7 +2504,7 @@ const addAmountOfSFA = (req, res) => {
         }
 
     } catch (error) {
-        console.error('An error occurd', error);
+        console.error('An error occurred', error);
         res.status(500).send('Internal Server Error');
     }
 }
@@ -2519,14 +2519,14 @@ const removeSalariesByIds = (salaryId) => {
             let salaryop = salaryId
             salaryop = pool.query(`SELECT salaryId FROM staff_salary_data WHERE salaryId = '${salaryId}'`, (err, row) => {
                 if (err) {
-                    console.error("An error occurd in SQL Queery", err);
+                    console.error("An error occurred in SQL Queery", err);
                     reject('Database Error');;
                 }
                 if (row && row.length) {
                     sql_querry_getSalaryStatus = `SELECT salaryId, salaryAmount, salaryType FROM staff_salary_data WHERE salaryId = '${salaryId}'`;
                     pool.query(sql_querry_getSalaryStatus, (err, data) => {
                         if (err) {
-                            console.error("An error occurd in SQL Queery", err);
+                            console.error("An error occurred in SQL Queery", err);
                             reject('Database Error');;
                         }
                         console.log(data)
@@ -2563,7 +2563,7 @@ const removeSalariesByIds = (salaryId) => {
                                                         fineCreationDate ASC`;
                             pool.query(sql_querry_getFineData, (err, data) => {
                                 if (err) {
-                                    console.error("An error occurd in SQL Queery", err);
+                                    console.error("An error occurred in SQL Queery", err);
                                     reject('Database Error');;;
                                 }
                                 console.log(">>>", Object.values(JSON.parse(JSON.stringify(data))));
@@ -2599,7 +2599,7 @@ const removeSalariesByIds = (salaryId) => {
                                 const sql_qurey_updatedRemainFineAmt = generateFineUpdateQuery(updatedFinedata);
                                 pool.query(sql_qurey_updatedRemainFineAmt, (err, data) => {
                                     if (err) {
-                                        console.error("An error occurd in SQL Queery", err);
+                                        console.error("An error occurred in SQL Queery", err);
                                         reject('Database Error');;
                                     }
                                     sql_qurey_getMsdata = `SELECT
@@ -2632,7 +2632,7 @@ const removeSalariesByIds = (salaryId) => {
                                                                 msCreationDate ASC`;
                                     pool.query(sql_qurey_getMsdata, (err, data) => {
                                         if (err) {
-                                            console.error("An error occurd in SQL Queery", err);
+                                            console.error("An error occurred in SQL Queery", err);
                                             reject('Database Error');;
                                         }
                                         const monthlySalaryData = Object.values(JSON.parse(JSON.stringify(data)));
@@ -2668,13 +2668,13 @@ const removeSalariesByIds = (salaryId) => {
                                         const sql_qurey_updatedRemainmsAmt = generateMonthlyUpdateQuery(updatedMsdata);
                                         pool.query(sql_qurey_updatedRemainmsAmt, (err, data) => {
                                             if (err) {
-                                                console.error("An error occurd in SQL Queery", err);
+                                                console.error("An error occurred in SQL Queery", err);
                                                 reject('Database Error');;
                                             }
                                             sql_qurey_removePaySalary = `DELETE FROM staff_salary_data WHERE salaryId = '${salaryId}'`;
                                             pool.query(sql_qurey_removePaySalary, (err, data) => {
                                                 if (err) {
-                                                    console.error("An error occurd in SQL Queery", err);
+                                                    console.error("An error occurred in SQL Queery", err);
                                                     reject('Database Error');;
                                                 }
                                                 resolve('FineCut Deleted Success');;
@@ -2714,7 +2714,7 @@ const removeSalariesByIds = (salaryId) => {
                                                             advanceCreationDate ASC;`;
                             pool.query(sql_querry_getAdvanceData, (err, data) => {
                                 if (err) {
-                                    console.error("An error occurd in SQL Queery", err);
+                                    console.error("An error occurred in SQL Queery", err);
                                     reject('Database Error');;
                                 }
                                 const advanceData = Object.values(JSON.parse(JSON.stringify(data)));
@@ -2750,7 +2750,7 @@ const removeSalariesByIds = (salaryId) => {
                                 const sql_qurey_updatedRemainAdvAmt = generateAdvanceUpdateQuery(UpdatedAdvanceData);
                                 pool.query(sql_qurey_updatedRemainAdvAmt, (err, data) => {
                                     if (err) {
-                                        console.error("An error occurd in SQL Queery", err);
+                                        console.error("An error occurred in SQL Queery", err);
                                         reject('Database Error');;
                                     }
                                     sql_qurey_getMsdata = `SELECT
@@ -2783,7 +2783,7 @@ const removeSalariesByIds = (salaryId) => {
                                                                 msCreationDate ASC`;
                                     pool.query(sql_qurey_getMsdata, (err, data) => {
                                         if (err) {
-                                            console.error("An error occurd in SQL Queery", err);
+                                            console.error("An error occurred in SQL Queery", err);
                                             reject('Database Error');;
                                         }
                                         const monthlySalaryData = Object.values(JSON.parse(JSON.stringify(data)));
@@ -2814,13 +2814,13 @@ const removeSalariesByIds = (salaryId) => {
                                         const sql_qurey_updatedRemainmsAmt = generateMonthlyUpdateQuery(monthlySalaryData);
                                         pool.query(sql_qurey_updatedRemainmsAmt, (err, data) => {
                                             if (err) {
-                                                console.error("An error occurd in SQL Queery", err);
+                                                console.error("An error occurred in SQL Queery", err);
                                                 reject('Database Error');;
                                             }
                                             sql_qurey_removePaySalary = `DELETE FROM staff_salary_data WHERE salaryId = '${salaryId}'`;
                                             pool.query(sql_qurey_removePaySalary, (err, data) => {
                                                 if (err) {
-                                                    console.error("An error occurd in SQL Queery", err);
+                                                    console.error("An error occurred in SQL Queery", err);
                                                     reject('Database Error');;
                                                 }
                                                 resolve('AdvanceCut Deleted Success');
@@ -2860,7 +2860,7 @@ const removeSalariesByIds = (salaryId) => {
                                                         msCreationDate ASC`;
                             pool.query(sql_qurey_getMsdata, (err, data) => {
                                 if (err) {
-                                    console.error("An error occurd in SQL Queery", err);
+                                    console.error("An error occurred in SQL Queery", err);
                                     reject('Database Error');;
                                 }
                                 const monthlySalaryData = Object.values(JSON.parse(JSON.stringify(data)));
@@ -2896,13 +2896,13 @@ const removeSalariesByIds = (salaryId) => {
                                 const sql_qurey_updatedRemainmsAmt = generateMonthlyUpdateQuery(updatedmsData);
                                 pool.query(sql_qurey_updatedRemainmsAmt, (err, data) => {
                                     if (err) {
-                                        console.error("An error occurd in SQL Queery", err);
+                                        console.error("An error occurred in SQL Queery", err);
                                         reject('Database Error');;
                                     }
                                     sql_qurey_removePaySalary = `DELETE FROM staff_salary_data WHERE salaryId = '${salaryId}'`;
                                     pool.query(sql_qurey_removePaySalary, (err, data) => {
                                         if (err) {
-                                            console.error("An error occurd in SQL Queery", err);
+                                            console.error("An error occurred in SQL Queery", err);
                                             reject('Database Error');
                                         }
                                         resolve('salary Deleted Success');
@@ -2932,7 +2932,7 @@ const removeSalaryTranction = (req, res) => {
         }
         req.query.transactionId = pool.query(`SELECT remainSalaryId FROM staff_remainSalaryHistory_data WHERE remainSalaryId = '${transactionId}'`, (err, row) => {
             if (err) {
-                console.error("An error occurd in SQL Queery", err);
+                console.error("An error occurred in SQL Queery", err);
                 return res.status(500).send('Database Error');
             }
             console.log(row, row.length);
@@ -2940,7 +2940,7 @@ const removeSalaryTranction = (req, res) => {
                 sql_querry_getSalartIdBytransactionId = `SELECT salaryId FROM staff_salary_data WHERE remainSalaryId = '${transactionId}'`;
                 pool.query(sql_querry_getSalartIdBytransactionId, (err, data) => {
                     if (err) {
-                        console.error("An error occurd in SQL Queery", err);
+                        console.error("An error occurred in SQL Queery", err);
                         return res.status(500).send('Database Error');
                     }
                     const ids = data;
@@ -2962,7 +2962,7 @@ const removeSalaryTranction = (req, res) => {
                                     ).then(() => {
                                         pool.query(sql_querry_removeRemainSalary, (err, datas) => {
                                             if (err) {
-                                                console.error("An error occurd in SQL Queery", err);
+                                                console.error("An error occurred in SQL Queery", err);
                                                 return res.status(500).send('Database Error');
                                             }
                                             return res.status(200).send('Transaction Deleted SuccessFullu');
@@ -2986,7 +2986,7 @@ const removeSalaryTranction = (req, res) => {
                                 ).then(() => {
                                     pool.query(sql_querry_removeRemainSalary, (err, datas) => {
                                         if (err) {
-                                            console.error("An error occurd in SQL Queery", err);
+                                            console.error("An error occurred in SQL Queery", err);
                                             return res.status(500).send('Database Error');
                                         }
                                         return res.status(200).send('Transaction Deleted SuccessFullu');
@@ -3003,7 +3003,7 @@ const removeSalaryTranction = (req, res) => {
                             ).then(() => {
                                 pool.query(sql_querry_removeRemainSalary, (err, datas) => {
                                     if (err) {
-                                        console.error("An error occurd in SQL Queery", err);
+                                        console.error("An error occurred in SQL Queery", err);
                                         return res.status(500).send('Database Error');
                                     }
                                     return res.status(200).send('Transaction Deleted SuccessFullu');
@@ -3021,7 +3021,7 @@ const removeSalaryTranction = (req, res) => {
             }
         })
     } catch (error) {
-        console.error('An error occurd', error);
+        console.error('An error occurred', error);
         res.status(500).send('Internal Server Error');
     }
 }
@@ -3033,7 +3033,7 @@ const removeCreditTransaction = (req, res) => {
         const creditId = req.query.creditId
         req.query.stockOutId = pool.query(`SELECT cafId FROM staff_creditAdvanceFine_data WHERE cafId = '${creditId}'`, (err, row) => {
             if (err) {
-                console.error("An error occurd in SQL Queery", err);
+                console.error("An error occurred in SQL Queery", err);
                 return res.status(500).send('Database Error');
             }
             if (row && row.length) {
@@ -3041,7 +3041,7 @@ const removeCreditTransaction = (req, res) => {
                 console.log('joooaaa', sql_querry_getSalaryStatus);
                 pool.query(sql_querry_getSalaryStatus, (err, data) => {
                     if (err) {
-                        console.error("An error occurd in SQL Queery", err);
+                        console.error("An error occurred in SQL Queery", err);
                         return res.status(500).send('Database Error');
                     }
                     const creditType = data[0].creditType
@@ -3077,7 +3077,7 @@ const removeCreditTransaction = (req, res) => {
                                                         staff_advance_data.advanceDate ASC, staff_advance_data.advanceCreationDate ASC;`;
                         pool.query(sql_querry_getAdvanceData, (err, data) => {
                             if (err) {
-                                console.error("An error occurd in SQL Queery", err);
+                                console.error("An error occurred in SQL Queery", err);
                                 return res.status(500).send('Database Error');
                             }
                             const advanceData = Object.values(JSON.parse(JSON.stringify(data)));
@@ -3113,13 +3113,13 @@ const removeCreditTransaction = (req, res) => {
                             const sql_qurey_updatedRemainAdvAmt = generateAdvanceUpdateQuery(UpdatedAdvanceData);
                             pool.query(sql_qurey_updatedRemainAdvAmt, (err, data) => {
                                 if (err) {
-                                    console.error("An error occurd in SQL Queery", err);
+                                    console.error("An error occurred in SQL Queery", err);
                                     return res.status(500).send('Database Error');
                                 }
                                 sql_qurey_removeCredit = `DELETE FROM staff_creditAdvanceFine_data WHERE cafId = '${creditId}'`;
                                 pool.query(sql_qurey_removeCredit, (err, data) => {
                                     if (err) {
-                                        console.error("An error occurd in SQL Queery", err);
+                                        console.error("An error occurred in SQL Queery", err);
                                         return res.status(500).send('Database Error');
                                     }
                                     return res.status(200).send('Transaction Deleted Successfully');
@@ -3158,7 +3158,7 @@ const removeCreditTransaction = (req, res) => {
                                                     staff_fine_data.fineDate ASC, staff_fine_data.fineCreationDate ASC`;
                         pool.query(sql_querry_getFineData, (err, data) => {
                             if (err) {
-                                console.error("An error occurd in SQL Queery", err);
+                                console.error("An error occurred in SQL Queery", err);
                                 return res.status(500).send('Database Error');
                             }
                             console.log(">>>", Object.values(JSON.parse(JSON.stringify(data))));
@@ -3194,13 +3194,13 @@ const removeCreditTransaction = (req, res) => {
                             const sql_qurey_updatedRemainFineAmt = generateFineUpdateQuery(updatedFinedata);
                             pool.query(sql_qurey_updatedRemainFineAmt, (err, data) => {
                                 if (err) {
-                                    console.error("An error occurd in SQL Queery", err);
+                                    console.error("An error occurred in SQL Queery", err);
                                     return res.status(500).send('Database Error');
                                 }
                                 sql_qurey_removeCredit = `DELETE FROM staff_creditAdvanceFine_data WHERE cafId = '${creditId}'`;
                                 pool.query(sql_qurey_removeCredit, (err, data) => {
                                     if (err) {
-                                        console.error("An error occurd in SQL Queery", err);
+                                        console.error("An error occurred in SQL Queery", err);
                                         return res.status(500).send('Database Error');
                                     }
                                     return res.status(200).send('Transaction Deleted Successfully');
@@ -3215,7 +3215,7 @@ const removeCreditTransaction = (req, res) => {
             }
         })
     } catch (error) {
-        console.error('An error occurd', error);
+        console.error('An error occurred', error);
         res.status(500).send('Internal Server Error');
     }
 }
@@ -3244,7 +3244,7 @@ const updateEmployeeStatus = (req, res, next) => {
         sql_querry_getEmployeeJoiningDate = `SELECT employeeJoiningDate FROM staff_employee_data WHERE employeeId = '${data.employeeId}'`;
         pool.query(sql_querry_getEmployeeJoiningDate, (err, result) => {
             if (err) {
-                console.error("An error occurd in SQL Queery", err);
+                console.error("An error occurred in SQL Queery", err);
                 return res.status(500).send('Database Error');
             }
             const joiningDate = new Date(result[0].employeeJoiningDate).toString().slice(4, 15);
@@ -3257,13 +3257,13 @@ const updateEmployeeStatus = (req, res, next) => {
                 }
                 pool.query(sql_querry_addHalfMonthlySalary, (err, result) => {
                     if (err) {
-                        console.error("An error occurd in SQL Queery", err);
+                        console.error("An error occurred in SQL Queery", err);
                         return res.status(500).send('Database Error');
                     }
                     sql_querry_updateStatus = `UPDATE staff_employee_data SET employeeStatus = false WHERE employeeId = '${data.employeeId}'`;
                     pool.query(sql_querry_updateStatus, (err, result) => {
                         if (err) {
-                            console.error("An error occurd in SQL Queery", err);
+                            console.error("An error occurred in SQL Queery", err);
                             return res.status(500).send('Database Error');
                         }
                         if (payStatus == true) {
@@ -3282,7 +3282,7 @@ const updateEmployeeStatus = (req, res, next) => {
                                                             employeeId = '${data.employeeId}'`;
                 pool.query(sql_querry_updateActiveEmployeeStatusDate, (err, result) => {
                     if (err) {
-                        console.error("An error occurd in SQL Queery", err);
+                        console.error("An error occurred in SQL Queery", err);
                         return res.status(500).send('Database Error');
                     }
                     sql_querry_updateActiveEmployeeStatus = `UPDATE staff_employee_data SET 
@@ -3291,7 +3291,7 @@ const updateEmployeeStatus = (req, res, next) => {
                                                             employeeId = '${data.employeeId}'`;
                     pool.query(sql_querry_updateActiveEmployeeStatus, (err, ref) => {
                         if (err) {
-                            console.error("An error occurd in SQL Queery", err);
+                            console.error("An error occurred in SQL Queery", err);
                             return res.status(500).send('Database Error');
                         }
                         return res.status(200).send('Employee Activated');
@@ -3300,7 +3300,7 @@ const updateEmployeeStatus = (req, res, next) => {
             }
         })
     } catch (error) {
-        console.error('An error occurd', error);
+        console.error('An error occurred', error);
         res.status(500).send('Internal Server Error');
     }
 }
@@ -3319,13 +3319,13 @@ const updateFineStatus = (req, res) => {
         }
         pool.query(sql_querry_updatefineStatus, (err, data) => {
             if (err) {
-                console.error("An error occurd in SQL Queery", err);
+                console.error("An error occurred in SQL Queery", err);
                 return res.status(500).send('Database Error');
             }
             return res.status(200).send('Fine Status Updated');
         })
     } catch (error) {
-        console.error('An error occurd', error);
+        console.error('An error occurred', error);
         res.status(500).send('Internal Server Error');
     }
 }
@@ -3337,14 +3337,14 @@ const removeAdvanceTransaction = (req, res) => {
         const advanceId = req.query.advanceId;
         req.query.advanceId = pool.query(`SELECT advanceId FROM staff_advance_data WHERE advanceId = '${advanceId}'`, (err, row) => {
             if (err) {
-                console.error("An error occurd in SQL Queery", err);
+                console.error("An error occurred in SQL Queery", err);
                 return res.status(500).send('Database Error');
             }
             if (row && row.length) {
                 sql_querry_removedetails = `DELETE FROM staff_advance_data WHERE advanceId = '${advanceId}'`;
                 pool.query(sql_querry_removedetails, (err, data) => {
                     if (err) {
-                        console.error("An error occurd in SQL Queery", err);
+                        console.error("An error occurred in SQL Queery", err);
                         return res.status(500).send('Database Error');
                     }
                     return res.status(200).send("Advance Deleted Successfully");
@@ -3354,7 +3354,7 @@ const removeAdvanceTransaction = (req, res) => {
             }
         })
     } catch (error) {
-        console.error('An error occurd', error);
+        console.error('An error occurred', error);
         res.status(500).send('Internal Server Error');
     }
 }
@@ -3366,14 +3366,14 @@ const removeFineTransaction = (req, res) => {
         const fineId = req.query.fineId;
         req.query.fineId = pool.query(`SELECT fineId FROM staff_fine_data WHERE fineId = '${fineId}'`, (err, row) => {
             if (err) {
-                console.error("An error occurd in SQL Queery", err);
+                console.error("An error occurred in SQL Queery", err);
                 return res.status(500).send('Database Error');
             }
             if (row && row.length) {
                 sql_querry_removedetails = `DELETE FROM staff_fine_data WHERE fineId = '${fineId}'`;
                 pool.query(sql_querry_removedetails, (err, data) => {
                     if (err) {
-                        console.error("An error occurd in SQL Queery", err);
+                        console.error("An error occurred in SQL Queery", err);
                         return res.status(500).send('Database Error');
                     }
                     return res.status(200).send("Fine Deleted Successfully");
@@ -3383,7 +3383,7 @@ const removeFineTransaction = (req, res) => {
             }
         })
     } catch (error) {
-        console.error('An error occurd', error);
+        console.error('An error occurred', error);
         res.status(500).send('Internal Server Error');
     }
 }
@@ -3395,14 +3395,14 @@ const removeBonusTransaction = (req, res) => {
         const bonusId = req.query.bonusId;
         req.query.bonusId = pool.query(`SELECT bonusId FROM staff_bonus_data WHERE bonusId = '${bonusId}'`, (err, row) => {
             if (err) {
-                console.error("An error occurd in SQL Queery", err);
+                console.error("An error occurred in SQL Queery", err);
                 return res.status(500).send('Database Error');
             }
             if (row && row.length) {
                 sql_querry_removedetails = `DELETE FROM staff_bonus_data WHERE bonusId = '${bonusId}'`;
                 pool.query(sql_querry_removedetails, (err, data) => {
                     if (err) {
-                        console.error("An error occurd in SQL Queery", err);
+                        console.error("An error occurred in SQL Queery", err);
                         return res.status(500).send('Database Error');
                     }
                     return res.status(200).send("Bonus Deleted Successfully");
@@ -3412,7 +3412,7 @@ const removeBonusTransaction = (req, res) => {
             }
         })
     } catch (error) {
-        console.error('An error occurd', error);
+        console.error('An error occurred', error);
         res.status(500).send('Internal Server Error');
     }
 }
@@ -3422,7 +3422,7 @@ const removeMonthlySalary = (req, res) => {
         const monthlySalaryId = req.query.monthlySalaryId;
         req.query.monthlySalaryId = pool.query(`SELECT monthlySalaryId, employeeId FROM staff_monthlySalary_data WHERE monthlySalaryId = '${monthlySalaryId}'`, (err, row) => {
             if (err) {
-                console.error("An error occurd in SQL Queery", err);
+                console.error("An error occurred in SQL Queery", err);
                 return res.status(500).send('Database Error');
             }
             if (row && row.length) {
@@ -3430,7 +3430,7 @@ const removeMonthlySalary = (req, res) => {
                 sql_querry_chkStatus = `SELECT employeeStatus FROM staff_employee_data WHERE employeeId = '${employeeId}'`;
                 pool.query(sql_querry_chkStatus, (err, chks) => {
                     if (err) {
-                        console.error("An error occurd in SQL Queery", err);
+                        console.error("An error occurred in SQL Queery", err);
                         return res.status(500).send('Database Error');
                     }
                     const status = chks[0].employeeStatus;
@@ -3439,7 +3439,7 @@ const removeMonthlySalary = (req, res) => {
                         sql_querry_removedetails = `DELETE FROM staff_monthlySalary_data WHERE monthlySalaryId = '${monthlySalaryId}'`;
                         pool.query(sql_querry_removedetails, (err, data) => {
                             if (err) {
-                                console.error("An error occurd in SQL Queery", err);
+                                console.error("An error occurred in SQL Queery", err);
                                 return res.status(500).send('Database Error');
                             }
                             return res.status(200).send("Monthly Salary Deleted Successfully");
@@ -3453,7 +3453,7 @@ const removeMonthlySalary = (req, res) => {
             }
         })
     } catch (error) {
-        console.error('An error occurd', error);
+        console.error('An error occurred', error);
         res.status(500).send('Internal Server Error');
     }
 }
@@ -3474,7 +3474,7 @@ const updateFineTransaction = (req, res) => {
             sql_get_oldFineAmt = `SELECT employeeId, reason, remainFineAmount, DATE_FORMAT(fineDate, '%d-%b-%Y') AS fineDate FROM staff_fine_data WHERE fineId = '${fineId}'`;
             pool.query(sql_get_oldFineAmt, (err, data) => {
                 if (err) {
-                    console.error("An error occurd in SQL Queery", err);
+                    console.error("An error occurred in SQL Queery", err);
                     return res.status(500).send('Database Error');
                 }
                 const remainFineAmt = data[0].remainFineAmount ? data[0].remainFineAmount : 0;
@@ -3494,7 +3494,7 @@ const updateFineTransaction = (req, res) => {
                                             WHERE fineId = '${fineId}'`;
                     pool.query(sql_querry_updateFine, (err, result) => {
                         if (err) {
-                            console.error("An error occurd in SQL Queery", err);
+                            console.error("An error occurred in SQL Queery", err);
                             return res.status(500).send('Database Error');
                         }
                         sql_querry_addRemainFine = `INSERT INTO staff_fine_data (
@@ -3521,7 +3521,7 @@ const updateFineTransaction = (req, res) => {
                                                                                 )`;
                         pool.query(sql_querry_addRemainFine, (err, addResult) => {
                             if (err) {
-                                console.error("An error occurd in SQL Queery", err);
+                                console.error("An error occurred in SQL Queery", err);
                                 return res.status(500).send('Database Error');
                             }
                             return res.status(200).send('Fine Amount is Reduce SuccessFully');
@@ -3535,7 +3535,7 @@ const updateFineTransaction = (req, res) => {
             res.status(401).send("Please Login First.....!");
         }
     } catch (error) {
-        console.error('An error occurd', error);
+        console.error('An error occurred', error);
         res.status(500).send('Internal Server Error');
     }
 }
@@ -3602,7 +3602,7 @@ const updateMonthlySalary = (req, res) => {
                 console.log(sql_calculate_proratedSalaey);
                 pool.query(sql_calculate_proratedSalaey, (err, data) => {
                     if (err) {
-                        console.error("An error occurd in SQL Queery", err);
+                        console.error("An error occurred in SQL Queery", err);
                         return res.status(500).send('Database Error');
                     }
                     const remainMaxLeave = data[0].remainMaxLeave;
@@ -3616,7 +3616,7 @@ const updateMonthlySalary = (req, res) => {
                     sql_querry_chkStatus = `SELECT employeeStatus FROM staff_employee_data WHERE employeeId = '${employeeId}'`;
                     pool.query(sql_querry_chkStatus, (err, chks) => {
                         if (err) {
-                            console.error("An error occurd in SQL Queery", err);
+                            console.error("An error occurred in SQL Queery", err);
                             return res.status(500).send('Database Error');
                         }
                         const status = chks[0].employeeStatus;
@@ -3634,7 +3634,7 @@ const updateMonthlySalary = (req, res) => {
                                                             monthlySalaryId = ${monthlySalaryId}`;
                             pool.query(sql_querry_updateMonthlySalary, (err, result) => {
                                 if (err) {
-                                    console.error("An error occurd in SQL Queery", err);
+                                    console.error("An error occurred in SQL Queery", err);
                                     return res.status(500).send('Database Error');
                                 }
                                 return res.status(200).send('Monthly Salary Updated SuccessFully');
@@ -3652,7 +3652,7 @@ const updateMonthlySalary = (req, res) => {
             res.status(401).send("Please Login Firest.....!");
         }
     } catch (error) {
-        console.error('An error occurd', error);
+        console.error('An error occurred', error);
         res.status(500).send('Internal Server Error');
     }
 }

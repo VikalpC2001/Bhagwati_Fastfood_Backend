@@ -21,14 +21,14 @@ const getHoldCount = (req, res) => {
         let sql_query_getHoldNumber = `SELECT COUNT(*) AS holdNo FROM hold_data`;
         pool.query(sql_query_getHoldNumber, (err, data) => {
             if (err) {
-                console.error("An error occurd in SQL Queery", err);
+                console.error("An error occurred in SQL Queery", err);
                 return res.status(500).send('Database Error');
             } else {
                 return res.status(200).send(data[0]);
             }
         })
     } catch (error) {
-        console.error('An error occurd', error);
+        console.error('An error occurred', error);
         res.status(500).json('Internal Server Error');
     }
 }
@@ -49,7 +49,7 @@ const getHoldBillData = (req, res) => {
                                      ORDER BY hd.billCreationDate DESC;`;
         pool.query(sql_query_getHoldBill, (err, data) => {
             if (err) {
-                console.error("An error occurd in SQL Queery", err);
+                console.error("An error occurred in SQL Queery", err);
                 return res.status(500).send('Database Error');
             } else {
                 if (data && data.length) {
@@ -60,7 +60,7 @@ const getHoldBillData = (req, res) => {
             }
         })
     } catch (error) {
-        console.error('An error occurd', error);
+        console.error('An error occurred', error);
         res.status(500).json('Internal Server Error');
     }
 }
@@ -76,7 +76,7 @@ const getHoldBillDataById = (req, res) => {
             let sql_query_chkBillExist = `SELECT holdId, billType FROM hold_data WHERE holdId = '${holdId}'`;
             pool.query(sql_query_chkBillExist, (err, bill) => {
                 if (err) {
-                    console.error("An error occurd in SQL Queery", err);
+                    console.error("An error occurred in SQL Queery", err);
                     return res.status(500).send('Database Error');
                 } else {
                     if (bill && bill.length) {
@@ -158,7 +158,7 @@ const getHoldBillDataById = (req, res) => {
                                                        ${billType == 'Pick Up' || billType == 'Delivery' ? sql_query_getCustomerInfo : ''}`;
                         pool.query(sql_query_getBillData, (err, billData) => {
                             if (err) {
-                                console.error("An error occurd in SQL Queery", err);
+                                console.error("An error occurred in SQL Queery", err);
                                 return res.status(500).send('Database Error'); t
                             } else {
                                 const json = {
@@ -175,13 +175,13 @@ const getHoldBillDataById = (req, res) => {
                                                              DELETE FROM hold_billWiseCustomer_data WHERE holdId = '${holdId}'`;
                                 pool.query(sql_query_discardData, (err, data) => {
                                     if (err) {
-                                        console.error("An error occurd in SQL Queery", err);
+                                        console.error("An error occurred in SQL Queery", err);
                                         return res.status(500).send('Database Error');
                                     } else {
                                         let sql_query_getHoldNumber = `SELECT COUNT(*) AS holdNo FROM hold_data`;
                                         pool.query(sql_query_getHoldNumber, (err, data) => {
                                             if (err) {
-                                                console.error("An error occurd in SQL Queery", err);
+                                                console.error("An error occurred in SQL Queery", err);
                                                 return res.status(500).send('Database Error');
                                             } else {
                                                 const holdCount = data && data[0] ? data[0].holdNo : 0;
@@ -200,7 +200,7 @@ const getHoldBillDataById = (req, res) => {
             })
         }
     } catch (error) {
-        console.error('An error occurd', error);
+        console.error('An error occurred', error);
         res.status(500).json('Internal Server Error');
     }
 }
@@ -342,7 +342,7 @@ const addHotelHoldBillData = (req, res) => {
                 }
             });
         } catch (error) {
-            console.error('An error occurd', error);
+            console.error('An error occurred', error);
             connection.rollback(() => {
                 connection.release();
                 return res.status(500).json('Internal Server Error');
@@ -872,7 +872,7 @@ const addPickUpHoldBillData = (req, res) => {
                 }
             });
         } catch (error) {
-            console.error('An error occurd', error);
+            console.error('An error occurred', error);
             connection.rollback(() => {
                 connection.release();
                 return res.status(500).json('Internal Server Error');
@@ -1402,7 +1402,7 @@ const addDeliveryHoldBillData = (req, res) => {
                 }
             });
         } catch (error) {
-            console.error('An error occurd', error);
+            console.error('An error occurred', error);
             connection.rollback(() => {
                 connection.release();
                 return res.status(500).json('Internal Server Error');
@@ -1425,13 +1425,13 @@ const discardHoldData = (req, res) => {
                                          DELETE FROM hold_billWiseCustomer_data WHERE holdId = '${holdId}'`;
             pool.query(sql_query_discardData, (err, data) => {
                 if (err) {
-                    console.error("An error occurd in SQL Queery", err);
+                    console.error("An error occurred in SQL Queery", err);
                     return res.status(500).send('Database Error');
                 } else {
                     let sql_query_getHoldNumber = `SELECT COUNT(*) AS holdNo FROM hold_data`;
                     pool.query(sql_query_getHoldNumber, (err, data) => {
                         if (err) {
-                            console.error("An error occurd in SQL Queery", err);
+                            console.error("An error occurred in SQL Queery", err);
                             return res.status(500).send('Database Error');
                         } else {
                             const holdCount = data && data[0] ? data[0].holdNo : 0;
@@ -1443,7 +1443,7 @@ const discardHoldData = (req, res) => {
             })
         }
     } catch (error) {
-        console.error('An error occurd', error);
+        console.error('An error occurred', error);
         return res.status(500).json('Internal Server Error');
     }
 }

@@ -20,7 +20,7 @@ const getUserDetails = async (req, res) => {
                 sql_querry_getdetails = `SELECT count(*) as numRows FROM user_details  WHERE user_details.userId NOT IN ('${userId}')`;
                 pool.query(sql_querry_getdetails, (err, rows, fields) => {
                     if (err) {
-                        console.error("An error occurd in SQL Queery", err);
+                        console.error("An error occurred in SQL Queery", err);
                         return res.status(500).send('Database Error');
                     } else {
                         const numRows = rows[0].numRows;
@@ -30,7 +30,7 @@ const getUserDetails = async (req, res) => {
                                     WHERE user_details.userId NOT IN ('${userId}')
                                     ORDER BY user_rights.positionNumber LIMIT ` + limit, (err, rows, fields) => {
                             if (err) {
-                                console.error("An error occurd in SQL Queery", err);
+                                console.error("An error occurred in SQL Queery", err);
                                 return res.status(500).send('Database Error');;
                             } else {
                                 console.log(rows);
@@ -57,7 +57,7 @@ const getUserDetails = async (req, res) => {
             res.send("Please Login Firest.....!");
         }
     } catch (error) {
-        console.error('An error occurd', error);
+        console.error('An error occurred', error);
         res.status(500).json('Internal Server Error');
     }
 }
@@ -74,7 +74,7 @@ const authUser = async (req, res) => {
         pool.query(sql_querry_authuser, (err, data) => {
             if (err) {
                 process.exit(1);
-                // console.error("An error occurd in SQL Queery", err);
+                // console.error("An error occurred in SQL Queery", err);
                 // return res.status(500).send('Database Error');
             }
             // console.log("<<<",data[0].agentPassword === user.agentPassword,data,user.agentPassword)
@@ -93,7 +93,7 @@ const authUser = async (req, res) => {
             }
         })
     } catch (error) {
-        console.error('An error occurd', error);
+        console.error('An error occurred', error);
         res.status(500).json('Internal Server Error');
     }
 }
@@ -105,13 +105,13 @@ const ddlRights = (req, res) => {
         sql_querry_ddlRights = `SELECT rightsId, rightsName FROM user_rights ORDER BY positionNumber`;
         pool.query(sql_querry_ddlRights, (err, data) => {
             if (err) {
-                console.error("An error occurd in SQL Queery", err);
+                console.error("An error occurred in SQL Queery", err);
                 return res.status(500).send('Database Error');
             }
             return res.status(200).json(data);
         })
     } catch (error) {
-        console.error('An error occurd', error);
+        console.error('An error occurred', error);
         res.status(500).json('Internal Server Error');
     }
 }
@@ -145,7 +145,7 @@ const addUserDetails = async (req, res) => {
                 } else {
                     req.body.userName = pool.query(`SELECT userName FROM user_details WHERE userName = '${data.userName}'`, function (err, row) {
                         if (err) {
-                            console.error("An error occurd in SQL Queery", err);
+                            console.error("An error occurred in SQL Queery", err);
                             return res.status(500).send('Database Error');
                         }
                         if (row && row.length) {
@@ -155,7 +155,7 @@ const addUserDetails = async (req, res) => {
                                                  VALUES ('${id}','${data.userFirstName}','${data.userLastName}','${data.userGender}','${data.userName}','${data.password}',NULLIF('${data.emailId}','null'),${data.userRights})`;
                             pool.query(sql_querry_addUser, (err, data) => {
                                 if (err) {
-                                    console.error("An error occurd in SQL Queery", err);
+                                    console.error("An error occurred in SQL Queery", err);
                                     return res.status(500).send('Database Error');
                                 }
                                 return res.status(200).send("User Added Successfully");
@@ -171,7 +171,7 @@ const addUserDetails = async (req, res) => {
             res.send("Please Login Firest.....!");
         }
     } catch (error) {
-        console.error('An error occurd', error);
+        console.error('An error occurred', error);
         res.status(500).json('Internal Server Error');
     }
 }
@@ -189,14 +189,14 @@ const removeUserDetails = async (req, res) => {
                 userId = req.query.userId
                 req.query.userId = pool.query(`SELECT userId FROM user_details WHERE userId= '${userId}'`, (err, row) => {
                     if (err) {
-                        console.error("An error occurd in SQL Queery", err);
+                        console.error("An error occurred in SQL Queery", err);
                         return res.status(500).send('Database Error');
                     }
                     if (row && row.length) {
                         const sql_querry_removedetails = `DELETE FROM user_details WHERE userId = '${userId}'`;
                         pool.query(sql_querry_removedetails, (err, data) => {
                             if (err) {
-                                console.error("An error occurd in SQL Queery", err);
+                                console.error("An error occurred in SQL Queery", err);
                                 return res.status(500).send('Database Error');
                             }
                             return res.status(200).send("User Deleted Successfully");
@@ -213,7 +213,7 @@ const removeUserDetails = async (req, res) => {
             res.send("Please Login Firest.....!");
         }
     } catch (error) {
-        console.error('An error occurd', error);
+        console.error('An error occurred', error);
         res.status(500).json('Internal Server Error');
     }
 }
@@ -226,13 +226,13 @@ const fillUserDetails = (req, res) => {
         sql_querry_fillUser = `SELECT userId, userFirstName, userLastName, userGender ,userName, password, emailAddress, userRights FROM user_details WHERE userId = '${userId}'`;
         pool.query(sql_querry_fillUser, (err, data) => {
             if (err) {
-                console.error("An error occurd in SQL Queery", err);
+                console.error("An error occurred in SQL Queery", err);
                 return res.status(500).send('Database Error');
             }
             return res.status(200).send(data[0]);
         })
     } catch (error) {
-        console.error('An error occurd', error);
+        console.error('An error occurred', error);
         res.status(500).json('Internal Server Error');
     }
 }
@@ -267,7 +267,7 @@ const updateUserDetails = async (req, res) => {
                                                             WHERE userId = '${data.userId}'`;
                 pool.query(sql_querry_updatedetails, (err, data) => {
                     if (err) {
-                        console.error("An error occurd in SQL Queery", err);
+                        console.error("An error occurred in SQL Queery", err);
                         return res.status(500).send('Database Error');
                     }
                     return res.status(200).send("User Updated Successfully");
@@ -280,7 +280,7 @@ const updateUserDetails = async (req, res) => {
             res.send("Please Login Firest.....!");
         }
     } catch (error) {
-        console.error('An error occurd', error);
+        console.error('An error occurred', error);
         res.status(500).json('Internal Server Error');
     }
 }
@@ -292,14 +292,14 @@ const ddlUsersList = (req, res) => {
         let sql_query_getUserList = `SELECT CONCAT(userFirstName,' ',userLastName) AS userName FROM user_details`;
         pool.query(sql_query_getUserList, (err, data) => {
             if (err) {
-                console.error("An error occurd in SQL Queery", err);
+                console.error("An error occurred in SQL Queery", err);
                 return res.status(500).send('Database Error');
             } else {
                 return res.status(200).send(data);
             }
         })
     } catch (error) {
-        console.error('An error occurd', error);
+        console.error('An error occurred', error);
         res.status(500).json('Internal Server Error');
     }
 }

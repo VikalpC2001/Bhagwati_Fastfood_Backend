@@ -17,13 +17,13 @@ const getBankDashboardData = (req, res) => {
                                         ORDER BY bankDisplayName ASC`;
         pool.query(sql_queries_getBankDetails, (err, data) => {
             if (err) {
-                console.error("An error occurd in SQL Queery", err);
+                console.error("An error occurred in SQL Queery", err);
                 return res.status(500).send('Database Error');
             }
             return res.status(200).send(data);
         })
     } catch (error) {
-        console.error('An error occurd', error);
+        console.error('An error occurred', error);
         res.status(500).send('Internal Server Error');
     }
 }
@@ -40,7 +40,7 @@ const getBankList = (req, res) => {
         sql_querry_getCountdetails = `SELECT count(*) AS numRows FROM bank_data`;
         pool.query(sql_querry_getCountdetails, (err, rows, fields) => {
             if (err) {
-                console.error("An error occurd in SQL Queery", err);
+                console.error("An error occurred in SQL Queery", err);
                 return res.status(500).send('Database Error');
             } else {
                 const numRows = rows[0].numRows;
@@ -51,7 +51,7 @@ const getBankList = (req, res) => {
                                           Order BY bankName limit ${limit}`;
                 pool.query(sql_queries_getdetails, (err, rows, fields) => {
                     if (err) {
-                        console.error("An error occurd in SQL Queery", err);
+                        console.error("An error occurred in SQL Queery", err);
                         return res.status(500).send('Database Error');
                     } else {
                         if (numRows === 0) {
@@ -68,7 +68,7 @@ const getBankList = (req, res) => {
         })
 
     } catch (error) {
-        console.error('An error occurd', error);
+        console.error('An error occurred', error);
         res.status(500).send('Internal Server Error');
     }
 }
@@ -92,7 +92,7 @@ const addBankData = (req, res) => {
         } else {
             req.body.bankDisplayName = pool.query(`SELECT bankDisplayName FROM bank_data WHERE bankDisplayName = '${data.bankDisplayName}'`, function (err, row) {
                 if (err) {
-                    console.error("An error occurd in SQL Queery", err);
+                    console.error("An error occurred in SQL Queery", err);
                     return res.status(500).send('Database Error');
                 }
                 if (row && row.length) {
@@ -102,7 +102,7 @@ const addBankData = (req, res) => {
                                                    VALUES('${bankId}', '${data.bankName}', '${data.bankDisplayName}', ${data.bankShortForm ? `'${data.bankShortForm}'` : null}, '${data.bankIconName}', ${data.bankAccountNumber ? `'${data.bankAccountNumber}'` : null}, ${data.ifscCode ? `'${data.ifscCode}'` : null}, 0)`;
                     pool.query(sql_querry_addDetails, (err, data) => {
                         if (err) {
-                            console.error("An error occurd in SQL Queery", err);
+                            console.error("An error occurred in SQL Queery", err);
                             return res.status(500).send('Database Error');
                         }
                         return res.status(200).send("Bank Added Successfully");
@@ -111,7 +111,7 @@ const addBankData = (req, res) => {
             })
         }
     } catch (error) {
-        console.error('An error occurd', error);
+        console.error('An error occurred', error);
         res.status(500).send('Internal Server Error');
     }
 }
@@ -126,14 +126,14 @@ const removeBankData = async (req, res) => {
         }
         req.query.bankId = pool.query(`SELECT bankId FROM bank_data WHERE bankId = '${bankId}'`, (err, row) => {
             if (err) {
-                console.error("An error occurd in SQL Queery", err);
+                console.error("An error occurred in SQL Queery", err);
                 return res.status(500).send('Database Error');
             }
             if (row && row.length) {
                 const sql_querry_removedetails = `DELETE FROM bank_data WHERE bankId = '${bankId}'`;
                 pool.query(sql_querry_removedetails, (err, data) => {
                     if (err) {
-                        console.error("An error occurd in SQL Queery", err);
+                        console.error("An error occurred in SQL Queery", err);
                         return res.status(500).send('Database Error');
                     }
                     return res.status(200).send("Bank Deleted Successfully");
@@ -143,7 +143,7 @@ const removeBankData = async (req, res) => {
             }
         })
     } catch (error) {
-        console.error('An error occurd', error);
+        console.error('An error occurred', error);
         res.status(500).send('Internal Server Error');
     }
 }
@@ -166,7 +166,7 @@ const updateBankData = (req, res) => {
         } else {
             pool.query(`SELECT bankDisplayName FROM bank_data WHERE bankId NOT IN ('${bankId}')`, function (err, row) {
                 if (err) {
-                    console.error("An error occurd in SQL Queery", err);
+                    console.error("An error occurred in SQL Queery", err);
                     return res.status(500).send('Database Error');
                 }
                 const rowarr = Object.values(JSON.parse(JSON.stringify(row)));
@@ -188,7 +188,7 @@ const updateBankData = (req, res) => {
                                                         bankId = '${bankId}'`;
                     pool.query(sql_querry_updateDetails, (err, data) => {
                         if (err) {
-                            console.error("An error occurd in SQL Queery", err);
+                            console.error("An error occurred in SQL Queery", err);
                             return res.status(500).send('Database Error');
                         }
                         return res.status(200).send("Bank Update Successfully");
@@ -197,7 +197,7 @@ const updateBankData = (req, res) => {
             })
         }
     } catch (error) {
-        console.error('An error occurd', error);
+        console.error('An error occurred', error);
         res.status(500).send('Internal Server Error');
     }
 }
@@ -211,13 +211,13 @@ const getBankDetailsById = (req, res) => {
                                    WHERE bankId = '${bankId}'`;
         pool.query(sql_quey_getBankDetails, (err, data) => {
             if (err) {
-                onsole.error("An error occurd in SQL Queery", err);
+                onsole.error("An error occurred in SQL Queery", err);
                 return res.status(500).send('Database Error');
             }
             return res.status(200).send(data[0]);
         })
     } catch (error) {
-        console.error('An error occurd', error);
+        console.error('An error occurred', error);
         res.status(500).send('Internal Server Error');
     }
 }
@@ -238,13 +238,13 @@ const ddlToData = (req, res) => {
                                       ORDER BY bankDisplayName ASC`;
         pool.query(sql_query_getDDlData, (err, data) => {
             if (err) {
-                console.error("An error occurd in SQL Queery", err);
+                console.error("An error occurred in SQL Queery", err);
                 return res.status(500).send('Database Error');
             }
             return res.status(200).send(data);
         })
     } catch (error) {
-        console.error('An error occurd', error);
+        console.error('An error occurred', error);
         res.status(500).send('Internal Server Error');
     }
 }
@@ -284,7 +284,7 @@ const getBankStaticsById = (req, res) => {
         }
         pool.query(sql_queries_getAllStatics, (err, data) => {
             if (err) {
-                console.error("An error occurd in SQL Queery", err);
+                console.error("An error occurred in SQL Queery", err);
                 return res.status(500).send('Database Error');
             }
             const staticsData = {
@@ -297,7 +297,7 @@ const getBankStaticsById = (req, res) => {
             return res.status(200).send(staticsData);
         })
     } catch (error) {
-        console.error('An error occurd', error);
+        console.error('An error occurred', error);
         res.status(500).send('Internal Server Error');
     }
 }
@@ -345,13 +345,13 @@ const getDebitAmtForCategory = (req, res) => {
         }
         pool.query(sql_queries_getAllCategoryStatics, (err, data) => {
             if (err) {
-                console.error("An error occurd in SQL Queery", err);
+                console.error("An error occurred in SQL Queery", err);
                 return res.status(500).send('Database Error');
             }
             return res.status(200).send(data);
         })
     } catch (error) {
-        console.error('An error occurd', error);
+        console.error('An error occurred', error);
         res.status(500).send('Internal Server Error');
     }
 }

@@ -63,7 +63,7 @@ const getDeliveryDataByToken = (req, res) => {
                                                    ORDER BY btd.tokenNo DESC`;
                     pool.query(sql_query_getRecentBill, (err, data) => {
                         if (err) {
-                            console.error("An error occurd in SQL Queery", err);
+                            console.error("An error occurred in SQL Queery", err);
                             return res.status(500).send('Database Error');
                         } else {
                             if (data && data.length) {
@@ -79,7 +79,7 @@ const getDeliveryDataByToken = (req, res) => {
                                     let sql_query_chkBillStatus = `SELECT * FROM billing_data WHERE billId = '${billId}' AND billStatus = 'Print'`;
                                     pool.query(sql_query_chkBillStatus, (err, result) => {
                                         if (err) {
-                                            console.error("An error occurd in SQL Queery", err);
+                                            console.error("An error occurred in SQL Queery", err);
                                             return res.status(500).send('Database Error'); t
                                         } else {
                                             if (result && result.length) {
@@ -125,7 +125,7 @@ const getDeliveryDataByToken = (req, res) => {
                                                                    ${billType == 'Pick Up' || billType == 'Delivery' ? sql_query_getCustomerInfo : ''}`;
                                                 pool.query(sql_query_getBillData, (err, billData) => {
                                                     if (err) {
-                                                        console.error("An error occurd in SQL Queery", err);
+                                                        console.error("An error occurred in SQL Queery", err);
                                                         return res.status(500).send('Database Error'); t
                                                     } else {
                                                         const json = {
@@ -157,7 +157,7 @@ const getDeliveryDataByToken = (req, res) => {
             }
         }
     } catch (error) {
-        console.error('An error occurd', error);
+        console.error('An error occurred', error);
         res.status(500).json('Internal Server Error');
     }
 }
@@ -465,7 +465,7 @@ const addDeliveryData = (req, res) => {
                 }
             });
         } catch (error) {
-            console.error('An error occurd', error);
+            console.error('An error occurred', error);
             connection.rollback(() => {
                 connection.release();
                 return res.status(500).json('Internal Server Error');
@@ -566,7 +566,7 @@ const removeDeliveryData = (req, res) => {
                 }
             });
         } catch (error) {
-            console.error('An error occurd', error);
+            console.error('An error occurred', error);
             connection.rollback(() => {
                 connection.release();
                 return res.status(500).json('Internal Server Error');
@@ -755,7 +755,7 @@ const updateDeliveryData = (req, res) => {
                 }
             });
         } catch (error) {
-            console.error('An error occurd', error);
+            console.error('An error occurred', error);
             connection.rollback(() => {
                 connection.release();
                 return res.status(500).json('Internal Server Error');
@@ -891,7 +891,7 @@ const stopDeliveryData = (req, res) => {
                 }
             });
         } catch (error) {
-            console.error('An error occurd', error);
+            console.error('An error occurred', error);
             connection.rollback(() => {
                 connection.release();
                 return res.status(500).json('Internal Server Error');
@@ -1064,7 +1064,7 @@ const changePayTypeByDelivery = (req, res) => {
                 }
             });
         } catch (error) {
-            console.error('An error occurd', error);
+            console.error('An error occurred', error);
             connection.rollback(() => {
                 connection.release();
                 return res.status(500).json('Internal Server Error');

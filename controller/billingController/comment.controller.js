@@ -15,7 +15,7 @@ const getComment = async (req, res) => {
 
         pool.query(sql_queries_getCategoryTable, (err, rows, fields) => {
             if (err) {
-                console.error("An error occurd in SQL Queery", err);
+                console.error("An error occurred in SQL Queery", err);
                 return res.status(500).send('Database Error');;
             } else {
                 const data = rows.map((e) => {
@@ -25,7 +25,7 @@ const getComment = async (req, res) => {
             }
         });
     } catch (error) {
-        console.error('An error occurd', error);
+        console.error('An error occurred', error);
         res.status(500).json('Internal Server Error');
     }
 }
@@ -51,7 +51,7 @@ const addComment = async (req, res) => {
                 } else {
                     pool.query(`SELECT comment FROM billing_comment_data WHERE comment = '${data.comment}'`, function (err, row) {
                         if (err) {
-                            console.error("An error occurd in SQL Queery", err);
+                            console.error("An error occurred in SQL Queery", err);
                             return res.status(500).send('Database Error');
                         } else if (row && row.length) {
                             return res.status(400).send('Comment is Already In Use');
@@ -60,7 +60,7 @@ const addComment = async (req, res) => {
                                                             VALUES ('${commentId}','${data.comment}')`;
                             pool.query(sql_querry_addCategory, (err, data) => {
                                 if (err) {
-                                    console.error("An error occurd in SQL Queery", err);
+                                    console.error("An error occurred in SQL Queery", err);
                                     return res.status(500).send('Database Error');
                                 }
                                 return res.status(200).send("Comment Added Successfully");
@@ -75,7 +75,7 @@ const addComment = async (req, res) => {
             return res.status(404).send('Please Login First...!');
         }
     } catch (error) {
-        console.error('An error occurd', error);
+        console.error('An error occurred', error);
         res.status(500).send('Internal Server Error');
     }
 }
@@ -93,14 +93,14 @@ const removeComment = async (req, res) => {
                 const commentId = req.query.commentId.trim();
                 req.query.commentId = pool.query(`SELECT commentId FROM billing_comment_data WHERE commentId = '${commentId}'`, (err, row) => {
                     if (err) {
-                        console.error("An error occurd in SQL Queery", err);
+                        console.error("An error occurred in SQL Queery", err);
                         return res.status(500).send('Database Error');
                     }
                     if (row && row.length) {
                         const sql_querry_removedetails = `DELETE FROM billing_comment_data WHERE commentId = '${commentId}'`;
                         pool.query(sql_querry_removedetails, (err, data) => {
                             if (err) {
-                                console.error("An error occurd in SQL Queery", err);
+                                console.error("An error occurred in SQL Queery", err);
                                 return res.status(500).send('Database Error');
                             }
                             return res.status(200).send("Comment Deleted Successfully");
@@ -116,7 +116,7 @@ const removeComment = async (req, res) => {
             return res.status(404).send('Please Login First...!');
         }
     } catch (error) {
-        console.error('An error occurd', error);
+        console.error('An error occurred', error);
         res.status(500).send('Internal Server Error');
     }
 }
@@ -134,7 +134,7 @@ const updateComment = async (req, res) => {
         } else {
             pool.query(`SELECT comment FROM billing_comment_data WHERE comment = '${data.comment}' AND commentId != '${data.commentId}'`, function (err, row) {
                 if (err) {
-                    console.error("An error occurd in SQL Queery", err);
+                    console.error("An error occurred in SQL Queery", err);
                     return res.status(500).send('Database Error');
                 } else if (row && row.length) {
                     return res.status(400).send('Comment is Already In Use');
@@ -143,7 +143,7 @@ const updateComment = async (req, res) => {
                                                   WHERE commentId = '${data.commentId}'`;
                     pool.query(sql_querry_updatedetails, (err, data) => {
                         if (err) {
-                            console.error("An error occurd in SQL Queery", err);
+                            console.error("An error occurred in SQL Queery", err);
                             return res.status(500).send('Database Error');
                         }
                         return res.status(200).send("Comment Updated Successfully");
@@ -152,7 +152,7 @@ const updateComment = async (req, res) => {
             })
         }
     } catch (error) {
-        console.error('An error occurd', error);
+        console.error('An error occurred', error);
         res.status(500).send('Internal Server Error');
     }
 }
@@ -164,7 +164,7 @@ const updateComment = async (req, res) => {
 //         let sql_queries_getOldBillNo = `SELECT id, MAX(billNo) AS billNo FROM billing_test_no WHERE creationDate = (SELECT MAX(creationDate) FROM billing_test_no)`;
 //         pool.query(sql_queries_getOldBillNo, (err, data) => {
 //             if (err) {
-//                 console.error("An error occurd in SQL Queery", err);
+//                 console.error("An error occurred in SQL Queery", err);
 //                 return res.status(500).send('Database Error');
 //             } else {
 //                 const lastBillNo = data && data[0] && data[0].billNo ? data[0].billNo : 0;
@@ -173,7 +173,7 @@ const updateComment = async (req, res) => {
 //                                              VALUES(${lastBillNo} + 1)`;
 //                 pool.query(sql_queries_addBillNo, (err, data) => {
 //                     if (err) {
-//                         console.error("An error occurd in SQL Queery", err);
+//                         console.error("An error occurred in SQL Queery", err);
 //                         return res.status(500).send('Database Error');
 //                     } else {
 //                         return res.status(200).send('Bill Added Success');
@@ -182,7 +182,7 @@ const updateComment = async (req, res) => {
 //             }
 //         })
 //     } catch (error) {
-//         console.error('An error occurd', error);
+//         console.error('An error occurred', error);
 //         res.status(500).send('Internal Server Error');
 //     }
 // }

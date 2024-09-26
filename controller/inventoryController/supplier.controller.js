@@ -54,7 +54,7 @@ const getSupplierCounterDetailsById = (req, res) => {
         }
         pool.query(sql_querry_getSupplierCount, (err, data) => {
             if (err) {
-                console.error("An error occurd in SQL Queery", err);
+                console.error("An error occurred in SQL Queery", err);
                 return res.status(500).send('Database Error');
             }
             else {
@@ -70,7 +70,7 @@ const getSupplierCounterDetailsById = (req, res) => {
             }
         })
     } catch (error) {
-        console.error('An error occurd', error);
+        console.error('An error occurred', error);
         res.status(500).json('Internal Server Error');
     }
 }
@@ -141,13 +141,13 @@ const getProductDetailsBySupplierId = async (req, res) => {
         }
         pool.query(sql_querry_getProductBysupplier, (err, data) => {
             if (err) {
-                console.error("An error occurd in SQL Queery", err);
+                console.error("An error occurred in SQL Queery", err);
                 return res.status(500).send('Database Error');
             }
             return res.status(200).send(data);
         })
     } catch (error) {
-        console.error('An error occurd', error);
+        console.error('An error occurred', error);
         res.status(500).json('Internal Server Error');
     }
 }
@@ -173,7 +173,7 @@ const getAllProductDetailsBySupplierId = async (req, res) => {
         sql_querry_getAllProductBysupplierPagination = `SELECT COUNT(productId) AS numRows FROM inventory_supplierProducts_data WHERE supplierId = '${data.supplierId}'`;
         pool.query(sql_querry_getAllProductBysupplierPagination, (err, rows, fields) => {
             if (err) {
-                console.error("An error occurd in SQL Queery", err);
+                console.error("An error occurred in SQL Queery", err);
                 return res.status(500).send('Database Error');
             } else {
                 const numRows = rows[0].numRows;
@@ -272,7 +272,7 @@ const getAllProductDetailsBySupplierId = async (req, res) => {
                 console.log("fvikalpksamnfkn", sql_querry_getAllProductBysupplier);
                 pool.query(sql_querry_getAllProductBysupplier, (err, rows, fields) => {
                     if (err) {
-                        console.error("An error occurd in SQL Queery", err);
+                        console.error("An error occurred in SQL Queery", err);
                         return res.status(500).send('Database Error');;
                     } else {
                         console.log(rows);
@@ -291,7 +291,7 @@ const getAllProductDetailsBySupplierId = async (req, res) => {
             }
         })
     } catch (error) {
-        console.error('An error occurd', error);
+        console.error('An error occurred', error);
         res.status(500).json('Internal Server Error');
     }
 }
@@ -312,7 +312,7 @@ const getSupplierdata = (req, res) => {
         }
         pool.query(sql_querry_getdetails, (err, rows, fields) => {
             if (err) {
-                console.error("An error occurd in SQL Queery", err);
+                console.error("An error occurred in SQL Queery", err);
                 return res.status(500).send('Database Error');
             } else {
                 const numRows = rows[0].numRows;
@@ -378,7 +378,7 @@ const getSupplierdata = (req, res) => {
                 console.log('>>>', sql_querry_getSupplierData);
                 pool.query(sql_querry_getSupplierData, (err, rows, fields) => {
                     if (err) {
-                        console.error("An error occurd in SQL Queery", err);
+                        console.error("An error occurred in SQL Queery", err);
                         return res.status(500).send('Database Error');;
                     } else {
                         console.log(rows);
@@ -397,7 +397,7 @@ const getSupplierdata = (req, res) => {
             }
         })
     } catch (error) {
-        console.error('An error occurd', error);
+        console.error('An error occurred', error);
         res.status(500).send('Internal Server Error');
     }
 }
@@ -414,14 +414,14 @@ const getSupplierDetailsById = async (req, res) => {
                                     WHERE sd.supplierId = '${supplierId}'`;
         pool.query(sql_query_getDetailsById, (err, data) => {
             if (err) {
-                console.error("An error occurd in SQL Queery", err);
+                console.error("An error occurred in SQL Queery", err);
                 return res.status(500).send('Database Error');
             }
             return res.status(200).send(data[0]);
         })
 
     } catch (error) {
-        console.error('An error occurd', error);
+        console.error('An error occurred', error);
         res.status(500).send('Internal Server Error');
     }
 }
@@ -465,7 +465,7 @@ const addSupplierDetails = async (req, res) => {
         } else {
             req.body.supplierNickName = pool.query(`SELECT supplierNickName FROM inventory_supplier_data WHERE supplierNickName = '${data.supplierNickName}'`, function (err, row) {
                 if (err) {
-                    console.error("An error occurd in SQL Queery", err);
+                    console.error("An error occurred in SQL Queery", err);
                     return res.status(500).send('Database Error');
                 } else if (row && row.length) {
                     return res.status(400).send('Supplier is Already In Use');
@@ -474,13 +474,13 @@ const addSupplierDetails = async (req, res) => {
                                               VALUES ('${supplierId}',NULLIF('${data.supplierFirstName}','null'),NULLIF('${data.supplierLastName}','null'),'${data.supplierFirmName}',NULLIF('${data.supplierFirmAddress}','null'),'${data.supplierNickName}','${data.supplierPhoneNumber}',NULLIF('${data.supplierEmailId}','null'))`;
                     pool.query(sql_querry_addSupplier, (err, data) => {
                         if (err) {
-                            console.error("An error occurd in SQL Queery", err);
+                            console.error("An error occurred in SQL Queery", err);
                             return res.status(500).send('Database Error');
                         }
                         sql_queries_addsupllierProducts = `INSERT INTO inventory_supplierProducts_data (supplierId, productId) VALUES ${supllierProducts()}`;
                         pool.query(sql_queries_addsupllierProducts, (err, data) => {
                             if (err) {
-                                console.error("An error occurd in SQL Queery", err);
+                                console.error("An error occurred in SQL Queery", err);
                                 return res.status(500).send('Database Error');
                             }
                             return res.status(200).send("Supplier Added Successfully");
@@ -490,7 +490,7 @@ const addSupplierDetails = async (req, res) => {
             })
         }
     } catch (error) {
-        console.error('An error occurd', error);
+        console.error('An error occurred', error);
         res.status(500).send('Internal Server Error');
     }
 }
@@ -503,14 +503,14 @@ const removeSupplierDetails = async (req, res) => {
         const supplierId = req.query.supplierId
         req.query.userId = pool.query(`SELECT supplierId FROM inventory_supplier_data WHERE supplierId = '${supplierId}'`, (err, row) => {
             if (err) {
-                console.error("An error occurd in SQL Queery", err);
+                console.error("An error occurred in SQL Queery", err);
                 return res.status(500).send('Database Error');
             }
             if (row && row.length) {
                 const sql_querry_removedetails = `DELETE FROM inventory_supplier_data WHERE supplierId = '${supplierId}'`;
                 pool.query(sql_querry_removedetails, (err, data) => {
                     if (err) {
-                        console.error("An error occurd in SQL Queery", err);
+                        console.error("An error occurred in SQL Queery", err);
                         return res.status(500).send('Database Error');
                     }
                     return res.status(200).send("supplierId Deleted Successfully");
@@ -520,7 +520,7 @@ const removeSupplierDetails = async (req, res) => {
             }
         })
     } catch (error) {
-        console.error('An error occurd', error);
+        console.error('An error occurred', error);
         res.status(500).send('Internal Server Error');
     }
 }
@@ -537,7 +537,7 @@ const fillSupplierDetails = (req, res) => {
                                 SELECT GROUP_CONCAT(productId SEPARATOR ',') as productList FROM inventory_supplierProducts_data WHERE supplierId = '${supplierId}' GROUP BY supplierId;`;
         pool.query(sql_querry_fillUser, (err, data) => {
             if (err) {
-                console.error("An error occurd in SQL Queery", err);
+                console.error("An error occurred in SQL Queery", err);
                 return res.status(500).send('Database Error');
             }
             const supplierData = data[0][0]
@@ -552,7 +552,7 @@ const fillSupplierDetails = (req, res) => {
             return res.status(200).send(allData);
         })
     } catch (error) {
-        console.error('An error occurd', error);
+        console.error('An error occurred', error);
         res.status(500).json('Internal Server Error');
     }
 }
@@ -595,19 +595,19 @@ const updateSupplierDetails = async (req, res) => {
                                                                        WHERE supplierId = '${supplierId}'`;
         pool.query(sql_querry_updatedetails, (err, data) => {
             if (err) {
-                console.error("An error occurd in SQL Queery", err);
+                console.error("An error occurred in SQL Queery", err);
                 return res.status(500).send('Database Error');
             }
             sql_querry_deleteSupplierProducts = `DELETE FROM inventory_supplierProducts_data WHERE supplierId = '${supplierId}'`;
             pool.query(sql_querry_deleteSupplierProducts, (err, data) => {
                 if (err) {
-                    console.error("An error occurd in SQL Queery", err);
+                    console.error("An error occurred in SQL Queery", err);
                     return res.status(500).send('Database Error');
                 }
                 sql_queries_addsupllierProducts = `INSERT INTO inventory_supplierProducts_data (supplierId, productId) VALUES ${supllierProducts()}`;
                 pool.query(sql_queries_addsupllierProducts, (err, data) => {
                     if (err) {
-                        console.error("An error occurd in SQL Queery", err);
+                        console.error("An error occurred in SQL Queery", err);
                         return res.status(500).send('Database Error');
                     }
                     return res.status(200).send("Supplier Updated Successfully");
@@ -615,7 +615,7 @@ const updateSupplierDetails = async (req, res) => {
             })
         })
     } catch (error) {
-        console.error('An error occurd', error);
+        console.error('An error occurred', error);
         res.status(500).send('Internal Server Error');
     }
 }

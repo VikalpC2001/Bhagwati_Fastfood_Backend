@@ -25,7 +25,7 @@ const getMainCategoryList = (req, res) => {
         sql_querry_getCountdetails = `SELECT count(*) AS numRows FROM expense_category_data`;
         pool.query(sql_querry_getCountdetails, (err, rows, fields) => {
             if (err) {
-                console.error("An error occurd in SQL Queery", err);
+                console.error("An error occurred in SQL Queery", err);
                 return res.status(500).send('Database Error');
             } else {
                 const numRows = rows[0].numRows;
@@ -89,7 +89,7 @@ const getMainCategoryList = (req, res) => {
                 }
                 pool.query(sql_queries_getdetails, (err, rows, fields) => {
                     if (err) {
-                        console.error("An error occurd in SQL Queery", err);
+                        console.error("An error occurred in SQL Queery", err);
                         return res.status(500).send('Database Error');
                     } else {
                         const totalExpense = rows && rows[0] && rows[0].TotalExpAmt ? rows[0].TotalExpAmt : 0;
@@ -107,7 +107,7 @@ const getMainCategoryList = (req, res) => {
         })
 
     } catch (error) {
-        console.error('An error occurd', error);
+        console.error('An error occurred', error);
         res.status(500).send('Internal Server Error');
     }
 }
@@ -127,7 +127,7 @@ const addMainCategory = (req, res) => {
         } else {
             req.body.categoryName = pool.query(`SELECT categoryName FROM expense_category_data WHERE categoryName = '${data.categoryName}'`, function (err, row) {
                 if (err) {
-                    console.error("An error occurd in SQL Queery", err);
+                    console.error("An error occurred in SQL Queery", err);
                     return res.status(500).send('Database Error');
                 }
                 if (row && row.length) {
@@ -137,7 +137,7 @@ const addMainCategory = (req, res) => {
                                                 VALUES('${mainCategoryId}', '${data.categoryName}', '${data.categoryIconName}')`;
                     pool.query(sql_querry_addDetails, (err, data) => {
                         if (err) {
-                            console.error("An error occurd in SQL Queery", err);
+                            console.error("An error occurred in SQL Queery", err);
                             return res.status(500).send('Database Error');
                         }
                         return res.status(200).send("Category Added Successfully");
@@ -146,7 +146,7 @@ const addMainCategory = (req, res) => {
             })
         }
     } catch (error) {
-        console.error('An error occurd', error);
+        console.error('An error occurred', error);
         res.status(500).json('Internal Server Error');
     }
 }
@@ -162,14 +162,14 @@ const removeMainCategory = async (req, res) => {
         }
         req.query.mainCategoryId = pool.query(`SELECT categoryId FROM expense_category_data WHERE categoryId = '${mainCategoryId}'`, (err, row) => {
             if (err) {
-                console.error("An error occurd in SQL Queery", err);
+                console.error("An error occurred in SQL Queery", err);
                 return res.status(500).send('Database Error');
             }
             if (row && row.length) {
                 const sql_querry_removedetails = `DELETE FROM expense_category_data WHERE categoryId = '${mainCategoryId}'`;
                 pool.query(sql_querry_removedetails, (err, data) => {
                     if (err) {
-                        console.error("An error occurd in SQL Queery", err);
+                        console.error("An error occurred in SQL Queery", err);
                         return res.status(500).send('Database Error');
                     }
                     return res.status(200).send("Category Deleted Successfully");
@@ -179,7 +179,7 @@ const removeMainCategory = async (req, res) => {
             }
         })
     } catch (error) {
-        console.error('An error occurd', error);
+        console.error('An error occurred', error);
         res.status(500).send('Internal Server Error');
     }
 }
@@ -198,7 +198,7 @@ const updateMainCategory = (req, res) => {
         } else {
             req.body.categoryName = pool.query(`SELECT categoryName FROM expense_category_data WHERE categoryId NOT IN ('${mainCategoryId}')`, function (err, row) {
                 if (err) {
-                    console.error("An error occurd in SQL Queery", err);
+                    console.error("An error occurred in SQL Queery", err);
                     return res.status(500).send('Database Error');
                 }
                 const rowarr = Object.values(JSON.parse(JSON.stringify(row)));
@@ -216,7 +216,7 @@ const updateMainCategory = (req, res) => {
                                                     categoryId = '${mainCategoryId}'`;
                     pool.query(sql_querry_updateDetails, (err, data) => {
                         if (err) {
-                            console.error("An error occurd in SQL Queery", err);
+                            console.error("An error occurred in SQL Queery", err);
                             return res.status(500).send('Database Error');
                         }
                         return res.status(200).send("Category Update Successfully");
@@ -225,7 +225,7 @@ const updateMainCategory = (req, res) => {
             })
         }
     } catch (error) {
-        console.error('An error occurd', error);
+        console.error('An error occurred', error);
         res.status(500).send('Internal Server Error');
     }
 }
@@ -237,13 +237,13 @@ const ddlMainCategoryData = (req, res) => {
         const sql_query_getDDlData = `SELECT categoryId, categoryName FROM expense_category_data`;
         pool.query(sql_query_getDDlData, (err, data) => {
             if (err) {
-                console.error("An error occurd in SQL Queery", err);
+                console.error("An error occurred in SQL Queery", err);
                 return res.status(500).send('Database Error');
             }
             return res.status(200).send(data);
         })
     } catch (error) {
-        console.error('An error occurd', error);
+        console.error('An error occurred', error);
         res.status(500).send('Internal Server Error');
     }
 }
@@ -285,13 +285,13 @@ const getMainCategoryDashboard = (req, res) => {
         }
         pool.query(sql_query_getStaticsData, (err, data) => {
             if (err) {
-                console.error("An error occurd in SQL Queery", err);
+                console.error("An error occurred in SQL Queery", err);
                 return res.status(500).send('Database Error');
             }
             return res.status(200).send(data);
         })
     } catch (error) {
-        console.error('An error occurd', error);
+        console.error('An error occurred', error);
         res.status(500).send('Internal Server Error');
     }
 }
@@ -509,7 +509,7 @@ async function createPDF(res, datas, sumFooterArray, tableHeading) {
         // fs.writeFileSync(pdfFilename, doc.output());
         // console.log(`PDF saved as ${pdfFilename}`);
     } catch (error) {
-        console.error('An error occurd', error);
+        console.error('An error occurred', error);
         res.status(500).json('Internal Server Error');
     }
 }
@@ -565,7 +565,7 @@ const exportPdfForMainCategoryData = (req, res) => {
         }
         pool.query(sql_queries_getdetails, (err, rows) => {
             if (err) {
-                console.error("An error occurd in SQL Queery", err);
+                console.error("An error occurred in SQL Queery", err);
                 return res.status(500).send('Database Error');
             } else if (rows && rows.length <= 0) {
                 return res.status(400).send('No Data Found');
@@ -600,7 +600,7 @@ const exportPdfForMainCategoryData = (req, res) => {
             });
         });
     } catch (error) {
-        console.error('An error occurd', error);
+        console.error('An error occurred', error);
         res.status(500).send('Internal Server Error');
     }
 }

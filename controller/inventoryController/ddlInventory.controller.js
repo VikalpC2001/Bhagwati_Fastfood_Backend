@@ -31,13 +31,13 @@ const ddlProduct = (req, res) => {
                                             ORDER BY p.productName`;
         pool.query(sql_querry_getddlProduct, (err, data) => {
             if (err) {
-                console.error("An error occurd in SQL Queery", err);
+                console.error("An error occurred in SQL Queery", err);
                 return res.status(500).send('Database Error');
             }
             return res.status(200).send(data);
         })
     } catch (error) {
-        console.error('An error occurd', error);
+        console.error('An error occurred', error);
         res.status(500).send('Internal Server Error');
     }
 }
@@ -53,14 +53,14 @@ const productWiseSupplierDDL = (req, res) => {
                                     WHERE productId = '${productId}'`;
         pool.query(sql_querry_getddlandUnit, (err, data) => {
             if (err) {
-                console.error("An error occurd in SQL Queery", err);
+                console.error("An error occurred in SQL Queery", err);
                 return res.status(500).send('Database Error');
             }
             return res.status(200).send(data);
         })
 
     } catch (error) {
-        console.error('An error occurd', error);
+        console.error('An error occurred', error);
         res.status(500).json('Internal Server Error');
     }
 }
@@ -72,13 +72,13 @@ const ddlStockOutCategory = (req, res) => {
         const sql_querry_getddlCategory = `SELECT stockOutCategoryId, UPPER(stockOutCategoryName) AS stockOutCategoryName FROM inventory_stockOutCategory_data ORDER BY stockOutCategoryName`;
         pool.query(sql_querry_getddlCategory, (err, data) => {
             if (err) {
-                console.error("An error occurd in SQL Queery", err);
+                console.error("An error occurred in SQL Queery", err);
                 return res.status(500).send('Database Error');
             }
             return res.status(200).send(data);
         })
     } catch (error) {
-        console.error('An error occurd', error);
+        console.error('An error occurred', error);
         res.status(500).send('Internal Server Error');
     }
 }

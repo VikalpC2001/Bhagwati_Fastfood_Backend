@@ -32,7 +32,7 @@ const searchCustomerData = (req, res) => {
                                           WHERE bcd.customerMobileNumber LIKE '%` + searchWord + `%'`;
         pool.query(sql_queries_searchCustomer, (err, rows, fields) => {
             if (err) {
-                console.error("An error occurd in SQL Queery", err);
+                console.error("An error occurred in SQL Queery", err);
                 return res.status(500).send('Database Error');;
             } else {
                 if (searchWord) {
@@ -43,7 +43,7 @@ const searchCustomerData = (req, res) => {
             }
         });
     } catch (error) {
-        console.error('An error occurd', error);
+        console.error('An error occurred', error);
         res.status(500).json('Internal Server Error');
     }
 };
@@ -59,7 +59,7 @@ const getCustomerList = (req, res) => {
         sql_querry_getCountDetails = `SELECT count(*) as numRows FROM billing_customer_data`;
         pool.query(sql_querry_getCountDetails, (err, rows, fields) => {
             if (err) {
-                console.error("An error occurd in SQL Queery", err);
+                console.error("An error occurred in SQL Queery", err);
                 return res.status(500).send('Database Error');
             } else {
                 const numRows = rows[0].numRows;
@@ -73,7 +73,7 @@ const getCustomerList = (req, res) => {
                                               LIMIT ${limit}`;
                 pool.query(sql_query_getDetails, (err, rows, fields) => {
                     if (err) {
-                        console.error("An error occurd in SQL Queery", err);
+                        console.error("An error occurred in SQL Queery", err);
                         return res.status(500).send('Database Error');;
                     } else {
                         if (numRows === 0) {
@@ -89,7 +89,7 @@ const getCustomerList = (req, res) => {
             }
         })
     } catch (error) {
-        console.error('An error occurd', error);
+        console.error('An error occurred', error);
         res.status(500).json('Internal Server Error');
     }
 }
@@ -119,7 +119,7 @@ const getCustomerDetailsById = (req, res) => {
                                          WHERE customerId = '${customerId}'`;
             pool.query(sql_query_getCustomerData, (err, data) => {
                 if (err) {
-                    console.error("An error occurd in SQL Queery", err);
+                    console.error("An error occurred in SQL Queery", err);
                     return res.status(500).send('Database Error');;
                 } else {
                     let json = {
@@ -131,7 +131,7 @@ const getCustomerDetailsById = (req, res) => {
             })
         }
     } catch (error) {
-        console.error('An error occurd', error);
+        console.error('An error occurred', error);
         res.status(500).json('Internal Server Error');
     }
 }
@@ -155,7 +155,7 @@ const addMultipleCustomerData = (req, res) => {
         let chk_sql_mobileNoExist = `SELECT customerId FROM billing_customer_data WHERE customerMobileNumber = '${data.mobileNo}'`;
         pool.query(chk_sql_mobileNoExist, (err, no) => {
             if (err) {
-                console.error("An error occurd in SQL Queery", err);
+                console.error("An error occurred in SQL Queery", err);
                 return res.status(500).send('Database Error');
             } else {
                 const existCustomerId = no && no.length ? no[0].customerId : null;
@@ -164,7 +164,7 @@ const addMultipleCustomerData = (req, res) => {
                         sql_query_chkAddress = `SELECT customerAddress FROM billing_customerAddress_data WHERE customerId = '${existCustomerId}' AND customerAddress = '${data.address}'`;
                         pool.query(sql_query_chkAddress, (err, chkAdd) => {
                             if (err) {
-                                console.error("An error occurd in SQL Queery", err);
+                                console.error("An error occurred in SQL Queery", err);
                                 return res.status(500).send('Database Error');
                             } else {
                                 if (chkAdd && chkAdd.length) {
@@ -174,7 +174,7 @@ const addMultipleCustomerData = (req, res) => {
                                                                             VALUES('${newAddressId}', '${existCustomerId}', TRIM('${data.address}'), ${data.locality ? `TRIM('${data.locality}')` : null})`;
                                     pool.query(sql_query_addExistCustomerNewAddress, (err, newAdd) => {
                                         if (err) {
-                                            console.error("An error occurd in SQL Queery", err);
+                                            console.error("An error occurred in SQL Queery", err);
                                             return res.status(500).send('Database Error');
                                         } else {
                                             return res.status(200).send('Customer New Address Added Successfully');
@@ -191,7 +191,7 @@ const addMultipleCustomerData = (req, res) => {
                                                 VALUES('${newCustometId}', ${data.name ? `TRIM('${data.name}')` : null}, '${data.mobileNo}', NULL, NULL)`;
                     pool.query(sql_query_addNewCustomer, (err, customer) => {
                         if (err) {
-                            console.error("An error occurd in SQL Queery", err);
+                            console.error("An error occurred in SQL Queery", err);
                             return res.status(500).send('Database Error');
                         } else {
                             if (data.address) {
@@ -199,7 +199,7 @@ const addMultipleCustomerData = (req, res) => {
                                                                    VALUES('${newAddressId}', '${newCustometId}', TRIM('${data.address}'), ${data.locality ? `TRIM('${data.locality}')` : null})`;
                                 pool.query(sql_query_addCustomerNewAddress, (err, adds) => {
                                     if (err) {
-                                        console.error("An error occurd in SQL Queery", err);
+                                        console.error("An error occurred in SQL Queery", err);
                                         return res.status(500).send('Database Error');
                                     } else {
                                         return res.status(200).send('Customer Added Successfully');
@@ -214,7 +214,7 @@ const addMultipleCustomerData = (req, res) => {
             }
         })
     } catch (error) {
-        console.error('An error occurd', error);
+        console.error('An error occurred', error);
         res.status(500).json('Internal Server Error');
     }
 }
@@ -327,7 +327,7 @@ const addCustomerData = (req, res) => {
             })
         } catch (error) {
             connection.rollback(() => {
-                console.error('An error occurd', error);
+                console.error('An error occurred', error);
                 connection.release();
                 return res.status(500).json('Internal Server Error');
             })
@@ -458,7 +458,7 @@ const updateCustomerData = (req, res) => {
             })
         } catch (error) {
             connection.rollback(() => {
-                console.error('An error occurd', error);
+                console.error('An error occurred', error);
                 connection.release();
                 return res.status(500).json('Internal Server Error');
             })

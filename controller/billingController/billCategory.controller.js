@@ -90,7 +90,7 @@ const updateBillCategoryData = (req, res) => {
                                             categoryId = '${data.categoryId}'`;
             pool.query(sql_query_updateData, (err, data) => {
                 if (err) {
-                    console.error("An error occurd in SQL Queery", err);
+                    console.error("An error occurred in SQL Queery", err);
                     return res.status(500).send('Database Error');
                 } else {
                     return res.status(200).send('Record Updated Successfully');
@@ -98,7 +98,7 @@ const updateBillCategoryData = (req, res) => {
             })
         }
     } catch (error) {
-        console.error('An error occurd', error);
+        console.error('An error occurred', error);
         res.status(500).send('Internal Server Error');
     }
 }

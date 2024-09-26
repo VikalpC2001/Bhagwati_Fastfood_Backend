@@ -184,14 +184,14 @@ const getFirmData = async (req, res) => {
 
         pool.query(sql_queries_getDetails, (err, rows, fields) => {
             if (err) {
-                console.error("An error occurd in SQL Queery", err);
+                console.error("An error occurred in SQL Queery", err);
                 return res.status(500).send('Database Error');;
             } else {
                 return res.status(200).send(rows);
             }
         });
     } catch (error) {
-        console.error('An error occurd', error);
+        console.error('An error occurred', error);
         res.status(500).json('Internal Server Error');
     }
 }
@@ -222,7 +222,7 @@ const addFirmData = async (req, res) => {
                 } else {
                     pool.query(`SELECT firmName FROM billing_firm_data WHERE firmName = '${data.firmName}'`, function (err, row) {
                         if (err) {
-                            console.error("An error occurd in SQL Queery", err);
+                            console.error("An error occurred in SQL Queery", err);
                             return res.status(500).send('Database Error');
                         } else if (row && row.length) {
                             return res.status(400).send('Firm is Already In Use');
@@ -231,7 +231,7 @@ const addFirmData = async (req, res) => {
                                                             VALUES ('${firmId}','${data.firmName}','${data.gstNumber}','${data.firmAddress}',${data.pincode},'${data.firmMobileNo}',NULLIF('${data.otherMobileNo}','null'))`;
                             pool.query(sql_querry_addCategory, (err, data) => {
                                 if (err) {
-                                    console.error("An error occurd in SQL Queery", err);
+                                    console.error("An error occurred in SQL Queery", err);
                                     return res.status(500).send('Database Error');
                                 }
                                 return res.status(200).send("Firm Added Successfully");
@@ -246,7 +246,7 @@ const addFirmData = async (req, res) => {
             return res.status(404).send('Please Login First...!');
         }
     } catch (error) {
-        console.error('An error occurd', error);
+        console.error('An error occurred', error);
         res.status(500).send('Internal Server Error');
     }
 }
@@ -264,14 +264,14 @@ const removeFirmData = async (req, res) => {
                 const firmId = req.query.firmId.trim();
                 req.query.firmId = pool.query(`SELECT firmId FROM billing_firm_data WHERE firmId = '${firmId}'`, (err, row) => {
                     if (err) {
-                        console.error("An error occurd in SQL Queery", err);
+                        console.error("An error occurred in SQL Queery", err);
                         return res.status(500).send('Database Error');
                     }
                     if (row && row.length) {
                         const sql_querry_removedetails = `DELETE FROM billing_firm_data WHERE firmId = '${firmId}'`;
                         pool.query(sql_querry_removedetails, (err, data) => {
                             if (err) {
-                                console.error("An error occurd in SQL Queery", err);
+                                console.error("An error occurred in SQL Queery", err);
                                 return res.status(500).send('Database Error');
                             }
                             return res.status(200).send("Firm Deleted Successfully");
@@ -287,7 +287,7 @@ const removeFirmData = async (req, res) => {
             return res.status(404).send('Please Login First...!');
         }
     } catch (error) {
-        console.error('An error occurd', error);
+        console.error('An error occurred', error);
         res.status(500).send('Internal Server Error');
     }
 }
@@ -312,7 +312,7 @@ const updateFirmData = async (req, res) => {
         }
         pool.query(`SELECT firmName FROM billing_firm_data WHERE firmName = '${data.firmName}' AND firmId != '${data.firmId}'`, function (err, row) {
             if (err) {
-                console.error("An error occurd in SQL Queery", err);
+                console.error("An error occurred in SQL Queery", err);
                 return res.status(500).send('Database Error');
             } else if (row && row.length) {
                 return res.status(400).send('Firm is Already In Use');
@@ -329,7 +329,7 @@ const updateFirmData = async (req, res) => {
                                                   WHERE firmId = '${data.firmId}'`;
                 pool.query(sql_querry_updatedetails, (err, data) => {
                     if (err) {
-                        console.error("An error occurd in SQL Queery", err);
+                        console.error("An error occurred in SQL Queery", err);
                         return res.status(500).send('Database Error');
                     }
                     return res.status(200).send("Firm Updated Successfully");
@@ -337,7 +337,7 @@ const updateFirmData = async (req, res) => {
             }
         })
     } catch (error) {
-        console.error('An error occurd', error);
+        console.error('An error occurred', error);
         res.status(500).send('Internal Server Error');
     }
 }
@@ -354,14 +354,14 @@ const ddlFirmData = (req, res) => {
 
         pool.query(sql_queries_getDetails, (err, rows, fields) => {
             if (err) {
-                console.error("An error occurd in SQL Queery", err);
+                console.error("An error occurred in SQL Queery", err);
                 return res.status(500).send('Database Error');;
             } else {
                 return res.status(200).send(rows);
             }
         });
     } catch (error) {
-        console.error('An error occurd', error);
+        console.error('An error occurred', error);
         res.status(500).send('Internal Server Error');
     }
 }
@@ -419,7 +419,7 @@ const getTaxReportByFirmId = (req, res) => {
                                      ${sql_query_getFirmData}`;
         pool.query(sql_querry_getDetails, (err, data) => {
             if (err) {
-                console.error("An error occurd in SQL Queery", err);
+                console.error("An error occurred in SQL Queery", err);
                 return res.status(500).send('Database Error');
             } else {
                 if (data && data[0].length) {
@@ -457,7 +457,7 @@ const getTaxReportByFirmId = (req, res) => {
             }
         })
     } catch (error) {
-        console.error('An error occurd', error);
+        console.error('An error occurred', error);
         res.status(500).send('Internal Server Error');
     }
 }

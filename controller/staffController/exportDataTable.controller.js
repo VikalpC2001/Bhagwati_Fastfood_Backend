@@ -1667,7 +1667,7 @@ async function createPDF(res, datas, sumFooterArray, tableHeading) {
         // fs.writeFileSync(pdfFilename, doc.output());
         // console.log(`PDF saved as ${pdfFilename}`);
     } catch (error) {
-        console.error('An error occurd', error);
+        console.error('An error occurred', error);
         res.status(500).json('Internal Server Error');
     }
 }
@@ -1714,7 +1714,7 @@ const exportPdfForAllTransactionData = (req, res) => {
         }
         pool.query(sql_queries_getdetails, (err, rows) => {
             if (err) {
-                console.error("An error occurd in SQL Queery", err);
+                console.error("An error occurred in SQL Queery", err);
                 return res.status(500).send('Database Error');
             } else if (rows && rows.length <= 0) {
                 return res.status(400).send('No Data Found');
@@ -1742,7 +1742,7 @@ const exportPdfForAllTransactionData = (req, res) => {
                 });
         });
     } catch (error) {
-        console.error('An error occurd', error);
+        console.error('An error occurred', error);
         res.status(500).send('Internal Server Error');
     }
 }
@@ -1779,7 +1779,7 @@ const exportPdfForAllAdvanceData = (req, res) => {
 
         pool.query(sql_queries_getdetails, (err, rows) => {
             if (err) {
-                console.error("An error occurd in SQL Queery", err);
+                console.error("An error occurred in SQL Queery", err);
                 return res.status(500).send('Database Error');
             } else if (rows && rows.length <= 0) {
                 return res.status(400).send('No Data Found');
@@ -1806,7 +1806,7 @@ const exportPdfForAllAdvanceData = (req, res) => {
                 });
         });
     } catch (error) {
-        console.error('An error occurd', error);
+        console.error('An error occurred', error);
         res.status(500).send('Internal Server Error');
     }
 }
@@ -1852,7 +1852,7 @@ const exportPdfForALLFineData = (req, res) => {
         }
         pool.query(sql_queries_getdetails, (err, rows) => {
             if (err) {
-                console.error("An error occurd in SQL Queery", err);
+                console.error("An error occurred in SQL Queery", err);
                 return res.status(500).send('Database Error');
             } else if (rows && rows.length <= 0) {
                 return res.status(400).send('No Data Found');
@@ -1883,7 +1883,7 @@ const exportPdfForALLFineData = (req, res) => {
                 });
         });
     } catch (error) {
-        console.error('An error occurd', error);
+        console.error('An error occurred', error);
         res.status(500).send('Internal Server Error');
     }
 }
@@ -1918,7 +1918,7 @@ const exportPdfForAllBonusData = (req, res) => {
         }
         pool.query(sql_queries_getdetails, (err, rows) => {
             if (err) {
-                console.error("An error occurd in SQL Queery", err);
+                console.error("An error occurred in SQL Queery", err);
                 return res.status(500).send('Database Error');
             } else if (rows && rows.length <= 0) {
                 return res.status(400).send('No Data Found');
@@ -1944,7 +1944,7 @@ const exportPdfForAllBonusData = (req, res) => {
                 });
         });
     } catch (error) {
-        console.error('An error occurd', error);
+        console.error('An error occurred', error);
         res.status(500).send('Internal Server Error');
     }
 }
@@ -1980,7 +1980,7 @@ const exportPdfForAllCreditData = (req, res) => {
         }
         pool.query(sql_queries_getdetails, (err, rows) => {
             if (err) {
-                console.error("An error occurd in SQL Queery", err);
+                console.error("An error occurred in SQL Queery", err);
                 return res.status(500).send('Database Error');
             } else if (rows && rows.length <= 0) {
                 return res.status(400).send('No Data Found');
@@ -2006,7 +2006,7 @@ const exportPdfForAllCreditData = (req, res) => {
                 });
         });
     } catch (error) {
-        console.error('An error occurd', error);
+        console.error('An error occurred', error);
         res.status(500).send('Internal Server Error');
     }
 }
@@ -2039,7 +2039,7 @@ const exportPdfForAllLeaveData = (req, res) => {
         }
         pool.query(sql_queries_getdetails, (err, rows) => {
             if (err) {
-                console.error("An error occurd in SQL Queery", err);
+                console.error("An error occurred in SQL Queery", err);
                 return res.status(500).send('Database Error');
             } else if (rows && rows.length <= 0) {
                 return res.status(400).send('No Data Found');
@@ -2065,7 +2065,7 @@ const exportPdfForAllLeaveData = (req, res) => {
                 });
         });
     } catch (error) {
-        console.error('An error occurd', error);
+        console.error('An error occurred', error);
         res.status(500).send('Internal Server Error');
     }
 }
@@ -2200,7 +2200,7 @@ const exportPdfForEmployeeMonthlySalaryData = (req, res) => {
         }
         pool.query(sql_queries_getdetails, (err, rows) => {
             if (err) {
-                console.error("An error occurd in SQL Queery", err);
+                console.error("An error occurred in SQL Queery", err);
                 return res.status(500).send('Database Error');
             } else if (rows && rows[1].length <= 0) {
                 return res.status(400).send('No Data Found');
@@ -2238,7 +2238,7 @@ const exportPdfForEmployeeMonthlySalaryData = (req, res) => {
                 });
         });
     } catch (error) {
-        console.error('An error occurd', error);
+        console.error('An error occurred', error);
         res.status(500).send('Internal Server Error');
     }
 }
@@ -2273,7 +2273,7 @@ const exportPdfForAdvanceData = (req, res) => {
         }
         pool.query(sql_queries_getdetails, (err, rows) => {
             if (err) {
-                console.error("An error occurd in SQL Queery", err);
+                console.error("An error occurred in SQL Queery", err);
                 return res.status(500).send('Database Error');
             } else if (rows && rows[1].length <= 0) {
                 return res.status(400).send('No Data Found');
@@ -2304,7 +2304,7 @@ const exportPdfForAdvanceData = (req, res) => {
                 });
         });
     } catch (error) {
-        console.error('An error occurd', error);
+        console.error('An error occurred', error);
         res.status(500).send('Internal Server Error');
     }
 }
@@ -2351,7 +2351,7 @@ const exportPdfForFineData = (req, res) => {
         }
         pool.query(sql_queries_getdetails, (err, rows) => {
             if (err) {
-                console.error("An error occurd in SQL Queery", err);
+                console.error("An error occurred in SQL Queery", err);
                 return res.status(500).send('Database Error');
             } else if (rows && rows[1].length <= 0) {
                 return res.status(400).send('No Data Found');
@@ -2391,7 +2391,7 @@ const exportPdfForFineData = (req, res) => {
                 });
         });
     } catch (error) {
-        console.error('An error occurd', error);
+        console.error('An error occurred', error);
         res.status(500).send('Internal Server Error');
     }
 }
@@ -2426,7 +2426,7 @@ const exportPdfForBonusData = (req, res) => {
 
         pool.query(sql_queries_getdetails, (err, rows) => {
             if (err) {
-                console.error("An error occurd in SQL Queery", err);
+                console.error("An error occurred in SQL Queery", err);
                 return res.status(500).send('Database Error');
             } else if (rows && rows[1].length <= 0) {
                 return res.status(400).send('No Data Found');
@@ -2456,7 +2456,7 @@ const exportPdfForBonusData = (req, res) => {
                 });
         });
     } catch (error) {
-        console.error('An error occurd', error);
+        console.error('An error occurred', error);
         res.status(500).send('Internal Server Error');
     }
 }
@@ -2492,7 +2492,7 @@ const exportPdfForCreditData = (req, res) => {
         console.log(sql_queries_getdetails);
         pool.query(sql_queries_getdetails, (err, rows) => {
             if (err) {
-                console.error("An error occurd in SQL Queery", err);
+                console.error("An error occurred in SQL Queery", err);
                 return res.status(500).send('Database Error');
             } else if (rows && rows[1].length <= 0) {
                 return res.status(400).send('No Data Found');
@@ -2522,7 +2522,7 @@ const exportPdfForCreditData = (req, res) => {
                 });
         });
     } catch (error) {
-        console.error('An error occurd', error);
+        console.error('An error occurred', error);
         res.status(500).send('Internal Server Error');
     }
 }
@@ -2555,7 +2555,7 @@ const exportPdfForLeaveData = (req, res) => {
         }
         pool.query(sql_queries_getdetails, (err, rows) => {
             if (err) {
-                console.error("An error occurd in SQL Queery", err);
+                console.error("An error occurred in SQL Queery", err);
                 return res.status(500).send('Database Error');
             } else if (rows && rows[1].length <= 0) {
                 return res.status(400).send('No Data Found');
@@ -2585,7 +2585,7 @@ const exportPdfForLeaveData = (req, res) => {
                 });
         });
     } catch (error) {
-        console.error('An error occurd', error);
+        console.error('An error occurred', error);
         res.status(500).send('Internal Server Error');
     }
 }
@@ -2624,7 +2624,7 @@ const exportPdfForTransactionData = (req, res) => {
         }
         pool.query(sql_queries_getdetails, (err, rows) => {
             if (err) {
-                console.error("An error occurd in SQL Queery", err);
+                console.error("An error occurred in SQL Queery", err);
                 return res.status(500).send('Database Error');
             } else if (rows && rows[1].length <= 0) {
                 return res.status(400).send('No Data Found');
@@ -2656,7 +2656,7 @@ const exportPdfForTransactionData = (req, res) => {
                 });
         });
     } catch (error) {
-        console.error('An error occurd', error);
+        console.error('An error occurred', error);
         res.status(500).send('Internal Server Error');
     }
 }

@@ -106,7 +106,7 @@ const getBusinessReportDashBoard = (req, res) => {
         }
         pool.query(sql_querry_getDetails, (err, data) => {
             if (err) {
-                console.error("An error occurd in SQL Queery", err);
+                console.error("An error occurred in SQL Queery", err);
                 return res.status(500).send('Database Error');
             }
             const cashAmtSum = data[0].filter(item => item.businessType === 'CASH').reduce((sum, item) => sum + item.businessAmt, 0);
@@ -134,7 +134,7 @@ const getBusinessReportDashBoard = (req, res) => {
             return res.status(200).send(combinedData);
         })
     } catch (error) {
-        console.error('An error occurd', error);
+        console.error('An error occurred', error);
         res.status(500).send('Internal Server Error');
     }
 }
@@ -196,7 +196,7 @@ const getBusinessReportDashBoardwithNetProfit = (req, res) => {
         }
         pool.query(sql_querry_getDetails, (err, data) => {
             if (err) {
-                console.error("An error occurd in SQL Queery", err);
+                console.error("An error occurred in SQL Queery", err);
                 return res.status(500).send('Database Error');
             }
             const cashAmtSum = data[0].filter(item => item.businessType === 'CASH').reduce((sum, item) => sum + item.businessAmt, 0);
@@ -222,7 +222,7 @@ const getBusinessReportDashBoardwithNetProfit = (req, res) => {
             return res.status(200).send(combinedData);
         })
     } catch (error) {
-        console.error('An error occurd', error);
+        console.error('An error occurred', error);
         res.status(500).send('Internal Server Error');
     }
 }
@@ -266,7 +266,7 @@ const addBusinessReport = (req, res) => {
                 console.log(addBRdata);
                 businessReport[keys[1]] = pool.query(`SELECT businessCategoryId FROM business_report_data WHERE businessDate = STR_TO_DATE('${data.reportDate}','%b %d %Y')`, function (err, row) {
                     if (err) {
-                        console.error("An error occurd in SQL Queery", err);
+                        console.error("An error occurred in SQL Queery", err);
                         return res.status(500).send('Database Error');
                     }
                     if (row && row.length) {
@@ -278,7 +278,7 @@ const addBusinessReport = (req, res) => {
                                                        VALUES ${addBRdata}`;
                         pool.query(sql_querry_addDetails, (err, result) => {
                             if (err) {
-                                console.error("An error occurd in SQL Queery", err);
+                                console.error("An error occurred in SQL Queery", err);
                                 return res.status(500).send('Database Error');
                             }
                             // sql_querry_getWalletAvailableBalance = `SELECT bd.availableBalance + COALESCE(SUM(dtd.debitAmount),0) - COALESCE(SUM(ctd.creditAmount),0) AS availableBalance FROM bank_data AS bd
@@ -288,7 +288,7 @@ const addBusinessReport = (req, res) => {
                             //                                         GROUP BY bd.bankId;`;
                             // pool.query(sql_querry_getWalletAvailableBalance, (err, raw) => {
                             //     if (err) {
-                            //         console.error("An error occurd in SQL Queery", err);
+                            //         console.error("An error occurred in SQL Queery", err);
                             //         return res.status(500).send('Database Error');
                             //     }
                             //     const availableBalance = raw[0].availableBalance;
@@ -320,7 +320,7 @@ const addBusinessReport = (req, res) => {
                             //     }
                             //     pool.query(sql_query_addMistakeData, (err, mistakeResult) => {
                             //         if (err) {
-                            //             console.error("An error occurd in SQL Queery", err);
+                            //             console.error("An error occurred in SQL Queery", err);
                             //             return res.status(500).send('Database Error');
                             //         }
                             //         console.log('Change');
@@ -335,7 +335,7 @@ const addBusinessReport = (req, res) => {
             res.status(401).send("Please Login Firest.....!");
         }
     } catch (error) {
-        console.error('An error occurd', error);
+        console.error('An error occurred', error);
         res.status(500).send('Internal Server Error');
     }
 }
@@ -350,14 +350,14 @@ const removeBusinessReport = (req, res) => {
         }
         req.query.brDate = pool.query(`SELECT businessDate FROM business_report_data WHERE businessDate =  STR_TO_DATE('${brDate}','%b %d %Y')`, (err, row) => {
             if (err) {
-                console.error("An error occurd in SQL Queery", err);
+                console.error("An error occurred in SQL Queery", err);
                 return res.status(500).send('Database Error');
             }
             if (row && row.length) {
                 const sql_querry_getTransactionType = `SELECT transactionId, transactionType, transactionValue FROM transactionId_with_date WHERE transactionDate = STR_TO_DATE('${brDate}','%b %d %Y')`;
                 pool.query(sql_querry_getTransactionType, (err, result) => {
                     if (err) {
-                        console.error("An error occurd in SQL Queery", err);
+                        console.error("An error occurred in SQL Queery", err);
                         return res.status(500).send('Database Error');
                     }
                     const transactionId = result && result[0] ? result[0].transactionId : null;
@@ -382,7 +382,7 @@ const removeBusinessReport = (req, res) => {
                     }
                     pool.query(sql_querry_removedetails, (err, data) => {
                         if (err) {
-                            console.error("An error occurd in SQL Queery", err);
+                            console.error("An error occurred in SQL Queery", err);
                             return res.status(500).send('Database Error');
                         }
                         return res.status(200).send("Business Report Deleted Successfully");
@@ -393,7 +393,7 @@ const removeBusinessReport = (req, res) => {
             }
         })
     } catch (error) {
-        console.error('An error occurd', error);
+        console.error('An error occurred', error);
         res.status(500).send('Internal Server Error');
     }
 }
@@ -451,13 +451,13 @@ const updateBusinessReport = (req, res) => {
                 console.log(sql_queries_updateData);
                 pool.query(sql_queries_updateData, (err, data) => {
                     if (err) {
-                        console.error("An error occurd in SQL Queery", err);
+                        console.error("An error occurred in SQL Queery", err);
                         return res.status(500).send('Database Error');
                     }
                     //     sql_queries_getMistakeData = `SELECT transactionId, transactionType, transactionValue FROM transactionId_with_date WHERE transactionDate = STR_TO_DATE('${datas.reportDate}','%b %d %Y')`;
                     //     pool.query(sql_queries_getMistakeData, (err, mistake) => {
                     //         if (err) {
-                    //             console.error("An error occurd in SQL Queery", err);
+                    //             console.error("An error occurred in SQL Queery", err);
                     //             return res.status(500).send('Database Error');
                     //         }
                     //         const transactionId = mistake && mistake[0] ? mistake[0].transactionId : null;
@@ -480,7 +480,7 @@ const updateBusinessReport = (req, res) => {
                     //         }
                     //         pool.query(sql_querry_removedetails, (err, deleteMistake) => {
                     //             if (err) {
-                    //                 console.error("An error occurd in SQL Queery", err);
+                    //                 console.error("An error occurred in SQL Queery", err);
                     //                 return res.status(500).send('Database Error');
                     //             }
 
@@ -491,7 +491,7 @@ const updateBusinessReport = (req, res) => {
                     //                                                     GROUP BY bd.bankId;`;
                     //             pool.query(sql_querry_getWalletAvailableBalance, (err, raw) => {
                     //                 if (err) {
-                    //                     console.error("An error occurd in SQL Queery", err);
+                    //                     console.error("An error occurred in SQL Queery", err);
                     //                     return res.status(500).send('Database Error');
                     //                 }
                     //                 const availableBalance = raw[0].availableBalance;
@@ -525,7 +525,7 @@ const updateBusinessReport = (req, res) => {
                     //                 }
                     //                 pool.query(sql_query_addMistakeData, (err, mistakeResult) => {
                     //                     if (err) {
-                    //                         console.error("An error occurd in SQL Queery", err);
+                    //                         console.error("An error occurred in SQL Queery", err);
                     //                         return res.status(500).send('Database Error');
                     //                     }
                     //                     console.log('Change');
@@ -540,7 +540,7 @@ const updateBusinessReport = (req, res) => {
             res.status(401).send("Please Login Firest.....!");
         }
     } catch (error) {
-        console.error('An error occurd', error);
+        console.error('An error occurred', error);
         res.status(500).send('Internal Server Error');
     }
 }
@@ -557,7 +557,7 @@ const getExpenseAndClosingBalanceByDate = (req, res) => {
         sql_querry_chkDetails = `SELECT businessDate FROM business_report_data WHERE businessDate = STR_TO_DATE('${brDate}','%b %d %Y')`;
         req.query.brDate = pool.query(sql_querry_chkDetails, (err, row) => {
             if (err) {
-                console.error("An error occurd in SQL Queery", err);
+                console.error("An error occurred in SQL Queery", err);
                 return res.status(500).send('Database Error');
             }
             if (row && row.length) {
@@ -576,7 +576,7 @@ const getExpenseAndClosingBalanceByDate = (req, res) => {
                                                ) AS closingBalance;`;
                 pool.query(sql_querry_getDetails, (err, data) => {
                     if (err) {
-                        console.error("An error occurd in SQL Queery", err);
+                        console.error("An error occurred in SQL Queery", err);
                         return res.status(500).send('Database Error');
                     }
                     const expenseData = data[0];
@@ -586,7 +586,7 @@ const getExpenseAndClosingBalanceByDate = (req, res) => {
             }
         });
     } catch (error) {
-        console.error('An error occurd', error);
+        console.error('An error occurred', error);
         res.status(500).send('Internal Server Error');
     }
 }
@@ -688,7 +688,7 @@ const exportExcelForBusinessReport = async (req, res) => {
         }
         pool.query(sql_querry_getDetails, async (err, data) => {
             if (err) {
-                console.error("An error occurd in SQL Queery", err);
+                console.error("An error occurred in SQL Queery", err);
                 return res.status(500).send('Database Error');
             }
             const cashAmtSum = data[0].filter(item => item.businessType === 'CASH').reduce((sum, item) => sum + item.businessAmt, 0);
@@ -811,7 +811,7 @@ const exportExcelForBusinessReport = async (req, res) => {
             }
         })
     } catch (error) {
-        console.error('An error occurd', error);
+        console.error('An error occurred', error);
         res.status(500).send('Internal Server Error');
     }
 };
@@ -911,7 +911,7 @@ async function createPDF(res, data, heading) {
         // fs.writeFileSync(pdfFilename, doc.output());
         // console.log(`PDF saved as ${pdfFilename}`);
     } catch (error) {
-        console.error('An error occurd', error);
+        console.error('An error occurred', error);
         res.status(500).json('Internal Server Error');
     }
 }
@@ -1013,7 +1013,7 @@ const exportPdfForBusinessReport = (req, res) => {
         }
         pool.query(sql_querry_getDetails, async (err, data) => {
             if (err) {
-                console.error("An error occurd in SQL Queery", err);
+                console.error("An error occurred in SQL Queery", err);
                 return res.status(500).send('Database Error');
             }
             const cashAmtSum = data[0].filter(item => item.businessType === 'CASH').reduce((sum, item) => sum + item.businessAmt, 0);
@@ -1081,7 +1081,7 @@ const exportPdfForBusinessReport = (req, res) => {
                 });
         });
     } catch (error) {
-        console.error('An error occurd', error);
+        console.error('An error occurred', error);
         res.status(500).send('Internal Server Error');
     }
 }
@@ -1141,7 +1141,7 @@ const exportPdfForBusinessReportNet = (req, res) => {
         }
         pool.query(sql_querry_getDetails, async (err, data) => {
             if (err) {
-                console.error("An error occurd in SQL Queery", err);
+                console.error("An error occurred in SQL Queery", err);
                 return res.status(500).send('Database Error');
             }
             const cashAmtSum = data[0].filter(item => item.businessType === 'CASH').reduce((sum, item) => sum + item.businessAmt, 0);
@@ -1202,7 +1202,7 @@ const exportPdfForBusinessReportNet = (req, res) => {
                 });
         });
     } catch (error) {
-        console.error('An error occurd', error);
+        console.error('An error occurred', error);
         res.status(500).send('Internal Server Error');
     }
 }
@@ -1262,7 +1262,7 @@ const exportExcelForBusinessReportNet = async (req, res) => {
         }
         pool.query(sql_querry_getDetails, async (err, data) => {
             if (err) {
-                console.error("An error occurd in SQL Queery", err);
+                console.error("An error occurred in SQL Queery", err);
                 return res.status(500).send('Database Error');
             }
             const cashAmtSum = data[0].filter(item => item.businessType === 'CASH').reduce((sum, item) => sum + item.businessAmt, 0);
@@ -1381,7 +1381,7 @@ const exportExcelForBusinessReportNet = async (req, res) => {
             }
         })
     } catch (error) {
-        console.error('An error occurd', error);
+        console.error('An error occurred', error);
         res.status(500).send('Internal Server Error');
     }
 };

@@ -82,7 +82,11 @@ const addCustomerAccount = async (req, res) => {
                                 console.error("An error occurred in SQL Queery", err);
                                 return res.status(500).send('Database Error');
                             }
-                            return res.status(200).send("Account Added Successfully");
+                            return res.status(200).send({
+                                accountId: accountId,
+                                customerName: req.body.customerName ? req.body.customerName.trim() : null,
+                                customerNumber: req.body.customerNumber ? req.body.customerNumber.trim() : null
+                            });
                         })
                     }
                 })
@@ -692,6 +696,32 @@ const updateDueBillDataById = (req, res) => {
     }
 }
 
+// DDL Account Data
+
+const ddlDueAccountData = (req, res) => {
+    try {
+        var sql_queries_getDetails = `SELECT 
+                                        accountId,
+                                        customerName
+                                      FROM 
+                                        due_account_data
+                                      ORDER BY customerName ASC`;
+
+        pool.query(sql_queries_getDetails, (err, rows) => {
+            if (err) {
+                console.error("An error occurred in SQL Queery", err);
+                return res.status(500).send('Database Error');;
+            } else {
+                return res.status(200).send(rows);
+            }
+        });
+    } catch (error) {
+        console.error('An error occurred', error);
+        res.status(500).send('Internal Server Error');
+    }
+}
+
+
 module.exports = {
     getCustomerAccountList,
     addCustomerAccount,
@@ -705,5 +735,6 @@ module.exports = {
     getDueDebitTransactionListById,
     removeDueBillDataById,
     removeDueDebitTransactionById,
-    updateDueBillDataById
+    updateDueBillDataById,
+    ddlDueAccountData
 }

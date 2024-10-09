@@ -39,6 +39,7 @@ const getDeliveryPersonList = (req, res) => {
                                                   dpd.personId,
                                                   dpd.personName,
                                                   dpd.shortName,
+                                                  dpd.mobileNo,
                                                   dpd.isAvailable,
                                                   COALESCE(dd.totalRound, 0) AS totalRound,
                                                   COALESCE(dd.totalWorkTime, '00:00:00') AS totalTime
@@ -95,20 +96,21 @@ const addDeliveryPerson = async (req, res) => {
         const data = {
             personName: req.body.personName ? req.body.personName : null,
             shortName: req.body.shortName ? req.body.shortName : null,
+            mobileNo: req.body.mobileNo ? req.body.mobileNo : null,
             isAvailable: req.body.isAvailable ? req.body.isAvailable : true,
         }
         if (!data.personName || !data.shortName) {
             return res.status(400).send("Please Fill All The Fields");
         } else {
-            pool.query(`SELECT shortName FROM delivery_person_data WHERE shortName = '${data.shortName}'`, function (err, row) {
+            pool.query(`SELECT personName FROM delivery_person_data WHERE personName = '${data.personName}'`, function (err, row) {
                 if (err) {
                     console.error("An error occurred in SQL Queery", err);
                     return res.status(500).send('Database Error');
                 } else if (row && row.length) {
-                    return res.status(400).send('Short Name is Already In Use');
+                    return res.status(400).send('Name is Already In Use');
                 } else {
-                    const sql_querry_addCategory = `INSERT INTO delivery_person_data (personId, personName, shortName, isAvailable)  
-                                                    VALUES ('${personId}','${data.personName}', '${data.shortName}', ${data.isAvailable})`;
+                    const sql_querry_addCategory = `INSERT INTO delivery_person_data (personId, personName, shortName, mobileNo, isAvailable)  
+                                                    VALUES ('${personId}','${data.personName}', '${data.shortName}',${data.mobileNo ? `'${data.mobileNo}'` : null}, ${data.isAvailable})`;
                     pool.query(sql_querry_addCategory, (err, data) => {
                         if (err) {
                             console.error("An error occurred in SQL Queery", err);
@@ -174,12 +176,13 @@ const updateDeliveryPerson = async (req, res) => {
             personId: req.body.personId.trim(),
             personName: req.body.personName ? req.body.personName : null,
             shortName: req.body.shortName ? req.body.shortName : null,
+            mobileNo: req.body.mobileNo ? req.body.mobileNo : null,
             isAvailable: req.body.isAvailable,
         }
         if (!data.personId || !data.personName || !data.shortName) {
             return res.status(400).send("Please Fill All The Fields");
         } else {
-            pool.query(`SELECT shortName FROM delivery_person_data WHERE shortName = '${data.shortName}' AND personId != '${data.personId}'`, function (err, row) {
+            pool.query(`SELECT personName FROM delivery_person_data WHERE personName = '${data.personName}' AND personId != '${data.personId}'`, function (err, row) {
                 if (err) {
                     console.error("An error occurred in SQL Queery", err);
                     return res.status(500).send('Database Error');
@@ -191,6 +194,7 @@ const updateDeliveryPerson = async (req, res) => {
                                                       SET
                                                          personName = '${data.personName}',
                                                          shortName = '${data.shortName}',
+                                                         mobileNo = ${data.mobileNo ? `'${data.mobileNo}'` : null},
                                                          isAvailable = ${data.isAvailable}
                                                       WHERE personId = '${data.personId}'`;
                     pool.query(sql_querry_updatedetails, (err, data) => {

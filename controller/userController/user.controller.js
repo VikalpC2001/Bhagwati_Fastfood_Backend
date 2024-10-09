@@ -289,7 +289,7 @@ const updateUserDetails = async (req, res) => {
 
 const ddlUsersList = (req, res) => {
     try {
-        let sql_query_getUserList = `SELECT CONCAT(userFirstName,' ',userLastName) AS userName FROM user_details`;
+        let sql_query_getUserList = `SELECT userFirstName AS userName FROM user_details`;
         pool.query(sql_query_getUserList, (err, data) => {
             if (err) {
                 console.error("An error occurred in SQL Queery", err);

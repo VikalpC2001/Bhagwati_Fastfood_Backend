@@ -140,6 +140,7 @@ router.get('/getDueStaticsById', protect, accountConntroller.getDueStaticsById);
 router.delete('/removeDueBillDataById', protect, accountConntroller.removeDueBillDataById);
 router.delete('/removeDueDebitTransactionById', protect, accountConntroller.removeDueDebitTransactionById);
 router.post('/updateDueBillDataById', protect, accountConntroller.updateDueBillDataById);
+router.get('/ddlDueAccountData', protect, accountConntroller.ddlDueAccountData);
 
 // UPI Routs
 
@@ -164,5 +165,7 @@ router.get('/updateStaticTableNumbers', protect, dineInController.updateStaticTa
 router.get('/printTableBill', protect, dineInController.printTableBill);
 router.post('/updateDineInBillData', protect, dineInController.updateDineInBillData);
 router.post('/sattledBillDataByID', protect, dineInController.sattledBillDataByID);
+router.post('/cancelBillDataByID', protect, dineInController.cancelBillDataByID);
+router.get('/moveTable', protect, dineInController.moveTable);
 
 module.exports = router;

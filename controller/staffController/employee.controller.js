@@ -431,7 +431,6 @@ const calculateDueSalary = (employeeId) => {
 
                     const totalDays = getTotalDays(joinDate, monthendDate) + 1;
                     var lastMonthEndDay = monthendDate.getDate();
-                    console.log(lastMonthEndDay);
 
                     const perDaysalaryOfEmployee = Math.floor(employeeSalary / lastMonthEndDay);
                     const remainDaySalaryOfEmployee = perDaysalaryOfEmployee * totalDays;
@@ -536,7 +535,18 @@ const calculateDueSalary = (employeeId) => {
 
                             return salary;
                         });
+                        const originalSalaryArray = dateArray.map((dateString) => {
+                            const date = getDateFromString(dateString);
+                            let salary = findClosestEndDate(date);
 
+                            // If no salary is found, get the salary for the latest end date
+                            if (!salary) {
+                                const latestEndDate = findLatestEndDate(salaryData);
+                                salary = findClosestEndDate(latestEndDate);
+                            }
+
+                            return salary;
+                        });
                         salaryArray.splice(0, 1, remainDaySalaryOfEmployee);
                         sql_query_getLeaveData = `SELECT numberOfLeave AS numLeave, DATE_FORMAT(startDate,'%d-%m-%Y') AS startDate, DATE_FORMAT(endDate,'%d-%m-%Y') AS endDate FROM leave_history_data WHERE employeeId = '${employeeId}'`;
                         pool.query(sql_query_getLeaveData, (err, data) => {
@@ -612,11 +622,9 @@ const calculateDueSalary = (employeeId) => {
                             // Map the dates to their last days of the month as integers
                             const lastDaysOfMonths = monthsArray.map(getLastDayOfMonth);
 
-                            console.log('mane joy ee', lastDaysOfMonths);
-
-
-                            const perDaysalaryOfEmployee = salaryArray.map((salary, index) => Math.floor(salary / lastDaysOfMonths[index]));
-                            console.log('per day salary', perDaysalaryOfEmployee);
+                            console.log('mane joy ee', lastDaysOfMonths, ';;;;;;;', originalSalaryArray);
+                            const perDaysalaryOfEmployee = originalSalaryArray.map((salary, index) => Math.floor(salary / lastDaysOfMonths[index]));
+                            console.log('per day salary 1', perDaysalaryOfEmployee);
 
                             (async () => {
                                 try {
@@ -677,7 +685,7 @@ const calculateDueSalary = (employeeId) => {
 
                                         monthlySalary.forEach((item) => {
                                             const query = `INSERT INTO staff_monthlySalary_data (employeeId, totalSalary, remainSalary, maxLeave, remainLeave, msStartDate, msEndDate)
-                                                            VALUES ('${item.employeeId}', ROUND(${item.totalSalary}), ROUND(${item.totalSalary}) ,${item.maxLeave}, ${item.remainLeave}, STR_TO_DATE('${item.msDate}', '%d-%m-%Y'),LAST_DAY(STR_TO_DATE('${item.msDate}','%d-%m-%Y')))`;
+                                                           VALUES ('${item.employeeId}', ROUND(${item.totalSalary}), ROUND(${item.totalSalary}) ,${item.maxLeave}, ${item.remainLeave}, STR_TO_DATE('${item.msDate}', '%d-%m-%Y'),LAST_DAY(STR_TO_DATE('${item.msDate}','%d-%m-%Y')))`;
 
                                             pool.query(query, (err, result) => {
                                                 if (err) {
@@ -689,12 +697,12 @@ const calculateDueSalary = (employeeId) => {
                                         });
                                     })
                                     sql_update_remainSalary = `UPDATE
-                                                    staff_employee_data
-                                                SET
-                                                    employeeJoiningDate = DATE_FORMAT(NOW(), '%Y-%m-01'),
-                                                   salaryCalculationDate = STR_TO_DATE('${salaryCalculationDate}','%b %d %Y')
-                                                WHERE
-                                                   employeeId = '${employeeId}'`;
+                                                                   staff_employee_data
+                                                               SET
+                                                                   employeeJoiningDate = DATE_FORMAT(NOW(), '%Y-%m-01'),
+                                                                  salaryCalculationDate = STR_TO_DATE('${salaryCalculationDate}','%b %d %Y')
+                                                               WHERE
+                                                                  employeeId = '${employeeId}'`;
                                     pool.query(sql_update_remainSalary, (err, data) => {
                                         if (err) {
                                             console.error("An error occurred in SQL Queery", err);

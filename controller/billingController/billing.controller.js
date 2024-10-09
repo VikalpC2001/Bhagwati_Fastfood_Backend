@@ -387,7 +387,7 @@ const getBillDataByToken = (req, res) => {
                                     let sql_query_getBillingData = `SELECT 
                                                                         bd.billId AS billId, 
                                                                         bd.billNumber AS billNumber,
-                                                                        COALESCE(bod.billNumber, CONCAT('C', bcd.billNumber), 'Not Available') AS officialBillNumber,
+                                                                        COALESCE(bod.billNumber, CONCAT('C', bcd.billNumber), 'Not Available') AS officialBillNo,
                                                                         CASE
                                                                             WHEN bd.billType = 'Hotel' THEN CONCAT('H',btd.tokenNo)
                                                                             WHEN bd.billType = 'Pick Up' THEN CONCAT('P',btd.tokenNo)
@@ -395,6 +395,10 @@ const getBillDataByToken = (req, res) => {
                                                                             WHEN bd.billType = 'Dine In' THEN CONCAT('R',btd.tokenNo)
                                                                             ELSE NULL
                                                                         END AS tokenNo,
+                                                                        bwu.onlineId AS onlineId,
+                                                                        dba.accountId AS typeId,
+                                                                        dad.customerName AS typeName,
+                                                                        dba.dueNote AS dueNote,
                                                                         bd.firmId AS firmId, 
                                                                         bd.cashier AS cashier, 
                                                                         bd.menuStatus AS menuStatus, 
@@ -415,11 +419,15 @@ const getBillDataByToken = (req, res) => {
                                                                     LEFT JOIN billing_Complimentary_data AS bcd ON bcd.billId = bd.billId
                                                                     LEFT JOIN billing_token_data AS btd ON btd.billId = bd.billId
                                                                     LEFT JOIN billing_firm_data AS bfd ON bfd.firmId = bd.firmId
+                                                                    LEFT JOIN billing_billWiseUpi_data AS bwu ON bwu.billId = bd.billId
+                                                                    LEFT JOIN due_billAmount_data AS dba ON dba.billId = bd.billId
+                                                                    LEFT JOIN due_account_data AS dad ON dad.accountId = dba.accountId
                                                                     WHERE bd.billId = '${billId}'`;
                                     let sql_query_getBillwiseItem = `SELECT
                                                                          bwid.iwbId AS iwbId,
                                                                          bwid.itemId AS itemId,
                                                                          imd.itemName AS itemName,
+                                                                         imd.itemCode AS inputCode,
                                                                          bwid.qty AS qty,
                                                                          bwid.unit AS unit,
                                                                          bwid.itemPrice AS itemPrice,
@@ -453,7 +461,7 @@ const getBillDataByToken = (req, res) => {
                                                                   FROM
                                                                       billing_hotelInfo_data AS bhid
                                                                   LEFT JOIN billing_hotel_data AS bhd ON bhd.hotelId = bhid.hotelId
-                                                                  WHERE bhid.billId = '${billId}'`;
+                                                                  WHERE bhid.billId = '${billId}'`
                                     let sql_query_getFirmData = `SELECT 
                                                                     firmId, 
                                                                     firmName, 
@@ -466,11 +474,18 @@ const getBillDataByToken = (req, res) => {
                                                                     billing_firm_data 
                                                                  WHERE 
                                                                     firmId = (SELECT firmId FROM billing_data WHERE billId = '${billId}')`;
+                                    let sql_query_getTableData = `SELECT
+                                                                    tableNo,
+                                                                    assignCaptain
+                                                                  FROM
+                                                                    billing_billWiseTableNo_data
+                                                                  WHERE billId = '${billId}'`;
                                     const sql_query_getBillData = `${sql_query_getBillingData};
                                                                    ${sql_query_getBillwiseItem};
                                                                    ${sql_query_getFirmData};
                                                                    ${billType == 'Hotel' ? sql_query_getHotelInfo + ';' : ''}
-                                                                   ${billType == 'Pick Up' || billType == 'Delivery' ? sql_query_getCustomerInfo : ''}`;
+                                                                   ${['Pick Up', 'Delivery', 'Dine In'].includes(billType) ? sql_query_getCustomerInfo + ';' : ''}
+                                                                   ${billType == 'Dine In' ? sql_query_getTableData : ''}`;
                                     pool.query(sql_query_getBillData, (err, billData) => {
                                         if (err) {
                                             console.error("An error occurred in SQL Queery", err);
@@ -481,7 +496,9 @@ const getBillDataByToken = (req, res) => {
                                                 itemData: billData && billData[1] ? billData[1] : [],
                                                 firmData: billData && billData[2] ? billData[2][0] : [],
                                                 ...(billType === 'Hotel' ? { hotelDetails: billData[3][0] } : ''),
-                                                ...(billType == 'Pick Up' || billType == 'Delivery' ? { customerDetails: billData && billData[3][0] ? billData[3][0] : '' } : '')
+                                                ...(['Pick Up', 'Delivery', 'Dine In'].includes(billType) ? { customerDetails: billData && billData[3][0] ? billData[3][0] : '' } : ''),
+                                                ...(billType === 'Dine In' ? { tableInfo: billData[4][0] } : ''),
+                                                ...(['due'].includes(billData[0][0].billPayType) ? { "payInfo": { "accountId": billData[0][0].typeId, "customerName": billData[0][0].typeName } } : '')
                                             }
                                             return res.status(200).send(json);
                                         }
@@ -515,7 +532,7 @@ const getBillDataById = (req, res) => {
         if (!billId) {
             return res.status(404).send('billId Not Found');
         } else {
-            let sql_query_chkBillExist = `SELECT billId, billType FROM billing_data WHERE billId = '${billId}'`;
+            let sql_query_chkBillExist = `SELECT billId, billType, billPayType FROM billing_data WHERE billId = '${billId}'`;
             pool.query(sql_query_chkBillExist, (err, bill) => {
                 if (err) {
                     console.error("An error occurred in SQL Queery", err);
@@ -523,6 +540,7 @@ const getBillDataById = (req, res) => {
                 } else {
                     if (bill && bill.length) {
                         const billType = bill[0].billType;
+                        const billPayType = bill[0].billPayType;
                         let sql_query_getBillingData = `SELECT 
                                                             bd.billId AS billId, 
                                                             bd.billNumber AS billNumber,
@@ -534,10 +552,10 @@ const getBillDataById = (req, res) => {
                                                                 WHEN bd.billType = 'Dine In' THEN CONCAT('R',btd.tokenNo)
                                                                 ELSE NULL
                                                             END AS tokenNo,
-                                                            CASE
-                                                                WHEN bd.billPayType = 'online' THEN bwu.onlineId
-                                                                ELSE NULL
-                                                            END AS onlineId,
+                                                            bwu.onlineId AS onlineId,
+                                                            dba.accountId AS typeId,
+                                                            dad.customerName AS typeName,
+                                                            dba.dueNote AS dueNote,
                                                             bd.firmId AS firmId, 
                                                             bd.cashier AS cashier, 
                                                             bd.menuStatus AS menuStatus, 
@@ -559,6 +577,8 @@ const getBillDataById = (req, res) => {
                                                         LEFT JOIN billing_token_data AS btd ON btd.billId = bd.billId
                                                         LEFT JOIN billing_firm_data AS bfd ON bfd.firmId = bd.firmId
                                                         LEFT JOIN billing_billWiseUpi_data AS bwu ON bwu.billId = bd.billId
+                                                        LEFT JOIN due_billAmount_data AS dba ON dba.billId = bd.billId
+                                                        LEFT JOIN due_account_data AS dad ON dad.accountId = dba.accountId
                                                         WHERE bd.billId = '${billId}'`;
                         let sql_query_getBillwiseItem = `SELECT
                                                              bwid.iwbId AS iwbId,
@@ -635,6 +655,7 @@ const getBillDataById = (req, res) => {
                                     ...(billType === 'Hotel' ? { hotelDetails: billData[3][0] } : ''),
                                     ...(['Pick Up', 'Delivery', 'Dine In'].includes(billType) ? { customerDetails: billData && billData[3][0] ? billData[3][0] : '' } : ''),
                                     ...(billType === 'Dine In' ? { tableInfo: billData[4][0] } : ''),
+                                    ...(['due'].includes(billPayType) ? { "payInfo": { "accountId": billData[0][0].typeId, "customerName": billData[0][0].typeName } } : '')
                                 }
                                 return res.status(200).send(json);
                             }
@@ -2389,7 +2410,7 @@ const updatePickUpBillData = (req, res) => {
                                                                                 billData.accountId && billData.billPayType == 'due'
                                                                                     ?
                                                                                     `INSERT INTO due_billAmount_data(dabId, enterBy, accountId, billId, billAmount, dueNote, dueDate)
-                                                                                     VALUES('${dabId}','${cashier}','${billData.accountId}','${billId}',${billData.settledAmount},${billData.dueNote ? `'${billData.dueNote}'` : null}, STR_TO_DATE('${currentDate}','%b %d %Y'))`
+                                                                                     VALUES('${dabId}','${cashier}','${billData.accountId}','${billData.billId}',${billData.settledAmount},${billData.dueNote ? `'${billData.dueNote}'` : null}, STR_TO_DATE('${currentDate}','%b %d %Y'))`
                                                                                     :
                                                                                     ''}`;
                                                                         connection.query(sql_query_getFirmData, (err, firm) => {
@@ -3033,7 +3054,7 @@ const updateDeliveryBillData = (req, res) => {
                                                                                 billData.accountId && billData.billPayType == 'due'
                                                                                     ?
                                                                                     `INSERT INTO due_billAmount_data(dabId, enterBy, accountId, billId, billAmount, dueNote, dueDate)
-                                                                                     VALUES('${dabId}','${cashier}','${billData.accountId}','${billId}',${billData.settledAmount},${billData.dueNote ? `'${billData.dueNote}'` : null}, STR_TO_DATE('${currentDate}','%b %d %Y'))`
+                                                                                     VALUES('${dabId}','${cashier}','${billData.accountId}','${billData.billId}',${billData.settledAmount},${billData.dueNote ? `'${billData.dueNote}'` : null}, STR_TO_DATE('${currentDate}','%b %d %Y'))`
                                                                                     :
                                                                                     ''}`;
                                                                         connection.query(sql_query_getFirmData, (err, firm) => {

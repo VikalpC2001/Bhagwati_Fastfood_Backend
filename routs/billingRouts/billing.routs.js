@@ -81,6 +81,7 @@ router.post('/addDeliveryBillData', protect, billingController.addDeliveryBillDa
 router.post('/updateHotelBillData', protect, billingController.updateHotelBillData);
 router.post('/updatePickUpBillData', protect, billingController.updatePickUpBillData);
 router.post('/updateDeliveryBillData', protect, billingController.updateDeliveryBillData);
+router.get('/updateBillStatusById', protect, billingController.updateBillStatusById);
 
 // Print Bill Data
 router.get('/printBillInAdminSystem', protect, billingController.printBillInAdminSystem);
@@ -167,5 +168,6 @@ router.post('/updateDineInBillData', protect, dineInController.updateDineInBillD
 router.post('/sattledBillDataByID', protect, dineInController.sattledBillDataByID);
 router.post('/cancelBillDataByID', protect, dineInController.cancelBillDataByID);
 router.get('/moveTable', protect, dineInController.moveTable);
+router.get('/isTableEmpty', protect, dineInController.isTableEmpty);
 
 module.exports = router;

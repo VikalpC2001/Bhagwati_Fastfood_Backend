@@ -608,45 +608,27 @@ const getItemSalesReport = (req, res) => {
 
 const updateItemPriceByMenuId = (req, res) => {
     try {
-        const itemId = {
-            "menuId": "menuCategory_1719236714602",
-            "itemsData": [
-                {
-                    "itemId": "item_1716218327955",
-                    "qty": 2,
-                    "unit": "No",
-                    "itemPrice": 200,
-                    "price": 300,
-                    "comment": "Tikkha"
-                },
-                {
-                    "itemId": "item_1716219703291",
-                    "qty": 1,
-                    "unit": "No",
-                    "itemPrice": 200,
-                    "price": 300,
-                    "comment": "Tikkha"
-                }
-            ]
-        };
-
-        const menuCategoryId = itemId.menuId;
+        const itemsArray = req.body;
+        const menuCategoryId = itemsArray.menuId;
 
         // Create an array of promises for each item
-        const queries = itemId.itemsData.map((item) => {
+        const queries = itemsArray.itemsData.map((item) => {
             const { itemId, unit, qty, comment } = item;
 
             let sql_query_updatePrice = `SELECT
-                                             itemId,
+                                             uwp.itemId AS itemId,
+                                             imd.itemName AS itemName,
+                                             imd.itemCode AS inputCode,
                                              ${qty} AS qty,
-                                             unit,
-                                             price AS itemPrice,
-                                             ${qty} * price AS price,
-                                             '${comment}' AS comment
+                                             uwp.unit AS unit,
+                                             uwp.price AS itemPrice,
+                                             ${qty} * uwp.price AS price,
+                                             '${comment}' AS comment,
+                                             uwp.status AS itemStatus
                                          FROM
-                                             item_unitWisePrice_data
-                                         WHERE
-                                             menuCategoryId = '${menuCategoryId}' AND itemId = '${itemId}' AND unit = '${unit}'`;
+                                             item_unitWisePrice_data AS uwp
+                                         INNER JOIN item_menuList_data AS imd ON imd.itemId = uwp.itemId 
+                                         WHERE uwp.menuCategoryId = '${menuCategoryId}' AND uwp.itemId = '${itemId}' AND uwp.unit = '${unit}'`;
 
             // Return a promise for each query
             return new Promise((resolve, reject) => {
@@ -662,17 +644,21 @@ const updateItemPriceByMenuId = (req, res) => {
         // Wait for all queries to finish
         Promise.all(queries)
             .then(results => {
-                // Combine the results and send in the response
-                res.status(200).send(results);
+                const availableItem = results.filter(item => item.itemStatus !== 0);
+
+                const total = availableItem.reduce((acc, item) => acc + item.price, 0);
+                const result = { total, itemsData: availableItem };
+
+                return res.status(200).send(result);
             })
             .catch(error => {
-                console.error('An error occurred in SQL Query', error);
-                res.status(500).send('Database Error');
+                console.error('An error occured', error);
+                return res.status(500).send('Database Error');
             });
 
     } catch (error) {
         console.error('An error occurred', error);
-        res.status(500).send('Internal Server Error');
+        return res.status(500).send('Internal Server Error');
     }
 }
 

@@ -48,13 +48,13 @@ router.get('/copyPriceAndStatusByMenuId', protect, menuCategoryController.copyPr
 
 const itemController = require("../../controller/menuItemController/item.controller.js");
 
-router.get('/getItemData', itemController.getItemData);
+router.get('/getItemData', protect, itemController.getItemData);
 router.post('/addItemData', protect, itemController.addItemData);
 router.delete('/removeItemData', protect, itemController.removeItemData);
 router.post('/updateItemData', protect, itemController.updateItemData);
 router.post('/updateMultipleItemPrice', protect, itemController.updateMultipleItemPrice);
 router.get('/updateItemStatus', protect, itemController.updateItemStatus);
 router.get('/getItemSalesReport', itemController.getItemSalesReport);
-router.get('/updateItemPriceByMenuId', itemController.updateItemPriceByMenuId);
+router.post('/updateItemPriceByMenuId', itemController.updateItemPriceByMenuId);
 
 module.exports = router;

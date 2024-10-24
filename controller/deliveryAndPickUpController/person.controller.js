@@ -217,7 +217,9 @@ const updateDeliveryPerson = async (req, res) => {
 
 const ddlPersonData = (req, res) => {
     try {
-        const sql_querry_getddlCategory = `SELECT personId, personName FROM delivery_person_data WHERE isAvailable = 1`;
+        const sql_querry_getddlCategory = `SELECT personId, personName FROM delivery_person_data 
+                                           WHERE isAvailable = 1
+                                           ORDER BY personName ASC`;
         pool.query(sql_querry_getddlCategory, (err, data) => {
             if (err) {
                 console.error("An error occurred in SQL Queery", err);

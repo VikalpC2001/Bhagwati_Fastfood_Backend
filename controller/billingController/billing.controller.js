@@ -121,7 +121,7 @@ const getLiveViewByCategoryId = (req, res) => {
                         let sql_query_getBillingData = `SELECT 
                                                             bd.billId AS billId, 
                                                             bd.billNumber AS billNumber,
-                                                            COALESCE(bod.billNumber, CONCAT('C', bcd.billNumber), 'Not Available') AS officialBillNumber,
+                                                            COALESCE(bod.billNumber, CONCAT('C', bcd.billNumber), 'Not Available') AS officialBillNo,
                                                             CASE
                                                                 WHEN bd.billType = 'Hotel' THEN CONCAT('H',btd.tokenNo)
                                                                 WHEN bd.billType = 'Pick Up' THEN CONCAT('P',btd.tokenNo)
@@ -129,6 +129,10 @@ const getLiveViewByCategoryId = (req, res) => {
                                                                 WHEN bd.billType = 'Dine In' THEN CONCAT('R',btd.tokenNo)
                                                                 ELSE NULL
                                                             END AS tokenNo,
+                                                            bwu.onlineId AS onlineId,
+                                                            dba.accountId AS typeId,
+                                                            dad.customerName AS typeName,
+                                                            dba.dueNote AS dueNote,
                                                             bd.firmId AS firmId, 
                                                             bd.cashier AS cashier, 
                                                             bd.menuStatus AS menuStatus, 
@@ -149,13 +153,21 @@ const getLiveViewByCategoryId = (req, res) => {
                                                                     bd.billCreationDate,
                                                                     NOW()
                                                                 )
-                                                            ) AS timeDifference
+                                                            ) AS timeDifference,
+                                                             dpd.personName AS deliveredBy,
+                                                             dpd.mobileNo AS mobileNo
                                                         FROM 
                                                             billing_data AS bd
                                                         LEFT JOIN billing_Official_data AS bod ON bod.billId = bd.billId
                                                         LEFT JOIN billing_Complimentary_data AS bcd ON bcd.billId = bd.billId
                                                         LEFT JOIN billing_token_data AS btd ON btd.billId = bd.billId
                                                         LEFT JOIN billing_firm_data AS bfd ON bfd.firmId = bd.firmId
+                                                        LEFT JOIN billing_billWiseUpi_data AS bwu ON bwu.billId = bd.billId
+                                                        LEFT JOIN due_billAmount_data AS dba ON dba.billId = bd.billId
+                                                        LEFT JOIN due_account_data AS dad ON dad.accountId = dba.accountId
+                                                        LEFT JOIN delivery_billWiseDelivery_data AS bwd ON bwd.billId = bd.billId
+                                                        LEFT JOIN delivery_data AS dd ON dd.deliveryId = bwd.deliveryId
+                                                        LEFT JOIN delivery_person_data AS dpd ON dpd.personId = dd.personId
                                                         WHERE bd.billId = '${billId}'`;
                         let sql_query_getBillwiseItem = `SELECT
                                                              bwid.iwbId AS iwbId,
@@ -174,15 +186,13 @@ const getLiveViewByCategoryId = (req, res) => {
                         let sql_query_getCustomerInfo = `SELECT
                                                              bwcd.bwcId AS bwcId,
                                                              bwcd.customerId AS customerId,
-                                                             bcd.customerMobileNumber AS mobileNo,
+                                                             bwcd.mobileNo AS mobileNo,
                                                              bwcd.addressId AS addressId,
-                                                             bcad.customerAddress AS address,
-                                                             bcad.customerLocality AS locality,
+                                                             bwcd.address AS address,
+                                                             bwcd.locality AS locality,
                                                              bwcd.customerName AS customerName
                                                          FROM
                                                              billing_billWiseCustomer_data AS bwcd
-                                                         LEFT JOIN billing_customer_data AS bcd ON bcd.customerId = bwcd.customerId
-                                                         LEFT JOIN billing_customerAddress_data AS bcad ON bcad.addressId = bwcd.addressId
                                                          WHERE bwcd.billId = '${billId}'`;
                         let sql_query_getHotelInfo = `SELECT
                                                           bhid.hotelInfoId AS hotelInfoId,
@@ -209,12 +219,19 @@ const getLiveViewByCategoryId = (req, res) => {
                                                      FROM 
                                                         billing_firm_data 
                                                      WHERE 
-                                                        firmId = (SELECT firmId FROM billing_data WHERE billId = '${billId}')`
+                                                        firmId = (SELECT firmId FROM billing_data WHERE billId = '${billId}')`;
+                        let sql_query_getTableData = `SELECT
+                                                        tableNo,
+                                                        assignCaptain
+                                                      FROM
+                                                        billing_billWiseTableNo_data
+                                                      WHERE billId = '${billId}'`;
                         const sql_query_getBillData = `${sql_query_getBillingData};
-                                                           ${sql_query_getBillwiseItem};
-                                                           ${sql_query_getFirmData};
-                                                           ${billType == 'Hotel' ? sql_query_getHotelInfo + ';' : ''}
-                                                           ${billType == 'Pick Up' || billType == 'Delivery' ? sql_query_getCustomerInfo : ''}`;
+                                                       ${sql_query_getBillwiseItem};
+                                                       ${sql_query_getFirmData};
+                                                       ${billType == 'Hotel' ? sql_query_getHotelInfo + ';' : ''}
+                                                       ${['Pick Up', 'Delivery', 'Dine In'].includes(billType) ? sql_query_getCustomerInfo + ';' : ''}
+                                                       ${billType == 'Dine In' ? sql_query_getTableData : ''}`;
                         return new Promise((resolve, reject) => {
                             pool.query(sql_query_getBillData, (err, billData) => {
                                 if (err) {
@@ -225,8 +242,9 @@ const getLiveViewByCategoryId = (req, res) => {
                                         ...billData[0][0],
                                         itemData: billData && billData[1] ? billData[1] : [],
                                         firmData: billData && billData[2] ? billData[2][0] : [],
-                                        ...(billType === 'Hotel' ? { ...billData[3][0] } : ''),
-                                        ...(billType == 'Pick Up' || billType == 'Delivery' ? { customerDetails: billData && billData[3][0] ? billData[3][0] : '' } : '')
+                                        ...(billType === 'Hotel' ? { hotelDetails: billData[3][0] } : ''),
+                                        ...(['Pick Up', 'Delivery', 'Dine In'].includes(billType) ? { customerDetails: billData && billData[3][0] ? billData[3][0] : '' } : ''),
+                                        ...(billType === 'Dine In' ? { tableInfo: billData[4][0] } : '')
                                     }
                                     return resolve(json);
                                 }
@@ -280,8 +298,9 @@ const getRecentBillData = (req, res) => {
                                                             IF(bhd.hotelName IS NOT NULL AND hif.roomNo IS NOT NULL, ' - ', ''),
                                                             COALESCE(hif.roomNo, '')
                                                         ))
-                                                    WHEN bd.billType = 'Pick Up' THEN COALESCE(bwc.customerName,NULL)
-                                                    WHEN bd.billType = 'Delivery' THEN bwc.address
+                                                    WHEN bd.billType = 'Pick Up' THEN COALESCE(bwc.customerName, bwc.address, NULL)
+                                                    WHEN bd.billType = 'Delivery' THEN COALESCE(bwc.address, bwc.customerName, NULL)
+                                                    WHEN bd.billType = 'Dine In' THEN CONCAT('Table No. ',bwt.tableNo)
                                                 ELSE NULL
                                                 END AS address,
                                                 CASE
@@ -311,15 +330,16 @@ const getRecentBillData = (req, res) => {
                                                             IF((bwc.mobileNo IS NOT NULL OR bwc.customerName IS NOT NULL OR bwc.address IS NOT NULL) AND bwc.locality IS NOT NULL, ' - ', ''),
                                                             COALESCE(bwc.locality, '')
                                                         ))
+                                                    WHEN bd.billType = 'Dine In' THEN COALESCE(bwt.assignCaptain,bwt.tableNo)
                                                     ELSE NULL
                                                 END AS info
                                            FROM billing_data AS bd
                                            LEFT JOIN billing_token_data AS btd ON btd.billId = bd.billId
                                            LEFT JOIN billing_billWiseCustomer_data AS bwc ON bwc.billId = bd.billId
-                                           
+                                           LEFT JOIN billing_billWiseTableNo_data AS bwt ON bwt.billId = bd.billId
                                            LEFT JOIN billing_hotelInfo_data AS hif ON hif.billId = bd.billId
                                            LEFT JOIN billing_hotel_data AS bhd ON bhd.hotelId = hif.hotelId
-                                           WHERE bd.billType = '${billType}' ${billType == 'Dine In' ? `AND bd.billStatus IN ('print','complete')` : ''} AND bd.billDate = STR_TO_DATE('${currentDate}','%b %d %Y') AND bd.billStatus != 'Hold'
+                                           WHERE bd.billType = '${billType}' ${billType == 'Dine In' ? `AND bd.billStatus NOT IN ('running','print')` : ''} AND bd.billDate = STR_TO_DATE('${currentDate}','%b %d %Y')
                                            ORDER BY btd.tokenNo DESC`;
             pool.query(sql_query_getRecentBill, (err, data) => {
                 if (err) {
@@ -702,7 +722,7 @@ const addHotelBillData = (req, res) => {
                             })
                         } else {
                             let sql_query_getOfficialLastBillNo = `SELECT COALESCE(MAX(billNumber),0) AS officialLastBillNo FROM billing_Official_data WHERE firmId = '${billData.firmId}' AND billPayType = '${billData.billPayType}' AND billCreationDate = (SELECT MAX(billCreationDate) FROM billing_Official_data WHERE firmId = '${billData.firmId}' AND billPayType = '${billData.billPayType}') FOR UPDATE`;
-                            let sql_query_getLastBillNo = `SELECT COALESCE(MAX(billNumber),0) AS lastBillNo FROM billing_data WHERE firmId = '${billData.firmId}' AND billCreationDate = (SELECT MAX(billCreationDate) FROM billing_data WHERE firmId = '${billData.firmId}') FOR UPDATE;
+                            let sql_query_getLastBillNo = `SELECT COALESCE(MAX(billNumber),0) AS lastBillNo FROM billing_data WHERE firmId = '${billData.firmId}' AND billPayType = '${billData.billPayType}' AND billCreationDate = (SELECT MAX(billCreationDate) FROM billing_data WHERE firmId = '${billData.firmId}') FOR UPDATE;
                                                            SELECT COALESCE(MAX(tokenNo),0) AS lastTokenNo FROM billing_token_data WHERE billType = '${billData.billType}' AND billDate = STR_TO_DATE('${currentDate}','%b %d %Y') FOR UPDATE;
                                                            ${billData.isOfficial ? sql_query_getOfficialLastBillNo : ''}`;
                             connection.query(sql_query_getLastBillNo, (err, result) => {
@@ -3517,6 +3537,32 @@ const updateDeliveryBillData = (req, res) => {
     });
 }
 
+// Update Bill Status In Live View
+const updateBillStatusById = (req, res) => {
+    try {
+        const billId = req.query.billId;
+        const billStatus = req.query.billStatus;
+        if (!billId || !billStatus) {
+            return res.status(404).send('Bill Id Not Found !')
+        } else {
+            let sql_query_updateBillStatus = `UPDATE billing_data SET billStatus = '${billStatus}' WHERE billId = '${billId}';
+                                              UPDATE billing_Official_data SET billStatus = '${billStatus}' WHERE billId = '${billId}';
+                                              UPDATE billing_Complimentary_data SET billStatus = '${billStatus}' WHERE billId = '${billId}'`;
+            pool.query(sql_query_updateBillStatus, (err, data) => {
+                if (err) {
+                    console.error("An error occurred in SQL Queery", err);
+                    return res.status(500).send('Database Error');
+                } else {
+                    return res.status(200).send('Status Updated Succesfully');
+                }
+            })
+        }
+    } catch (error) {
+        console.error('An error occurred', error);
+        res.status(500).json('Internal Server Error');
+    }
+}
+
 // Print Old Bills
 
 const printBillInAdminSystem = (req, res) => {
@@ -3654,6 +3700,7 @@ const printBillInAdminSystem = (req, res) => {
     }
 }
 
+
 module.exports = {
     // Get Bill Data
     getBillingStaticsData,
@@ -3671,6 +3718,7 @@ module.exports = {
     updateHotelBillData,
     updatePickUpBillData,
     updateDeliveryBillData,
+    updateBillStatusById,
 
     // Print Bill Data
     printBillInAdminSystem

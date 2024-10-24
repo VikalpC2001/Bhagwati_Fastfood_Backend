@@ -22,9 +22,25 @@ function compareJson(json1, json2) {
 
     const added = json2.filter(item => !json1Map.has(item.iwbId));
     const removed = json1.filter(item => !json2Map.has(item.iwbId));
+
     const modified = json1
-        .filter(item => json2Map.has(item.iwbId) && JSON.stringify(item) !== JSON.stringify(json2Map.get(item.iwbId)))
-        .map(item => ({ old: item, new: json2Map.get(item.iwbId) }));
+        .filter(item => json2Map.has(item.iwbId)) // Check if the item exists in both json1 and json2
+        .filter(item => {
+            const json2Item = json2Map.get(item.iwbId);
+
+            // Compare only qty, price, and comment fields
+            return (
+                item.qty !== json2Item.qty ||
+                item.unit !== json2Item.unit ||
+                item.itemPrice !== json2Item.itemPrice ||
+                item.price !== json2Item.price ||
+                ((item.comment ? item.comment : '') !== (json2Item.comment ? json2Item.comment : ''))
+            );
+        })
+        .map(item => ({
+            old: item, // Return the entire old object
+            new: json2Map.get(item.iwbId) // Return the entire new object
+        }));
 
     return { added, removed, modified };
 }
@@ -37,6 +53,7 @@ const getAllTableView = (req, res) => {
                                     dt.tableId,
                                     dt.tableNo,
                                     dt.billId,
+                                    bwt.assignCaptain,
                                     CASE 
                                     	WHEN dt.billId IS NULL THEN  'blank'
                                         ELSE bd.billStatus
@@ -47,7 +64,8 @@ const getAllTableView = (req, res) => {
                                 FROM
                                     billing_DineInTable_data AS dt
                                 LEFT JOIN billing_data AS bd on bd.billId = dt.billId
-                                ORDER BY LPAD(dt.tableNo, 10, '0')`;
+                                LEFT JOIN billing_billWiseTableNo_data AS bwt ON bwt.billId = dt.billId
+                                ORDER BY dt.isFixed DESC, LPAD(dt.tableNo, 10, '0') ASC`;
         pool.query(sql_query_getDetails, (err, data) => {
             if (err) {
                 console.error("An error occurred in SQL Queery", err);
@@ -75,22 +93,25 @@ const getSubTokensByBillId = async (req, res) => {
                                               bst.tokenComment AS tokenComment,
                                               bwtn.assignCaptain AS captain,
                                               DATE_FORMAT(bst.subTokenDate, '%d/%m/%Y') AS subTokenDate,
-                                              DATE_FORMAT(bst.creationDate,'%h:%i %p') AS creatTime,
+                                              DATE_FORMAT(bst.creationDate, '%h:%i %p') AS creatTime,
                                               bst.subTokenNumber AS subTokenNumber,
+                                              bst.tokenStaus AS tokenStaus,
                                               iwst.iwbId AS iwbId,
-                                              bwi.itemId AS itemId,
+                                              iwst.itemStatus AS kotItemStatus,
+                                              COALESCE(bwi.itemId, bmk.itemId) AS itemId,
                                               imld.itemName AS itemName,
                                               imld.itemCode AS inputCode,
-                                              bwi.qty AS qty,
-                                              bwi.unit AS unit,
-                                              bwi.itemPrice AS itemPrice,
-                                              bwi.price AS price,
-                                              bwi.comment AS comment
+                                              COALESCE(bwi.qty, bmk.qty) AS qty,
+                                              COALESCE(bwi.unit, bmk.unit) AS unit,
+                                              COALESCE(bwi.itemPrice, bmk.itemPrice) AS itemPrice,
+                                              COALESCE(bwi.price, bmk.price) AS price,
+                                              COALESCE(bwi.comment, bmk.comment) AS comment
                                           FROM
                                               billing_subToken_data AS bst
                                           LEFT JOIN billing_itemWiseSubToken_data AS iwst ON iwst.subTokenId = bst.subTokenId
                                           LEFT JOIN billing_billWiseItem_data AS bwi ON bwi.iwbId = iwst.iwbId
-                                          LEFT JOIN item_menuList_data AS imld ON imld.itemId = bwi.itemId
+                                          LEFT JOIN billing_modifiedKot_data AS bmk ON bmk.iwbId = iwst.iwbId
+                                          LEFT JOIN item_menuList_data AS imld ON imld.itemId = COALESCE(bwi.itemId, bmk.itemId)
                                           LEFT JOIN billing_billWiseTableNo_data AS bwtn ON bwtn.billId = bst.billId
                                           WHERE bst.billId = '${billId}'
                                           ORDER BY bst.subTokenNumber DESC`;
@@ -103,6 +124,9 @@ const getSubTokensByBillId = async (req, res) => {
                         // Find if the subTokenId already exists in the accumulator
                         let existingToken = acc.find(group => group.subTokenId === item.subTokenId);
 
+                        // Determine if the item's price should be added to totalPrice based on kotItemStatus
+                        const shouldIncludeInTotal = item.kotItemStatus !== 'cancelled';
+
                         if (existingToken) {
                             // Add the item-specific properties to the items array
                             existingToken.items.push({
@@ -114,19 +138,25 @@ const getSubTokensByBillId = async (req, res) => {
                                 unit: item.unit,
                                 itemPrice: item.itemPrice,
                                 price: item.price,
-                                comment: item.comment
+                                comment: item.comment,
+                                kotItemStatus: item.kotItemStatus
                             });
-                            existingToken.totalPrice += item.price;
+
+                            // Update totalPrice only if the item is not cancelled
+                            if (shouldIncludeInTotal) {
+                                existingToken.totalPrice += item.price;
+                            }
                         } else {
                             // Create a new group for this subTokenId
                             acc.push({
                                 subTokenId: item.subTokenId,
                                 captain: item.captain,
                                 subTokenNumber: item.subTokenNumber,
+                                tokenStaus: item.tokenStaus,
                                 subTokenDate: item.subTokenDate,
                                 creatTime: item.creatTime,
                                 tokenComment: item.tokenComment,
-                                totalPrice: item.price,
+                                totalPrice: shouldIncludeInTotal ? item.price : 0, // Initialize totalPrice only if not cancelled
                                 items: [{
                                     iwbId: item.iwbId,
                                     itemId: item.itemId,
@@ -136,14 +166,17 @@ const getSubTokensByBillId = async (req, res) => {
                                     unit: item.unit,
                                     itemPrice: item.itemPrice,
                                     price: item.price,
-                                    comment: item.comment
+                                    comment: item.comment,
+                                    kotItemStatus: item.kotItemStatus
                                 }]
                             });
                         }
-
                         return acc;
                     }, []);
+
                     return res.status(200).send(result);
+
+                    // return res.status(200).send(result);
                 }
             });
         }
@@ -232,8 +265,8 @@ const addDineInOrder = (req, res) => {
                                                             return res.status(500).send('Database Error');
                                                         });
                                                     } else {
-                                                        let sql_query_addTokenNo = `INSERT INTO billing_subToken_data(subTokenId, billId, subTokenNumber, tokenComment, subTokenDate)
-                                                                                    VALUES ('${subTokenId}', '${existBillId}', ${nextSubTokenNo}, ${billData.billComment ? `'${billData.billComment}'` : null}, STR_TO_DATE('${currentDate}','%b %d %Y'));`;
+                                                        let sql_query_addTokenNo = `INSERT INTO billing_subToken_data(subTokenId, captain, billId, subTokenNumber, tokenComment, subTokenDate, tokenStaus)
+                                                                                    VALUES ('${subTokenId}', '${cashier}', '${existBillId}', ${nextSubTokenNo}, ${billData.billComment ? `'${billData.billComment}'` : null}, STR_TO_DATE('${currentDate}','%b %d %Y'), 'print');`;
                                                         connection.query(sql_query_addTokenNo, (err) => {
                                                             if (err) {
                                                                 console.error("Error inserting New Sub Token Number:", err);
@@ -289,6 +322,7 @@ const addDineInOrder = (req, res) => {
                                                                                             billTime: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
                                                                                         }
                                                                                         connection.release();
+                                                                                        req?.io?.emit('updateTableView');
                                                                                         return res.status(200).send(sendJson);
                                                                                     }
                                                                                 });
@@ -405,8 +439,8 @@ const addDineInOrder = (req, res) => {
                                                                                 } else {
                                                                                     let sql_query_addTokenNo = `INSERT INTO billing_token_data(tokenId, billId, tokenNo, billType, billDate)
                                                                                                                 VALUES ('${tokenId}', '${billId}', ${nextTokenNo}, 'Dine In', STR_TO_DATE('${currentDate}','%b %d %Y'));
-                                                                                                                INSERT INTO billing_subToken_data(subTokenId, billId, subTokenNumber, tokenComment, subTokenDate)
-                                                                                                                VALUES ('${subTokenId}', '${billId}', ${nextSubTokenNo}, ${billData.billComment ? `'${billData.billComment}'` : null}, STR_TO_DATE('${currentDate}','%b %d %Y'));`;
+                                                                                                                INSERT INTO billing_subToken_data(subTokenId, captain, billId, subTokenNumber, tokenComment, subTokenDate, tokenStaus)
+                                                                                                                VALUES ('${subTokenId}', '${cashier}', '${billId}', ${nextSubTokenNo}, ${billData.billComment ? `'${billData.billComment}'` : null}, STR_TO_DATE('${currentDate}','%b %d %Y'), 'print');`;
                                                                                     connection.query(sql_query_addTokenNo, (err) => {
                                                                                         if (err) {
                                                                                             console.error("Error inserting new Token & Sub Token number:", err);
@@ -472,6 +506,7 @@ const addDineInOrder = (req, res) => {
                                                                                                                                 billTime: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
                                                                                                                             }
                                                                                                                             connection.release();
+                                                                                                                            req?.io?.emit('updateTableView');
                                                                                                                             return res.status(200).send(sendJson);
                                                                                                                         }
                                                                                                                     });
@@ -582,9 +617,14 @@ const removeSubTokenDataById = (req, res) => {
                                                             return res.status(500).send('Database Error');
                                                         });
                                                     } else {
-                                                        let sql_query_removeSubToken = `DELETE FROM billing_billWiseItem_data WHERE iwbId IN (SELECT COALESCE(billing_itemWiseSubToken_data.iwbId,NULL) FROM billing_itemWiseSubToken_data WHERE billing_itemWiseSubToken_data.subTokenId = '${subTokenId}');
-                                                                                        DELETE FROM billing_itemWiseSubToken_data WHERE billing_itemWiseSubToken_data.subTokenId = '${subTokenId}';
-                                                                                        DELETE FROM billing_subToken_data WHERE subTokenId = '${subTokenId}'`;
+                                                        console.log(Date.now())
+                                                        let modifiedId = `CONCAT('modified_',${Date.now()} + ROW_NUMBER() OVER (ORDER BY (SELECT NULL)),'_',ROW_NUMBER() OVER (ORDER BY (SELECT NULL)))`;
+
+                                                        let sql_query_removeSubToken = `INSERT INTO billing_modifiedKot_data(modifiedId, iwbId, itemId, qty, unit, itemPrice, price, comment)
+                                                                                        SELECT ${modifiedId}, iwbId, itemId, qty, unit, itemPrice, price, comment FROM billing_billWiseItem_data WHERE iwbId IN (SELECT COALESCE(billing_itemWiseSubToken_data.iwbId,NULL) FROM billing_itemWiseSubToken_data WHERE billing_itemWiseSubToken_data.subTokenId = '${subTokenId}');
+                                                                                        UPDATE billing_itemWiseSubToken_data SET itemStatus = 'cancelled' WHERE billing_itemWiseSubToken_data.subTokenId = '${subTokenId}';
+                                                                                        UPDATE billing_subToken_data SET tokenStaus = 'cancelled', captain = '${cashier}' WHERE subTokenId = '${subTokenId}';
+                                                                                        DELETE FROM billing_billWiseItem_data WHERE iwbId IN (SELECT COALESCE(billing_itemWiseSubToken_data.iwbId,NULL) FROM billing_itemWiseSubToken_data WHERE billing_itemWiseSubToken_data.subTokenId = '${subTokenId}')`;
                                                         connection.query(sql_query_removeSubToken, (err) => {
                                                             if (err) {
                                                                 console.error("Error Delete Sub Token Item Data:", err);
@@ -593,18 +633,103 @@ const removeSubTokenDataById = (req, res) => {
                                                                     return res.status(500).send('Database Error');
                                                                 });
                                                             } else {
-                                                                connection.commit((err) => {
+                                                                let sql_query_chkExistToken = `SELECT subTokenId, billId FROM billing_subToken_data WHERE billId = '${billId}' AND tokenStaus = 'print'`;
+                                                                connection.query(sql_query_chkExistToken, (err, chkTkn) => {
                                                                     if (err) {
-                                                                        console.error("Error committing transaction:", err);
+                                                                        console.error("Error Delete Sub Token Item Data:", err);
                                                                         connection.rollback(() => {
                                                                             connection.release();
                                                                             return res.status(500).send('Database Error');
                                                                         });
                                                                     } else {
-                                                                        connection.release();
-                                                                        return res.status(200).send('Token Deleted Successfully');
+                                                                        if (chkTkn && chkTkn.length) {
+                                                                            connection.commit((err) => {
+                                                                                if (err) {
+                                                                                    console.error("Error committing transaction:", err);
+                                                                                    connection.rollback(() => {
+                                                                                        connection.release();
+                                                                                        return res.status(500).send('Database Error');
+                                                                                    });
+                                                                                } else {
+                                                                                    connection.release();
+                                                                                    req?.io?.emit('updateTableView');
+                                                                                    return res.status(200).send('Token Deleted Successfully');
+                                                                                }
+                                                                            });
+                                                                        } else {
+                                                                            let sql_query_chkIsFixed = `SELECT tableNo, isFixed FROM billing_DineInTable_data WHERE tableNo = (SELECT tableNo FROM billing_billWiseTableNo_data WHERE billId = '${billId}') AND billId = '${billId}'`;
+                                                                            connection.query(sql_query_chkIsFixed, (err, chkExist) => {
+                                                                                if (err) {
+                                                                                    console.error("Error check table is fixed or not:", err);
+                                                                                    connection.rollback(() => {
+                                                                                        connection.release();
+                                                                                        return res.status(500).send('Database Error');
+                                                                                    });
+                                                                                } else {
+                                                                                    const isTableFixed = chkExist && chkExist.length ? chkExist[0].isFixed : true;
+                                                                                    const tableNo = chkExist && chkExist.length ? chkExist[0].tableNo : true;
+                                                                                    let sql_query_getBillInfo = `SELECT bd.billId AS billId FROM billing_data AS bd WHERE bd.billId = '${billId}' AND bd.billType = 'Dine In'`;
+                                                                                    connection.query(sql_query_getBillInfo, (err, billInfo) => {
+                                                                                        if (err) {
+                                                                                            console.error("Error get billInfo :", err);
+                                                                                            connection.rollback(() => {
+                                                                                                connection.release();
+                                                                                                return res.status(500).send('Database Error');
+                                                                                            });
+                                                                                        } else {
+                                                                                            if (billInfo && billInfo.length) {
+                                                                                                let sql_querry_removeBillData = `DELETE FROM billing_data WHERE billId = '${billId}'`;
+                                                                                                connection.query(sql_querry_removeBillData, (err) => {
+                                                                                                    if (err) {
+                                                                                                        console.error("Error Delete billData :", err);
+                                                                                                        connection.rollback(() => {
+                                                                                                            connection.release();
+                                                                                                            return res.status(500).send('Database Error');
+                                                                                                        });
+                                                                                                    } else {
+                                                                                                        let sql_query_sattledData = isTableFixed == true
+                                                                                                            ?
+                                                                                                            `UPDATE billing_DineInTable_data SET billId = null WHERE tableNo = '${tableNo}' AND billId = '${billId}';`
+                                                                                                            :
+                                                                                                            `DELETE FROM billing_DineInTable_data WHERE billId = '${billId}' AND tableNo = '${tableNo}';`;
+                                                                                                        connection.query(sql_query_sattledData, (err) => {
+                                                                                                            if (err) {
+                                                                                                                console.error("Error in sattled Data:", err);
+                                                                                                                connection.rollback(() => {
+                                                                                                                    connection.release();
+                                                                                                                    return res.status(500).send('Database Error');
+                                                                                                                });
+                                                                                                            } else {
+                                                                                                                connection.commit((err) => {
+                                                                                                                    if (err) {
+                                                                                                                        console.error("Error committing transaction:", err);
+                                                                                                                        connection.rollback(() => {
+                                                                                                                            connection.release();
+                                                                                                                            return res.status(500).send('Database Error');
+                                                                                                                        });
+                                                                                                                    } else {
+                                                                                                                        connection.release();
+                                                                                                                        req?.io?.emit('updateTableView');
+                                                                                                                        return res.status(200).send('Table Bill Cancel Success');
+                                                                                                                    }
+                                                                                                                });
+                                                                                                            }
+                                                                                                        });
+                                                                                                    }
+                                                                                                });
+                                                                                            } else {
+                                                                                                connection.rollback(() => {
+                                                                                                    connection.release();
+                                                                                                    return res.status(404).send('billId Not Found...!');
+                                                                                                })
+                                                                                            }
+                                                                                        }
+                                                                                    })
+                                                                                }
+                                                                            })
+                                                                        }
                                                                     }
-                                                                });
+                                                                })
                                                             }
                                                         })
                                                     }
@@ -640,7 +765,7 @@ const removeSubTokenDataById = (req, res) => {
 
 // Update Sub Token Data
 
-const updateNewSubTokenDataById = (req, res) => {
+const updateSubTokenDataById = (req, res) => {
     pool2.getConnection((err, connection) => {
         if (err) {
             console.error("Error getting database connection:", err);
@@ -705,69 +830,189 @@ const updateNewSubTokenDataById = (req, res) => {
                                                 return res.status(500).send('Database Error');
                                             });
                                         } else {
-                                            let sql_query_removeOldItemData = `DELETE FROM billing_billWiseItem_data WHERE iwbId IN (SELECT COALESCE(billing_itemWiseSubToken_data.iwbId,NULL) FROM billing_itemWiseSubToken_data WHERE billing_itemWiseSubToken_data.subTokenId = '${billData.subTokenId}');
-                                                                               DELETE FROM billing_itemWiseSubToken_data WHERE billing_itemWiseSubToken_data.subTokenId = '${billData.subTokenId}'`;
-                                            connection.query(sql_query_removeOldItemData, (err) => {
+                                            let sql_query_getOldItemJson = `SELECT
+                                                                                bwid.iwbId AS iwbId,
+                                                                                bwid.itemId AS itemId,
+                                                                                imd.itemCode AS inputCode,
+                                                                                imd.itemName AS itemName,
+                                                                                bwid.qty AS qty,
+                                                                                bwid.unit AS unit,
+                                                                                bwid.itemPrice AS itemPrice,
+                                                                                bwid.price AS price,
+                                                                                bwid.comment AS comment
+                                                                            FROM
+                                                                                billing_billWiseItem_data AS bwid
+                                                                            INNER JOIN item_menuList_data AS imd ON imd.itemId = bwid.itemId
+                                                                            WHERE bwid.iwbId IN (SELECT COALESCE(iwbId,NULL) FROM billing_itemWiseSubToken_data WHERE subTokenId = '${billData.subTokenId}')`;
+                                            connection.query(sql_query_getOldItemJson, (err, oldJson) => {
                                                 if (err) {
-                                                    console.error("Error inserting Bill Wise Item Data:", err);
+                                                    console.error("Error getting old item json:", err);
                                                     connection.rollback(() => {
                                                         connection.release();
                                                         return res.status(500).send('Database Error');
                                                     });
                                                 } else {
-                                                    const billItemData = billData.itemsData
-                                                    let iwbIdArray = []
-                                                    let addBillWiseItemData = billItemData.map((item, index) => {
-                                                        let uniqueId = `iwb_${Date.now() + index + '_' + index}`; // Generating a unique ID using current timestamp
-                                                        iwbIdArray = [...iwbIdArray, uniqueId]
-                                                        return `('${uniqueId}', '${billData.billId}', '${item.itemId}', ${item.qty}, '${item.unit}', ${item.itemPrice}, ${item.price}, ${item.comment ? `'${item.comment}'` : null})`;
-                                                    }).join(', ');
-                                                    let sql_query_addItems = `INSERT INTO billing_billWiseItem_data(iwbId, billId, itemId, qty, unit, itemPrice, price, comment)
-                                                                              VALUES ${addBillWiseItemData}`;
-                                                    connection.query(sql_query_addItems, (err) => {
-                                                        if (err) {
-                                                            console.error("Error inserting Bill Wise Item Data:", err);
-                                                            connection.rollback(() => {
-                                                                connection.release();
-                                                                return res.status(500).send('Database Error');
-                                                            });
-                                                        } else {
-                                                            let addItemWiseSubToken = iwbIdArray.map((item, index) => {
-                                                                let uniqueId = `iwst_${Date.now() + index + '_' + index}`;  // Generating a unique ID using current timestamp
-                                                                return `('${uniqueId}', '${billData.subTokenId}', '${item}')`;
-                                                            }).join(', ');
-                                                            let sql_query_addItems = `INSERT INTO billing_itemWiseSubToken_data(iwstId, subTokenId, iwbId)
-                                                                                      VALUES ${addItemWiseSubToken}`;
-                                                            connection.query(sql_query_addItems, (err) => {
-                                                                if (err) {
-                                                                    console.error("Error inserting Item Wise Sub Token Id:", err);
-                                                                    connection.rollback(() => {
-                                                                        connection.release();
-                                                                        return res.status(500).send('Database Error');
-                                                                    });
-                                                                } else {
-                                                                    connection.commit((err) => {
-                                                                        if (err) {
-                                                                            console.error("Error committing transaction:", err);
-                                                                            connection.rollback(() => {
-                                                                                connection.release();
-                                                                                return res.status(500).send('Database Error');
-                                                                            });
-                                                                        } else {
-                                                                            const sendJson = {
-                                                                                ...billData,
-                                                                                captain: billData.assignCaptain ? billData.assignCaptain : cashier,
-                                                                                billDate: new Date(currentDate).toLocaleDateString('en-GB'),
-                                                                                billTime: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-                                                                            }
+                                                    const json1 = Object.values(JSON.parse(JSON.stringify(oldJson)));
+                                                    const json2 = Object.values(JSON.parse(JSON.stringify(billData.itemsData)));
+
+                                                    console.log(json1, json2);
+
+                                                    const { added, removed, modified } = compareJson(json1, json2);
+
+                                                    if (added.length || removed.length || modified.length) {
+                                                        const modifiedNewJson = modified.map(({ new: newItem }) => newItem);
+
+                                                        let iwbIdAddArray = []
+                                                        // ADD New Item In Bill
+                                                        let addBillWiseItemData = added.length ? added.map((item, index) => {
+                                                            let uniqueId = `iwb_${Date.now() + index + '_' + index}`; // Generating a unique ID using current timestamp
+                                                            iwbIdAddArray = [...iwbIdAddArray, uniqueId]
+                                                            return `('${uniqueId}', '${billData.billId}', '${item.itemId}', ${item.qty}, '${item.unit}', ${item.itemPrice}, ${item.price}, ${item.comment ? `'${item.comment}'` : null})`;
+                                                        }).join(', ') : '';
+
+                                                        let addRemovedKotItem = removed.length ? removed.map((item, index) => {
+                                                            let uniqueId = `modified_${Date.now() + index + '_' + index}`; // Generating a unique ID using current timestamp
+                                                            return `('${uniqueId}', '${cashier}', '${item.iwbId}', '${item.itemId}', ${item.qty}, '${item.unit}', ${item.itemPrice}, ${item.price}, ${item.comment ? `'${item.comment}'` : null})`;
+                                                        }).join(', ') : '';
+
+                                                        // Remove Items iwbIds
+                                                        let removeJsonIds = removed.length ? removed.map((item, index) => {
+                                                            return `'${item.iwbId}'`;
+                                                        }).join(',') : '';
+
+                                                        // Updated Items iwbIds
+                                                        let updateJsonIds = modifiedNewJson.length ? modifiedNewJson.map((item, index) => {
+                                                            return `'${item.iwbId}'`;
+                                                        }).join(',') : '';
+
+                                                        // Update Existing Data Query
+
+                                                        let updateQuery = modifiedNewJson.length ?
+                                                            `UPDATE billing_billWiseItem_data
+                                                                SET 
+                                                                qty = CASE iwbId ` +
+                                                            modifiedNewJson.map(item => `WHEN '${item.iwbId}' THEN ${item.qty}`).join(' ') +
+                                                            ` END,
+                                                                itemPrice = CASE iwbId ` +
+                                                            modifiedNewJson.map(item => `WHEN '${item.iwbId}' THEN ${item.itemPrice}`).join(' ') +
+                                                            ` END,
+                                                                price = CASE iwbId ` +
+                                                            modifiedNewJson.map(item => `WHEN '${item.iwbId}' THEN ${item.price}`).join(' ') +
+                                                            ` END,
+                                                                comment = CASE iwbId ` +
+                                                            modifiedNewJson.map(item => `WHEN '${item.iwbId}' THEN ${item.comment ? `'${item.comment}'` : null}`).join(' ') +
+                                                            ` END
+                                                                WHERE iwbId IN (${modifiedNewJson.map(item => `'${item.iwbId}'`).join(', ')});`
+                                                            : `SELECT * FROM user_details WHERE userId = '0'`;
+
+                                                        let sql_query_adjustItem = `${added.length ? `INSERT INTO billing_billWiseItem_data(iwbId, billId, itemId, qty, unit, itemPrice, price, comment)
+                                                                                                      VALUES ${addBillWiseItemData};` : ''}
+                                                                                                      ${removed.length ? `DELETE FROM billing_billWiseItem_data WHERE iwbId IN (${removeJsonIds});` : ''}
+                                                                                                      ${modifiedNewJson.length ? `${updateQuery};` : `${updateQuery};`}`;
+                                                        connection.query(sql_query_adjustItem, (err) => {
+                                                            if (err) {
+                                                                console.error("Error inserting Bill Wise Item Data:", err);
+                                                                connection.rollback(() => {
+                                                                    connection.release();
+                                                                    return res.status(500).send('Database Error');
+                                                                });
+                                                            } else {
+                                                                let addItemWiseSubToken = iwbIdAddArray.length ? iwbIdAddArray.map((item, index) => {
+                                                                    let uniqueId = `iwst_${Date.now() + index + '_' + index}`;  // Generating a unique ID using current timestamp
+                                                                    return `('${uniqueId}', '${billData.subTokenId}', '${item}', 'new')`;
+                                                                }).join(', ') : '';
+                                                                let sql_query_addItemsId = iwbIdAddArray.length
+                                                                    ?
+                                                                    `INSERT INTO billing_itemWiseSubToken_data(iwstId, subTokenId, iwbId, itemStatus)
+                                                                     VALUES ${addItemWiseSubToken};`
+                                                                    : '';
+                                                                let sql_query_removesId = removed.length
+                                                                    ?
+                                                                    `UPDATE billing_itemWiseSubToken_data SET itemStatus = 'cancelled' WHERE iwbId IN (${removeJsonIds});
+                                                                     INSERT INTO billing_modifiedKot_data(modifiedId, removedBy, iwbId, itemId, qty, unit, itemPrice, price, comment)
+                                                                     VALUES ${addRemovedKotItem};`
+                                                                    : '';
+                                                                let sql_query_updateModified = modifiedNewJson.length
+                                                                    ?
+                                                                    `UPDATE billing_itemWiseSubToken_data SET itemStatus = 'modified' WHERE iwbId IN (${updateJsonIds});`
+                                                                    : '';
+
+                                                                let sql_query_updateKotStatus = `${iwbIdAddArray.length ? sql_query_addItemsId : ''}
+                                                                                                 ${removed.length ? sql_query_removesId : ''}
+                                                                                                 ${modifiedNewJson.length ? sql_query_updateModified : ''}`;
+                                                                connection.query(sql_query_updateKotStatus, (err) => {
+                                                                    if (err) {
+                                                                        console.error("Error inserting Item Wise Sub Token Id:", err);
+                                                                        connection.rollback(() => {
                                                                             connection.release();
-                                                                            return res.status(201).send(sendJson);
-                                                                        }
-                                                                    });
-                                                                }
-                                                            })
-                                                        }
-                                                    })
+                                                                            return res.status(500).send('Database Error');
+                                                                        });
+                                                                    } else {
+                                                                        connection.commit((err) => {
+                                                                            if (err) {
+                                                                                console.error("Error committing transaction:", err);
+                                                                                connection.rollback(() => {
+                                                                                    connection.release();
+                                                                                    return res.status(500).send('Database Error');
+                                                                                });
+                                                                            } else {
+                                                                                const createJson = (items, status) =>
+                                                                                    items.length ? items.map(e => ({
+                                                                                        iwbId: e.iwbId,
+                                                                                        itemId: e.itemId,
+                                                                                        inputCode: e.inputCode,
+                                                                                        itemName: e.itemName,
+                                                                                        qty: e.qty,
+                                                                                        unit: e.unit,
+                                                                                        itemPrice: e.itemPrice,
+                                                                                        price: e.price,
+                                                                                        comment: e.comment,
+                                                                                        kotItemStatus: status ? status : e.kotItemStatus ? e.kotItemStatus : null
+                                                                                    })) : [];
+                                                                                const addedJson = createJson(added, 'new');
+                                                                                const removeJson = createJson(removed, 'cancelled');
+                                                                                const modifyJson = createJson(modifiedNewJson, 'modified');
+                                                                                const existItemData = createJson(billData.itemsData)
+                                                                                const mergedJson = [...addedJson, ...removeJson, ...modifyJson];
+
+                                                                                const newMergeJson = (json1, json2) => {
+                                                                                    json1.forEach(item1 => {
+                                                                                        const index = json2.findIndex(item2 => item2.itemId === item1.itemId && item2.unit === item1.unit);
+
+                                                                                        if (index !== -1) {
+                                                                                            // If a match is found, replace the object in json2 with the one from json1
+                                                                                            json2[index] = item1;
+                                                                                        } else {
+                                                                                            // If no match is found, push the object from json1 to json2
+                                                                                            json2.push(item1);
+                                                                                        }
+                                                                                    });
+                                                                                    return json2;
+                                                                                };
+                                                                                const newItemsData = newMergeJson(mergedJson, existItemData);
+
+                                                                                const sendJson = {
+                                                                                    ...billData,
+                                                                                    itemsData: newItemsData,
+                                                                                    captain: billData.assignCaptain ? billData.assignCaptain : cashier,
+                                                                                    billDate: new Date(currentDate).toLocaleDateString('en-GB'),
+                                                                                    billTime: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+                                                                                }
+                                                                                connection.release();
+                                                                                req?.io?.emit('updateTableView');
+                                                                                return res.status(201).send(sendJson);
+                                                                            }
+                                                                        });
+                                                                    }
+                                                                })
+                                                            }
+                                                        })
+                                                    } else {
+                                                        connection.rollback(() => {
+                                                            connection.release();
+                                                            return res.status(401).send('No Change');
+                                                        });
+                                                    }
                                                 }
                                             })
                                         }
@@ -973,6 +1218,7 @@ const printTableBill = (req, res) => {
                             ...({ tableInfo: billData[4][0] }),
                             subTokens: billData[5].map(item => item.subTokenNumber).sort((a, b) => a - b).join(", ")
                         }
+                        req?.io?.emit('updateTableView');
                         return res.status(200).send(json);
                     }
                 });
@@ -1169,14 +1415,15 @@ const updateDineInBillData = (req, res) => {
                                                                     modifiedNewJson.map(item => `WHEN '${item.iwbId}' THEN ${item.price}`).join(' ') +
                                                                     ` END,
                                                                     comment = CASE iwbId ` +
-                                                                    modifiedNewJson.map(item => `WHEN '${item.iwbId}' THEN '${item.comment}'`).join(' ') +
+                                                                    modifiedNewJson.map(item => `WHEN '${item.iwbId}' THEN ${item.comment ? `'${item.comment}'` : null}`).join(' ') +
                                                                     ` END
                                                                     WHERE iwbId IN (${modifiedNewJson.map(item => `'${item.iwbId}'`).join(', ')});`
                                                                     : `SELECT * FROM user_details WHERE userId = '0'`;
 
                                                                 let sql_query_adjustItem = `${added.length ? `INSERT INTO billing_billWiseItem_data(iwbId, billId, itemId, qty, unit, itemPrice, price, comment)
                                                                                             VALUES ${addBillWiseItemData};` : ''}
-                                                                                            ${removed.length ? `DELETE FROM billing_billWiseItem_data WHERE iwbId IN (${removeJsonIds});` : ''}
+                                                                                            ${removed.length ? `DELETE FROM billing_billWiseItem_data WHERE iwbId IN (${removeJsonIds});
+                                                                                                                DELETE FROM billing_itemWiseSubToken_data WHERE iwbId IN (${removeJsonIds});` : ''}
                                                                                             ${modifiedNewJson.length ? `${updateQuery};` : `${updateQuery};`}`;
                                                                 connection.query(sql_query_adjustItem, (err) => {
                                                                     if (err) {
@@ -1256,7 +1503,6 @@ const updateDineInBillData = (req, res) => {
                                                                                     billDate: billDate,
                                                                                     billTime: billTime
                                                                                 }
-                                                                                const tokenList = firm && firm[1].length ? firm[1] : null;
                                                                                 const customerData = billData.customerDetails;
                                                                                 if (customerData && customerData.customerId && customerData.addressId) {
                                                                                     let sql_query_addAddressRelation = `DELETE FROM billing_billWiseCustomer_data WHERE billId = '${billData.billId}';
@@ -1279,6 +1525,7 @@ const updateDineInBillData = (req, res) => {
                                                                                                     });
                                                                                                 } else {
                                                                                                     connection.release();
+                                                                                                    req?.io?.emit('updateTableView');
                                                                                                     return res.status(200).send(sendJson);
                                                                                                 }
                                                                                             });
@@ -1316,6 +1563,7 @@ const updateDineInBillData = (req, res) => {
                                                                                                                 });
                                                                                                             } else {
                                                                                                                 connection.release();
+                                                                                                                req?.io?.emit('updateTableView');
                                                                                                                 return res.status(200).send(sendJson);
                                                                                                             }
                                                                                                         });
@@ -1352,6 +1600,7 @@ const updateDineInBillData = (req, res) => {
                                                                                                                         });
                                                                                                                     } else {
                                                                                                                         connection.release();
+                                                                                                                        req?.io?.emit('updateTableView');
                                                                                                                         return res.status(200).send(sendJson);
                                                                                                                     }
                                                                                                                 });
@@ -1383,6 +1632,7 @@ const updateDineInBillData = (req, res) => {
                                                                                                     });
                                                                                                 } else {
                                                                                                     connection.release();
+                                                                                                    req?.io?.emit('updateTableView');
                                                                                                     return res.status(200).send(sendJson);
                                                                                                 }
                                                                                             });
@@ -1432,6 +1682,7 @@ const updateDineInBillData = (req, res) => {
                                                                                                                                 });
                                                                                                                             } else {
                                                                                                                                 connection.release();
+                                                                                                                                req?.io?.emit('updateTableView');
                                                                                                                                 return res.status(200).send(sendJson);
                                                                                                                             }
                                                                                                                         });
@@ -1468,6 +1719,7 @@ const updateDineInBillData = (req, res) => {
                                                                                                                                         });
                                                                                                                                     } else {
                                                                                                                                         connection.release();
+                                                                                                                                        req?.io?.emit('updateTableView');
                                                                                                                                         return res.status(200).send(sendJson);
                                                                                                                                     }
                                                                                                                                 });
@@ -1519,6 +1771,7 @@ const updateDineInBillData = (req, res) => {
                                                                                                                                     });
                                                                                                                                 } else {
                                                                                                                                     connection.release();
+                                                                                                                                    req?.io?.emit('updateTableView');
                                                                                                                                     return res.status(200).send(sendJson);
                                                                                                                                 }
                                                                                                                             });
@@ -1549,6 +1802,7 @@ const updateDineInBillData = (req, res) => {
                                                                                                                     });
                                                                                                                 } else {
                                                                                                                     connection.release();
+                                                                                                                    req?.io?.emit('updateTableView');
                                                                                                                     return res.status(200).send(sendJson);
                                                                                                                 }
                                                                                                             });
@@ -1585,6 +1839,7 @@ const updateDineInBillData = (req, res) => {
                                                                                                                             });
                                                                                                                         } else {
                                                                                                                             connection.release();
+                                                                                                                            req?.io?.emit('updateTableView');
                                                                                                                             return res.status(200).send(sendJson);
                                                                                                                         }
                                                                                                                     });
@@ -1613,6 +1868,7 @@ const updateDineInBillData = (req, res) => {
                                                                                                                     });
                                                                                                                 } else {
                                                                                                                     connection.release();
+                                                                                                                    req?.io?.emit('updateTableView');
                                                                                                                     return res.status(200).send(sendJson);
                                                                                                                 }
                                                                                                             });
@@ -1642,6 +1898,7 @@ const updateDineInBillData = (req, res) => {
                                                                                                         });
                                                                                                     } else {
                                                                                                         connection.release();
+                                                                                                        req?.io?.emit('updateTableView');
                                                                                                         return res.status(200).send(sendJson);
                                                                                                     }
                                                                                                 });
@@ -1657,6 +1914,7 @@ const updateDineInBillData = (req, res) => {
                                                                                                 });
                                                                                             } else {
                                                                                                 connection.release();
+                                                                                                req?.io?.emit('updateTableView');
                                                                                                 return res.status(200).send(sendJson);
                                                                                             }
                                                                                         });
@@ -1822,6 +2080,7 @@ const sattledBillDataByID = (req, res) => {
                                                                         });
                                                                     } else {
                                                                         connection.release();
+                                                                        req?.io?.emit('updateTableView');
                                                                         return res.status(200).send('Sattled Success');
                                                                     }
                                                                 });
@@ -1900,6 +2159,7 @@ const moveTable = (req, res) => {
                                             console.error("An error occurred in SQL Queery", err);
                                             return res.status(500).send('Database Error');;
                                         } else {
+                                            req?.io?.emit('updateTableView');
                                             return res.status(200).send(`Table Moved From ${tableNo} ==>> ${newTableNo}`)
                                         }
                                     })
@@ -1918,6 +2178,7 @@ const moveTable = (req, res) => {
                                 console.error("An error occurred in SQL Queery", err);
                                 return res.status(500).send('Database Error');;
                             } else {
+                                req?.io?.emit('updateTableView');
                                 return res.status(200).send(`Table Moved From ${tableNo} ==>> ${newTableNo}`)
                             }
                         })
@@ -2027,6 +2288,7 @@ const cancelBillDataByID = (req, res) => {
                                                                         });
                                                                     } else {
                                                                         connection.release();
+                                                                        req?.io?.emit('updateTableView');
                                                                         return res.status(200).send('Table Bill Cancel Success');
                                                                     }
                                                                 });
@@ -2063,213 +2325,32 @@ const cancelBillDataByID = (req, res) => {
     });
 }
 
-// NEW Update Sub Token Data
+// Check Is Table Empty Or Not
 
-const updateSubTokenDataById = (req, res) => {
-    pool2.getConnection((err, connection) => {
-        if (err) {
-            console.error("Error getting database connection:", err);
-            return res.status(500).send('Database Error');
-        }
-        try {
-            connection.beginTransaction((err) => {
+const isTableEmpty = (req, res) => {
+    try {
+        const tableNo = req.query.tableNo;
+        if (!tableNo) {
+            return res.status(404).send('Please Enter Table Number')
+        } else {
+            let sql_query_chkTableIsEmpty = `SELECT tableId, tableNo FROM billing_DineInTable_data WHERE tableNo = '${tableNo}' AND billId IS NOT NULL`;
+            pool.query(sql_query_chkTableIsEmpty, (err, table) => {
                 if (err) {
-                    console.error("Error beginning transaction:", err);
-                    connection.release();
+                    console.error("An error occurred in SQL Queery", err);
                     return res.status(500).send('Database Error');
                 } else {
-                    let token;
-                    token = req.headers ? req.headers.authorization.split(" ")[1] : null;
-                    if (token) {
-                        const decoded = jwt.verify(token, process.env.JWT_SECRET);
-                        const cashier = decoded.id.firstName;
-                        const currentDate = getCurrentDate();
-                        const billData = req.body;
-                        if (!billData.subTokenId || !billData.billId || !billData.subTokenNumber || !billData.settledAmount || !billData.subTotal || !billData.itemsData.length) {
-                            connection.rollback(() => {
-                                connection.release();
-                                return res.status(404).send('Please Fill All The Fields..!');
-                            })
-                        } else {
-                            let sql_query_getPreTokenPrice = `SELECT SUM(bwi.price) AS preTotalPrice FROM billing_itemWiseSubToken_data  AS iwst
-                                                              LEFT JOIN billing_billWiseItem_data AS bwi ON bwi.iwbId = iwst.iwbId
-                                                              WHERE subTokenId = '${billData.subTokenId}'`;
-                            connection.query(sql_query_getPreTokenPrice, (err, prePrice) => {
-                                if (err) {
-                                    console.error("Error Get Pre Total Price:", err);
-                                    connection.rollback(() => {
-                                        connection.release();
-                                        return res.status(500).send('Database Error');
-                                    });
-                                } else {
-                                    const preTotalPrice = prePrice && prePrice[0].preTotalPrice ? prePrice[0].preTotalPrice : 0;
-                                    let sql_querry_updateBillData = `UPDATE
-                                                                         billing_data
-                                                                     SET
-                                                                         totalAmount = totalAmount - ${preTotalPrice} + ${billData.subTotal},
-                                                                         settledAmount = settledAmount - ${preTotalPrice} + ${billData.settledAmount}
-                                                                     WHERE
-                                                                         billId = '${billData.billId}';
-                                                                     UPDATE
-                                                                         billing_subToken_data
-                                                                     SET
-                                                                         tokenComment = ${billData.billComment ? `'${billData.billComment}'` : null}
-                                                                     WHERE 
-                                                                        subTokenId = '${billData.subTokenId}';
-                                                                     UPDATE 
-                                                                        billing_billWiseTableNo_data 
-                                                                     SET 
-                                                                        assignCaptain = '${billData.assignCaptain ? billData.assignCaptain : cashier}' 
-                                                                     WHERE 
-                                                                        billId = '${billData.billId}';`;
-                                    connection.query(sql_querry_updateBillData, (err) => {
-                                        if (err) {
-                                            console.error("Error Update new bill Price:", err);
-                                            connection.rollback(() => {
-                                                connection.release();
-                                                return res.status(500).send('Database Error');
-                                            });
-                                        } else {
-                                            let sql_query_getOldItemJson = `SELECT
-                                                                                bwid.iwbId AS iwbId,
-                                                                                bwid.itemId AS itemId,
-                                                                                imd.itemName AS itemName,
-                                                                                imd.itemCode AS inputCode,
-                                                                                bwid.qty AS qty,
-                                                                                bwid.unit AS unit,
-                                                                                bwid.itemPrice AS itemPrice,
-                                                                                bwid.price AS price,
-                                                                                bwid.comment AS comment
-                                                                            FROM
-                                                                                billing_billWiseItem_data AS bwid
-                                                                            INNER JOIN item_menuList_data AS imd ON imd.itemId = bwid.itemId
-                                                                            WHERE bwid.iwbId IN (SELECT COALESCE(iwbId,NULL) FROM billing_itemWiseSubToken_data WHERE subTokenId = '${billData.subTokenId}')`;
-                                            connection.query(sql_query_getOldItemJson, (err) => {
-                                                if (err) {
-                                                    console.error("Error getting old item json:", err);
-                                                    connection.rollback(() => {
-                                                        connection.release();
-                                                        return res.status(500).send('Database Error');
-                                                    });
-                                                } else {
-                                                    const json1 = Object.values(JSON.parse(JSON.stringify(oldJson)));
-                                                    const json2 = Object.values(JSON.parse(JSON.stringify(billData.itemsData)));
-
-                                                    const { added, removed, modified } = compareJson(json1, json2);
-
-                                                    const modifiedNewJson = modified.map(({ new: newItem }) => newItem);
-
-                                                    let iwbIdAddArray = []
-                                                    // ADD New Item In Bill
-                                                    let addBillWiseItemData = added.length ? added.map((item, index) => {
-                                                        let uniqueId = `iwb_${Date.now() + index + '_' + index}`; // Generating a unique ID using current timestamp
-                                                        iwbIdAddArray = [...iwbIdAddArray, uniqueId]
-                                                        return `('${uniqueId}', '${billData.billId}', '${item.itemId}', ${item.qty}, '${item.unit}', ${item.itemPrice}, ${item.price}, ${item.comment ? `'${item.comment}'` : null})`;
-                                                    }).join(', ') : '';
-
-                                                    // Remove Items
-                                                    let removeJsonIds = removed.length ? removed.map((item, index) => {
-                                                        return `'${item.iwbId}'`;
-                                                    }).join(',') : '';
-
-                                                    // Update Existing Data Query
-
-                                                    let updateQuery = modifiedNewJson.length ?
-                                                        `UPDATE billing_billWiseItem_data
-                                                                SET 
-                                                                qty = CASE iwbId ` +
-                                                        modifiedNewJson.map(item => `WHEN '${item.iwbId}' THEN ${item.qty}`).join(' ') +
-                                                        ` END,
-                                                                itemPrice = CASE iwbId ` +
-                                                        modifiedNewJson.map(item => `WHEN '${item.iwbId}' THEN ${item.itemPrice}`).join(' ') +
-                                                        ` END,
-                                                                price = CASE iwbId ` +
-                                                        modifiedNewJson.map(item => `WHEN '${item.iwbId}' THEN ${item.price}`).join(' ') +
-                                                        ` END,
-                                                                comment = CASE iwbId ` +
-                                                        modifiedNewJson.map(item => `WHEN '${item.iwbId}' THEN '${item.comment}'`).join(' ') +
-                                                        ` END
-                                                                WHERE iwbId IN (${modifiedNewJson.map(item => `'${item.iwbId}'`).join(', ')});`
-                                                        : `SELECT * FROM user_details WHERE userId = '0'`;
-
-                                                    let sql_query_adjustItem = `${added.length ? `INSERT INTO billing_billWiseItem_data(iwbId, billId, itemId, qty, unit, itemPrice, price, comment)
-                                                                                                  VALUES ${addBillWiseItemData};` : ''}
-                                                                                                  ${removed.length ? `UPDATE billing_billWiseItem_data SET billId = NULL WHERE iwbId IN (${removeJsonIds});` : ''}
-                                                                                                  ${modifiedNewJson.length ? `${updateQuery};` : `${updateQuery};`}`;
-                                                    connection.query(sql_query_adjustItem, (err) => {
-                                                        if (err) {
-                                                            console.error("Error inserting Bill Wise Item Data:", err);
-                                                            connection.rollback(() => {
-                                                                connection.release();
-                                                                return res.status(500).send('Database Error');
-                                                            });
-                                                        } else {
-                                                            let addItemWiseSubToken = iwbIdAddArray.length ? iwbIdAddArray.map((item, index) => {
-                                                                let uniqueId = `iwst_${Date.now() + index + '_' + index}`;  // Generating a unique ID using current timestamp
-                                                                return `('${uniqueId}', '${billData.subTokenId}', '${item}', 'new')`;
-                                                            }).join(', ') : '';
-                                                            let sql_query_addItems = iwbIdAddArray.length
-                                                                ?
-                                                                `INSERT INTO billing_itemWiseSubToken_data(iwstId, subTokenId, iwbId, itemStatus)
-                                                                 VALUES ${addItemWiseSubToken};`
-                                                                : '';
-                                                            removeJsonIds.length
-                                                                ?
-                                                                `UPDATE billing_itemWiseSubToken_data SET itemStatus = 'cancelled' WHERE iwbId IN (${removeJsonIds});`
-                                                                : '';
-                                                            connection.query(sql_query_addItems, (err) => {
-                                                                if (err) {
-                                                                    console.error("Error inserting Item Wise Sub Token Id:", err);
-                                                                    connection.rollback(() => {
-                                                                        connection.release();
-                                                                        return res.status(500).send('Database Error');
-                                                                    });
-                                                                } else {
-                                                                    connection.commit((err) => {
-                                                                        if (err) {
-                                                                            console.error("Error committing transaction:", err);
-                                                                            connection.rollback(() => {
-                                                                                connection.release();
-                                                                                return res.status(500).send('Database Error');
-                                                                            });
-                                                                        } else {
-                                                                            const sendJson = {
-                                                                                ...billData,
-                                                                                captain: billData.assignCaptain ? billData.assignCaptain : cashier,
-                                                                                billDate: new Date(currentDate).toLocaleDateString('en-GB'),
-                                                                                billTime: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-                                                                            }
-                                                                            connection.release();
-                                                                            return res.status(201).send(sendJson);
-                                                                        }
-                                                                    });
-                                                                }
-                                                            })
-                                                        }
-                                                    })
-                                                }
-                                            })
-                                        }
-                                    })
-                                }
-                            })
-                        }
+                    if (table && table.length) {
+                        return res.status(401).send(`Table No. ${tableNo} is Not Available`);
                     } else {
-                        connection.rollback(() => {
-                            connection.release();
-                            return res.status(404).send('Please Login First....!');
-                        });
+                        return res.status(200).send('Available');
                     }
                 }
             });
-        } catch (error) {
-            console.error('An error occurred', error);
-            connection.rollback(() => {
-                connection.release();
-                return res.status(500).json('Internal Server Error');
-            })
         }
-    });
+    } catch (error) {
+        console.error('An error occurred', error);
+        res.status(500).json('Internal Server Error');
+    }
 }
 
 module.exports = {
@@ -2283,5 +2364,6 @@ module.exports = {
     updateDineInBillData,
     sattledBillDataByID,
     moveTable,
-    cancelBillDataByID
+    cancelBillDataByID,
+    isTableEmpty
 }

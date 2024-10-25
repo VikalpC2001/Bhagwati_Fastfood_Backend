@@ -12,6 +12,6 @@ router.post('/addDineInOrderByApp', protect, appController.addDineInOrderByApp);
 
 const appItemController = require("../../controller/captainAppController/displayItem.controller.js");
 
-router.post('/getItemDataForApp', protect, appItemController.getItemDataForApp);
+router.get('/getItemDataForApp', protect, appItemController.getItemDataForApp);
 
 module.exports = router;

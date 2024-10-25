@@ -1450,6 +1450,7 @@ const updateDineInBillData = (req, res) => {
                                                                                                      LEFT JOIN billing_data AS bd ON bd.billId = btd.billId
                                                                                                      WHERE btd.billType = 'Dine In' AND bd.billStatus NOT IN ('complete','Cancel') AND btd.billDate = STR_TO_DATE('${currentDate}','%b %d %Y')
                                                                                                      ORDER BY btd.tokenNo ASC;
+                                                                                                     SELECT subTokenNumber FROM billing_subToken_data WHERE billId = '${billData.billId}';
                                                                                                      UPDATE billing_billWiseTableNo_data SET assignCaptain = '${billData.assignCaptain ? billData.assignCaptain : cashier}' WHERE billId = '${billData.billId}';
                                                                                 ${['complete', 'Cancel'].includes(billData.billStatus)
                                                                                 ? isTableFixed == true
@@ -1460,7 +1461,7 @@ const updateDineInBillData = (req, res) => {
                                                                                 : ''}
                                                                                     DELETE FROM billing_billWiseUpi_data WHERE billId = '${billData.billId}';
                                                                                     DELETE FROM due_billAmount_data WHERE billId = '${billData.billId}';
-                                                                                ${billData.billPayType == 'online'
+                                                                                ${billData.billPayType == 'online' && billData.onlineId && billData.onlineId != 'other'
                                                                                 ?
                                                                                 `INSERT INTO billing_billWiseUpi_data(bwuId, onlineId, billId, amount, onlineDate)
                                                                                  VALUES('${bwuId}', '${billData.onlineId}', '${billData.billId}', '${billData.settledAmount}', STR_TO_DATE('${currentDate}','%b %d %Y'))`
@@ -1501,7 +1502,8 @@ const updateDineInBillData = (req, res) => {
                                                                                     officialBillNo: !isExist && billData.isOfficial ? nextOfficialBillNo : staticBillNumber,
                                                                                     tokenNo: 'R' + tokenNo,
                                                                                     billDate: billDate,
-                                                                                    billTime: billTime
+                                                                                    billTime: billTime,
+                                                                                    subTokens: firm && firm[2].length ? firm[2].map(item => item.subTokenNumber).sort((a, b) => a - b).join(", ") : null
                                                                                 }
                                                                                 const customerData = billData.customerDetails;
                                                                                 if (customerData && customerData.customerId && customerData.addressId) {
@@ -2052,7 +2054,7 @@ const sattledBillDataByID = (req, res) => {
                                                             : ''}
                                                                 DELETE FROM billing_billWiseUpi_data WHERE billId = '${billData.billId}';
                                                                 DELETE FROM due_billAmount_data WHERE billId = '${billData.billId}';
-                                                                ${billData.billPayType == 'online'
+                                                                ${billData.billPayType == 'online' && billData.onlineId && billData.onlineId != 'other'
                                                                 ?
                                                                 `INSERT INTO billing_billWiseUpi_data(bwuId, onlineId, billId, amount, onlineDate)
                                                                  VALUES('${bwuId}', '${billData.onlineId}', '${billData.billId}', '${billData.settledAmount}', STR_TO_DATE('${currentDate}','%b %d %Y'))`

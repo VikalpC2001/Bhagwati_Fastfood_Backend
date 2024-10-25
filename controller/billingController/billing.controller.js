@@ -298,8 +298,8 @@ const getRecentBillData = (req, res) => {
                                                             IF(bhd.hotelName IS NOT NULL AND hif.roomNo IS NOT NULL, ' - ', ''),
                                                             COALESCE(hif.roomNo, '')
                                                         ))
-                                                    WHEN bd.billType = 'Pick Up' THEN COALESCE(bwc.customerName, bwc.address, NULL)
-                                                    WHEN bd.billType = 'Delivery' THEN COALESCE(bwc.address, bwc.customerName, NULL)
+                                                    WHEN bd.billType = 'Pick Up' THEN COALESCE(bwc.customerName, bwc.address, bwc.mobileNo, NULL)
+                                                    WHEN bd.billType = 'Delivery' THEN COALESCE(bwc.address, bwc.customerName, bwc.mobileNo, NULL)
                                                     WHEN bd.billType = 'Dine In' THEN CONCAT('Table No. ',bwt.tableNo)
                                                 ELSE NULL
                                                 END AS address,
@@ -657,12 +657,14 @@ const getBillDataById = (req, res) => {
                                                       FROM
                                                         billing_billWiseTableNo_data
                                                       WHERE billId = '${billId}'`;
+                        let sql_querry_getSubTokens = `SELECT subTokenNumber FROM billing_subToken_data WHERE billId = '${billId}'`;
+
                         const sql_query_getBillData = `${sql_query_getBillingData};
                                                        ${sql_query_getBillwiseItem};
                                                        ${sql_query_getFirmData};
                                                        ${billType == 'Hotel' ? sql_query_getHotelInfo + ';' : ''}
                                                        ${['Pick Up', 'Delivery', 'Dine In'].includes(billType) ? sql_query_getCustomerInfo + ';' : ''}
-                                                       ${billType == 'Dine In' ? sql_query_getTableData : ''}`;
+                                                       ${billType == 'Dine In' ? sql_query_getTableData + ';' + sql_querry_getSubTokens : ''}`;
                         pool.query(sql_query_getBillData, (err, billData) => {
                             if (err) {
                                 console.error("An error occurred in SQL Queery", err);
@@ -675,6 +677,7 @@ const getBillDataById = (req, res) => {
                                     ...(billType === 'Hotel' ? { hotelDetails: billData[3][0] } : ''),
                                     ...(['Pick Up', 'Delivery', 'Dine In'].includes(billType) ? { customerDetails: billData && billData[3][0] ? billData[3][0] : '' } : ''),
                                     ...(billType === 'Dine In' ? { tableInfo: billData[4][0] } : ''),
+                                    subTokens: billData && billData[5] && billData[5].length ? billData[5].map(item => item.subTokenNumber).sort((a, b) => a - b).join(", ") : null,
                                     ...(['due'].includes(billPayType) ? { "payInfo": { "accountId": billData[0][0].typeId, "customerName": billData[0][0].typeName } } : '')
                                 }
                                 return res.status(200).send(json);
@@ -1025,7 +1028,7 @@ const addPickUpBillData = (req, res) => {
                                                                                          LEFT JOIN billing_data AS bd ON bd.billId = btd.billId
                                                                                          WHERE btd.billType = 'Pick Up' AND bd.billStatus NOT IN ('complete','Cancel') AND btd.billDate = STR_TO_DATE('${currentDate}','%b %d %Y')
                                                                                          ORDER BY btd.tokenNo ASC;
-                                                                                         ${billData.billPayType == 'online'
+                                                                                         ${billData.billPayType == 'online' && billData.onlineId && billData.onlineId != 'other'
                                                                     ?
                                                                     `INSERT INTO billing_billWiseUpi_data(bwuId, onlineId, billId, amount, onlineDate)
                                                                      VALUES('${bwuId}', '${billData.onlineId}', '${billId}', '${billData.settledAmount}', STR_TO_DATE('${currentDate}','%b %d %Y'))`
@@ -1619,8 +1622,9 @@ const addDeliveryBillData = (req, res) => {
                                                                 return res.status(500).send('Database Error');
                                                             });
                                                         } else {
+                                                            console.log(billData.onlineId, 'jojojok')
                                                             let sql_query_getFirmData = `SELECT firmId, firmName, gstNumber, firmAddress, pincode, firmMobileNo, otherMobileNo FROM billing_firm_data WHERE firmId = '${billData.firmId}';
-                                                                                        ${billData.billPayType == 'online'
+                                                                                        ${billData.billPayType == 'online' && billData.onlineId && billData.onlineId != 'other'
                                                                     ?
                                                                     `INSERT INTO billing_billWiseUpi_data(bwuId, onlineId, billId, amount, onlineDate)
                                                                      VALUES('${bwuId}', '${billData.onlineId}', '${billId}', '${billData.settledAmount}', STR_TO_DATE('${currentDate}','%b %d %Y'))`
@@ -2422,7 +2426,7 @@ const updatePickUpBillData = (req, res) => {
                                                                                                      ORDER BY btd.tokenNo ASC;
                                                                                                      DELETE FROM billing_billWiseUpi_data WHERE billId = '${billData.billId}';
                                                                                                      DELETE FROM due_billAmount_data WHERE billId = '${billData.billId}';
-                                                                                             ${billData.billPayType == 'online'
+                                                                                             ${billData.billPayType == 'online' && billData.onlineId && billData.onlineId != 'other'
                                                                                 ?
                                                                                 `INSERT INTO billing_billWiseUpi_data(bwuId, onlineId, billId, amount, onlineDate)
                                                                                  VALUES('${bwuId}', '${billData.onlineId}', '${billData.billId}', '${billData.settledAmount}', STR_TO_DATE('${currentDate}','%b %d %Y'))`
@@ -3066,7 +3070,7 @@ const updateDeliveryBillData = (req, res) => {
                                                                         let sql_query_getFirmData = `SELECT firmId, firmName, gstNumber, firmAddress, pincode, firmMobileNo, otherMobileNo FROM billing_firm_data WHERE firmId = '${billData.firmId}';
                                                                                                      DELETE FROM billing_billWiseUpi_data WHERE billId = '${billData.billId}';
                                                                                                      DELETE FROM due_billAmount_data WHERE billId = '${billData.billId}';
-                                                                                                    ${billData.billPayType == 'online'
+                                                                                                    ${billData.billPayType == 'online' && billData.onlineId && billData.onlineId != 'other'
                                                                                 ?
                                                                                 `INSERT INTO billing_billWiseUpi_data(bwuId, onlineId, billId, amount, onlineDate)
                                                                                  VALUES('${bwuId}', '${billData.onlineId}', '${billData.billId}', '${billData.settledAmount}', STR_TO_DATE('${currentDate}','%b %d %Y'))`

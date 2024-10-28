@@ -45,7 +45,9 @@ const getDeliveryDataByToken = (req, res) => {
                 const result = [matches[1], parseInt(matches[2])];
                 const billType = getCategory(result[0]);
                 const currentDate = getCurrentDate();
-                if (billType) {
+                if (billType == 'Dine In') {
+                    return res.status(404).send('Dine In Token Is Not Allowed');
+                } else if (billType) {
                     let sql_query_getRecentBill = `SELECT 
                                                         bd.billId AS billId, 
                                                         bd.billNumber AS billNumber,
@@ -183,6 +185,7 @@ const getOnDeliveryData = (req, res) => {
                                                              enterBy,
                                                              delivery_data.personId,
                                                              delivery_person_data.personName,
+                                                             INSERT(delivery_person_data.mobileNo, 6, 0, ' ') AS mobileNo,
                                                              totalBillAmt,
                                                              totalChange,
                                                              totalDesiredAmt,

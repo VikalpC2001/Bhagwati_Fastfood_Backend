@@ -155,7 +155,7 @@ const getLiveViewByCategoryId = (req, res) => {
                                                                 )
                                                             ) AS timeDifference,
                                                              dpd.personName AS deliveredBy,
-                                                             dpd.mobileNo AS mobileNo
+                                                             INSERT(dpd.mobileNo, 6, 0, ' ') AS mobileNo
                                                         FROM 
                                                             billing_data AS bd
                                                         LEFT JOIN billing_Official_data AS bod ON bod.billId = bd.billId
@@ -284,6 +284,7 @@ const getRecentBillData = (req, res) => {
                                                 bd.billId AS billId, 
                                                 bd.billNumber AS billNumber,
                                                 bd.settledAmount AS totalAmount,
+                                                bd.billStatus AS billStatus,
                                                 CASE
                                                     WHEN bd.billType = 'Hotel' THEN CONCAT('H',btd.tokenNo)
                                                     WHEN bd.billType = 'Pick Up' THEN CONCAT('P',btd.tokenNo)
@@ -2278,6 +2279,7 @@ const updatePickUpBillData = (req, res) => {
 
                         const currentDate = getCurrentDate();
                         const billData = req.body;
+                        console.log(billData.billStatus);
                         if (!billData.billId || !billData.customerDetails || !billData.subTotal || !billData.settledAmount || !billData.billPayType || !billData.billStatus || !billData.itemsData) {
                             connection.rollback(() => {
                                 connection.release();

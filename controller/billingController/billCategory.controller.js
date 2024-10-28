@@ -21,7 +21,7 @@ const getBillCategory = (req, res) => {
                                          bcd.stopAutoAcceptStartTime AS stopAutoAcceptStartTime,
                                          bcd.stopAutoAcceptCloseTime AS stopAutoAcceptCloseTime,
                                          bcd.billFooterNote AS billFooterNote,
-                                         bcd.kotFooterNote AS kotFooterNote
+                                         bcd.appriciateLine AS appriciateLine
                                      FROM
                                          billing_category_data AS bcd
                                      LEFT JOIN item_menuCategory_data AS imc ON imc.menuCategoryId = bcd.menuId
@@ -66,7 +66,7 @@ const updateBillCategoryData = (req, res) => {
             stopAutoAcceptStartTime: req.body.stopAutoAcceptStartTime ? req.body.stopAutoAcceptStartTime : '00:00:00',
             stopAutoAcceptCloseTime: req.body.stopAutoAcceptCloseTime ? req.body.stopAutoAcceptCloseTime : '00:00:00',
             billFooterNote: req.body.billFooterNote ? req.body.billFooterNote : null,
-            kotFooterNote: req.body.kotFooterNote ? req.body.kotFooterNote : null
+            appriciateLine: req.body.appriciateLine ? req.body.appriciateLine : null
         }
         if (!data.categoryId || !data.menuId || !data.firmId) {
             return res.status(404).send("Pleasr Provide All Fields...!")
@@ -85,7 +85,7 @@ const updateBillCategoryData = (req, res) => {
                                             stopAutoAcceptStartTime = '${data.stopAutoAcceptStartTime}',
                                             stopAutoAcceptCloseTime = '${data.stopAutoAcceptCloseTime}',
                                             billFooterNote = ${data.billFooterNote ? `'${data.billFooterNote}'` : null},
-                                            kotFooterNote = ${data.kotFooterNote ? `'${data.kotFooterNote}'` : null}
+                                            appriciateLine = ${data.appriciateLine ? `'${data.appriciateLine}'` : null}
                                         WHERE 
                                             categoryId = '${data.categoryId}'`;
             pool.query(sql_query_updateData, (err, data) => {

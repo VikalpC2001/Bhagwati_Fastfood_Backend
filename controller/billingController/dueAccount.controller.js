@@ -1,5 +1,9 @@
 const pool = require('../../database');
 const jwt = require("jsonwebtoken");
+const { PDFDocument, StandardFonts, rgb } = require("pdf-lib");
+const { writeFileSync, readFileSync } = require("fs");
+const fs = require('fs');
+const { Readable } = require('stream')
 
 // Get Due Customer Account
 
@@ -9,7 +13,8 @@ const getCustomerAccountList = (req, res) => {
         const numPerPage = req.query.numPerPage;
         const skip = (page - 1) * numPerPage;
         const limit = skip + ',' + numPerPage;
-        sql_querry_getCountDetails = `SELECT count(*) as numRows FROM due_account_data`;
+        const searchWord = req.query.searchWord ? req.query.searchWord : '';
+        sql_querry_getCountDetails = `SELECT count(*) as numRows FROM due_account_data WHERE due_account_data.customerName LIKE '%` + searchWord + `%'`;
         pool.query(sql_querry_getCountDetails, (err, rows, fields) => {
             if (err) {
                 console.error("An error occurred in SQL Queery", err);
@@ -17,13 +22,50 @@ const getCustomerAccountList = (req, res) => {
             } else {
                 const numRows = rows[0].numRows;
                 const numPages = Math.ceil(numRows / numPerPage);
-                const sql_query_getDetails = `SELECT 
-                                                accountId,
-                                                customerName,
-                                                customerNumber
-                                              FROM 
-                                                due_account_data
-                                              LIMIT ${limit}`;
+                const staticLeftJoin = `LEFT JOIN(
+                                                  SELECT due_billAmount_data.accountId,
+                                                      ROUND(
+                                                          SUM(
+                                                              due_billAmount_data.billAmount
+                                                          )
+                                                      ) AS total_due
+                                                  FROM
+                                                      due_billAmount_data
+                                                  GROUP BY
+                                                      due_billAmount_data.accountId
+                                              ) AS dbd
+                                              ON
+                                                  dad.accountId = dbd.accountId
+                                              LEFT JOIN(
+                                                  SELECT due_transaction_data.accountId,
+                                                      ROUND(
+                                                          SUM(
+                                                              due_transaction_data.paidAmount
+                                                          )
+                                                      ) AS total_paid
+                                                  FROM
+                                                      due_transaction_data
+                                                  GROUP BY
+                                                      due_transaction_data.accountId
+                                              ) AS dtd
+                                              ON
+                                                  dad.accountId = dtd.accountId`;
+                const sql_query_getDetails = `SELECT
+                                                  dad.accountId,
+                                                  dad.customerName,
+                                                  dad.customerNumber,
+                                              	COALESCE(dbd.total_due, 0) - COALESCE(dtd.total_paid, 0) AS dueBalace
+                                              FROM
+                                                  due_account_data AS dad
+                                              ${staticLeftJoin}
+                                              WHERE dad.customerName LIKE '%` + searchWord + `%'
+                                              ORDER BY dad.CustomerName ASC
+                                              LIMIT ${limit};
+                                              SELECT
+                                                  SUM(COALESCE(dbd.total_due, 0) - COALESCE(dtd.total_paid, 0)) AS totalDueAmt
+                                              FROM
+                                                  due_account_data AS dad
+                                              ${staticLeftJoin}`;
                 pool.query(sql_query_getDetails, (err, rows, fields) => {
                     if (err) {
                         console.error("An error occurred in SQL Queery", err);
@@ -38,7 +80,12 @@ const getCustomerAccountList = (req, res) => {
                             }]
                             return res.status(200).send({ rows, numRows });
                         } else {
-                            return res.status(200).send({ rows, numRows });
+                            const newJson = {
+                                "rows": rows[0],
+                                "numRows": numRows,
+                                "totalDueAmt": rows && rows[1].length ? rows[1][0].totalDueAmt : 0
+                            }
+                            return res.status(200).send(newJson);
                         }
                     }
                 });
@@ -47,6 +94,37 @@ const getCustomerAccountList = (req, res) => {
     } catch (error) {
         console.error('An error occurred', error);
         res.status(500).json('Internal Server Error');
+    }
+}
+
+// Get Customer Details By Id
+
+const getDueCustomerDataById = (req, res) => {
+    try {
+        let accountId = req.query && req.query.accountId ? req.query.accountId : null;
+        if (!accountId) {
+
+        } else {
+            var sql_queries_getDetails = `SELECT 
+                                            accountId,
+                                            customerName,
+                                            customerNumber
+                                          FROM 
+                                            due_account_data
+                                          WHERE accountId = '${accountId}'`;
+
+            pool.query(sql_queries_getDetails, (err, rows) => {
+                if (err) {
+                    console.error("An error occurred in SQL Queery", err);
+                    return res.status(500).send('Database Error');;
+                } else {
+                    return res.status(200).send(rows[0]);
+                }
+            });
+        }
+    } catch (error) {
+        console.error('An error occurred', error);
+        res.status(500).send('Internal Server Error');
     }
 }
 
@@ -233,7 +311,7 @@ const getDueStaticsById = (req, res) => {
                 const count = {
                     totalDue: data && data[0].length ? data[0][0].totalDueAmt : 0,
                     totalPaidAmount: data && data[1].length ? data[1][0].totalPaidAmount : 0,
-                    balanceHeading: data && data[2].length ? data[2][0].remainingAmount > 0 ? "you will get" : data[2][0].remainingAmount < 0 ? "you will give" : "settled up" : 'No Data Found',
+                    balanceHeading: data && data[2].length ? data[2][0].remainingAmount > 0 ? "You will get" : data[2][0].remainingAmount < 0 ? "You will give" : "Settled Up" : 'No Data Found',
                     dueBalance: data && data[2].length ? Math.abs(data[2][0].remainingAmount) : 0,
                 }
                 return res.status(200).send(count);
@@ -453,7 +531,7 @@ const getDueBillDataById = (req, res) => {
             } else {
                 const numRows = rows[0].numRows;
                 const numPages = Math.ceil(numRows / numPerPage);
-                const sql_query_staticQuery = `SELECT dabId, enterBy, accountId, billId, billAmount, dueNote, dueDate FROM due_billAmount_data`;
+                const sql_query_staticQuery = `SELECT dabId, enterBy, accountId, billId, billAmount, dueNote, dueDate, DATE_FORMAT(dueDate, '%d %b %Y') AS displayDate, DATE_FORMAT(creationDate, '%h:%i %p') AS diplayTime FROM due_billAmount_data`;
                 if (data.startDate && data.endDate) {
                     sql_query_getDetails = `${sql_query_staticQuery}
                                             WHERE accountId = '${data.accountId}' 
@@ -506,10 +584,13 @@ const getDueDebitTransactionListById = (req, res) => {
         const data = {
             startDate: (req.query.startDate ? req.query.startDate : '').slice(4, 15),
             endDate: (req.query.endDate ? req.query.endDate : '').slice(4, 15),
-            accountId: req.query.accountId
+            accountId: req.query.accountId,
+            searchInvoiceNumber: req.query.searchInvoiceNumber ? req.query.searchInvoiceNumber : ''
         }
         if (data.startDate && data.endDate) {
             sql_querry_getCountDetails = `SELECT count(*) as numRows FROM due_transaction_data WHERE accountId = '${data.accountId}' AND transactionDate BETWEEN STR_TO_DATE('${data.startDate}', '%b %d %Y') AND STR_TO_DATE('${data.endDate}', '%b %d %Y')`;
+        } if (data.searchInvoiceNumber) {
+            sql_querry_getCountDetails = `SELECT count(*) as numRows FROM due_transaction_data WHERE accountId = '${data.accountId}' AND transactionId LIKE '%` + data.searchInvoiceNumber + `%'`;
         } else {
             sql_querry_getCountDetails = `SELECT count(*) as numRows FROM due_transaction_data WHERE accountId = '${data.accountId}' AND transactionDate BETWEEN STR_TO_DATE('${firstDay}', '%b %d %Y') AND STR_TO_DATE('${lastDay}', '%b %d %Y')`;
         }
@@ -520,11 +601,17 @@ const getDueDebitTransactionListById = (req, res) => {
             } else {
                 const numRows = rows[0].numRows;
                 const numPages = Math.ceil(numRows / numPerPage);
-                const sql_query_staticQuery = `SELECT transactionId, accountId, receivedBy, givenBy, pendingAmount, paidAmount, transactionNote, transactionDate FROM due_transaction_data`;
+                const sql_query_staticQuery = `SELECT transactionId, RIGHT(transactionId,9) AS invoiceNumber, accountId, receivedBy, givenBy, pendingAmount, paidAmount, transactionNote, transactionDate, DATE_FORMAT(transactionDate, '%d %b %Y') AS displayDate, DATE_FORMAT(creationDate, '%h:%i %p') AS diplayTime FROM due_transaction_data`;
                 if (data.startDate && data.endDate) {
                     sql_query_getDetails = `${sql_query_staticQuery}
                                             WHERE accountId = '${data.accountId}' 
                                             AND transactionDate BETWEEN STR_TO_DATE('${data.startDate}', '%b %d %Y') AND STR_TO_DATE('${data.endDate}', '%b %d %Y')
+                                            ORDER BY transactionDate DESC
+                                            LIMIT ${limit}`;
+                } else if (data.searchInvoiceNumber) {
+                    sql_query_getDetails = `${sql_query_staticQuery}
+                                            WHERE accountId = '${data.accountId}' 
+                                            AND transactionId LIKE '%` + data.searchInvoiceNumber + `%'
                                             ORDER BY transactionDate DESC
                                             LIMIT ${limit}`;
                 } else {
@@ -721,9 +808,183 @@ const ddlDueAccountData = (req, res) => {
     }
 }
 
+// Export PDF of Transaction Invoice
+
+async function createPDF(res, data) {
+    try {
+        const details = {
+            invoiceNumber: data[0].invoiceNumber ? data[0].invoiceNumber.toString() : '',
+            paidBy: data[0].paidBy ? data[0].paidBy : '',
+            customerName: data[0].customerName ? data[0].customerName : '',
+            customerNumber: data[0].customerNumber ? data[0].customerNumber : '',
+            receivedBy: data[0].receivedBy ? data[0].receivedBy : '',
+            pendingAmount: data[0].pendingAmount ? data[0].pendingAmount.toString() : '',
+            paidAmount: data[0].paidAmount ? data[0].paidAmount.toString() : '',
+            remainingAmount: data[0].remainingAmount ? data[0].remainingAmount.toString() : '',
+            transactionNote: data[0].transactionNote ? data[0].transactionNote : '',
+            transactionDate: data[0].transactionDate ? data[0].transactionDate : '',
+            transactionTime: data[0].transactionTime ? data[0].transactionTime : '',
+        }
+        const document = await PDFDocument.load(readFileSync(process.env.INVOICE_BHAGWATI_URL));
+        console.log('>>?>>?>?>?', process.env.INVOICE_BHAGWATI_URL)
+        const helveticaFont = await document.embedFont(StandardFonts.Helvetica);
+        const HelveticaBold = await document.embedFont(StandardFonts.HelveticaBold);
+        const firstPage = document.getPage(0);
+
+        // Load the image data synchronously using readFileSync
+        const draftImageData = fs.readFileSync(process.env.DRAFT_LOGO_IMAGE_URL);
+
+        // Embed the image data in the PDF document
+        const draftImage = await document.embedPng(draftImageData);
+
+        // Draw the image on the desired page
+        const draftImageDims = draftImage.scale(0.6); // Adjust the scale as needed
+        firstPage.drawImage(draftImage, {
+            x: 50, // Adjust the X position as needed
+            y: 100, // Adjust the Y position as needed
+            width: draftImageDims.width + 50,
+            height: draftImageDims.height + 100,
+            opacity: 0.09, // Apply transparency (0.0 to 1.0)
+        });
+
+        firstPage.moveTo(105, 530);
+        firstPage.drawText(details.invoiceNumber, {
+            x: 140,
+            y: 635,
+            size: 10,
+            fontSize: 100,
+            font: HelveticaBold
+        })
+
+        firstPage.drawText(details.transactionDate, {
+            x: 140,
+            y: 621,
+            size: 9,
+            font: helveticaFont
+        })
+
+        firstPage.drawText(details.transactionTime, {
+            x: 140,
+            y: 606,
+            size: 9,
+            font: helveticaFont
+        })
+
+        firstPage.drawText(details.customerName, {
+            x: 300,
+            y: 635,
+            size: 10,
+            fontSize: 100,
+            font: HelveticaBold
+        })
+
+        firstPage.drawText(details.customerNumber, {
+            x: 300,
+            y: 621,
+            size: 9,
+            font: helveticaFont
+        })
+
+        firstPage.drawText(details.receivedBy, {
+            x: 50,
+            y: 505,
+            size: 9,
+            font: helveticaFont
+        })
+
+        firstPage.drawText(details.paidBy, {
+            x: 159,
+            y: 505,
+            size: 9,
+            font: helveticaFont
+        })
+
+        firstPage.drawText(details.pendingAmount, {
+            x: 295,
+            y: 505,
+            size: 9,
+            font: helveticaFont
+        })
+
+        firstPage.drawText(details.paidAmount, {
+            x: 404,
+            y: 505,
+            size: 9,
+            font: helveticaFont
+        })
+
+        firstPage.drawText(details.remainingAmount, {
+            x: 476,
+            y: 505,
+            size: 9,
+            font: helveticaFont
+        })
+
+        firstPage.drawText(details.transactionNote, {
+            x: 85,
+            y: 435,
+            size: 9,
+            font: helveticaFont
+        })
+
+        const pdfBytes = await document.save();
+
+        const stream = new Readable();
+        stream.push(pdfBytes);
+        stream.push(null);
+
+        const fileName = 'jane-doe.pdf'; // Set the desired file name
+
+        res.setHeader('Content-Disposition', `attachment; filename="${fileName}"`);
+        res.setHeader('Content-Type', 'application/pdf');
+
+        stream.pipe(res);
+    } catch (error) {
+        console.error('An error occurred', error);
+        res.status(500).json('Internal Server Error');
+    }
+    // writeFileSync("jane-doe.pdf", await document.save());
+}
+
+const exportDueTransactionInvoice = async (req, res) => {
+    try {
+        const transactionId = req.query.transactionId;
+        const sql_queries_getInvoiceDetails = `SELECT RIGHT(dtd.transactionId,9) AS invoiceNumber, dad.customerName, dad.customerNumber, receivedBy AS receivedBy, givenBy AS paidBy, pendingAmount, paidAmount, (pendingAmount - paidAmount) AS remainingAmount, transactionNote, DATE_FORMAT(transactionDate,'%d %M %Y, %W') AS transactionDate, DATE_FORMAT(creationDate,'%h:%i %p') AS transactionTime FROM due_transaction_data AS dtd
+                                                INNER JOIN 
+                                                (
+                                                	SELECT
+                                                        accountId,
+                                                        customerName,
+                                                       customerNumber
+                                                    FROM
+                                                        due_account_data
+                                                ) AS dad ON dtd.accountId = dad.accountId
+                                                WHERE dtd.transactionId = '${transactionId}'`;
+        pool.query(sql_queries_getInvoiceDetails, (err, data) => {
+            if (err) {
+                console.error("An error occurred in SQL Queery", err);
+                return res.status(500).send('Database Error');
+            }
+            createPDF(res, data)
+                .then(() => {
+                    console.log('PDF created successfully');
+                    res.status(200);
+                })
+                .catch((err) => {
+                    console.log(err);
+                    res.status(500).send('Error creating PDF');
+                });
+        })
+    } catch (error) {
+        console.error('An error occurred', error);
+        res.status(500).json('Internal Server Error');
+    }
+}
+
 
 module.exports = {
     getCustomerAccountList,
+    getDueCustomerDataById,
     addCustomerAccount,
     removeCustomerAccount,
     updateCustomerAccount,
@@ -736,5 +997,6 @@ module.exports = {
     removeDueBillDataById,
     removeDueDebitTransactionById,
     updateDueBillDataById,
-    ddlDueAccountData
+    ddlDueAccountData,
+    exportDueTransactionInvoice
 }

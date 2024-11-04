@@ -34,7 +34,6 @@ const getStockInList = async (req, res) => {
         } else {
             sql_querry_getCountdetails = `SELECT count(*) as numRows FROM inventory_stockIn_data`;
         }
-        console.log('???>?>??', sql_querry_getCountdetails);
         pool.query(sql_querry_getCountdetails, (err, rows, fields) => {
             if (err) {
                 console.error("An error occurred in SQL Queery", err);

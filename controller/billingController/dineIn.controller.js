@@ -280,9 +280,9 @@ const addDineInOrder = (req, res) => {
                                                                 let addBillWiseItemData = billItemData.map((item, index) => {
                                                                     let uniqueId = `iwb_${Date.now() + index + '_' + index}`;
                                                                     iwbIdArray = [...iwbIdArray, uniqueId] // Generating a unique ID using current timestamp
-                                                                    return `('${uniqueId}', '${existBillId}', '${item.itemId}', ${item.qty}, '${item.unit}', ${item.itemPrice}, ${item.price}, ${item.comment ? `'${item.comment}'` : null})`;
+                                                                    return `('${uniqueId}', '${existBillId}', '${item.itemId}', ${item.qty}, '${item.unit}', ${item.itemPrice}, ${item.price}, ${item.comment ? `'${item.comment}'` : null}, 'Dine In', 'cash', 'running', STR_TO_DATE('${currentDate}','%b %d %Y'))`;
                                                                 }).join(', ');
-                                                                let sql_query_addItems = `INSERT INTO billing_billWiseItem_data(iwbId, billId, itemId, qty, unit, itemPrice, price, comment)
+                                                                let sql_query_addItems = `INSERT INTO billing_billWiseItem_data(iwbId, billId, itemId, qty, unit, itemPrice, price, comment, billType, billPayType, billStatus, billDate)
                                                                                           VALUES ${addBillWiseItemData}`;
                                                                 connection.query(sql_query_addItems, (err) => {
                                                                     if (err) {
@@ -440,7 +440,7 @@ const addDineInOrder = (req, res) => {
                                                                                     let sql_query_addTokenNo = `INSERT INTO billing_token_data(tokenId, billId, tokenNo, billType, billDate)
                                                                                                                 VALUES ('${tokenId}', '${billId}', ${nextTokenNo}, 'Dine In', STR_TO_DATE('${currentDate}','%b %d %Y'));
                                                                                                                 INSERT INTO billing_subToken_data(subTokenId, captain, billId, subTokenNumber, tokenComment, subTokenDate, tokenStaus)
-                                                                                                                VALUES ('${subTokenId}', '${cashier}', '${billId}', ${nextSubTokenNo}, ${billData.billComment ? `'${billData.billComment}'` : null}, STR_TO_DATE('${currentDate}','%b %d %Y'), 'print');`;
+                                                                                                                VALUES ('${subTokenId}', '${cashier}', '${billId}', ${nextSubTokenNo}, ${billData.billComment ? `'${billData.billComment}'` : null}, STR_TO_DATE('${currentDate}','%b %d %Y'), 'running');`;
                                                                                     connection.query(sql_query_addTokenNo, (err) => {
                                                                                         if (err) {
                                                                                             console.error("Error inserting new Token & Sub Token number:", err);
@@ -464,9 +464,9 @@ const addDineInOrder = (req, res) => {
                                                                                                     let addBillWiseItemData = billItemData.map((item, index) => {
                                                                                                         let uniqueId = `iwb_${Date.now() + index + '_' + index}`;
                                                                                                         iwbIdArray = [...iwbIdArray, uniqueId] // Generating a unique ID using current timestamp
-                                                                                                        return `('${uniqueId}', '${billId}', '${item.itemId}', ${item.qty}, '${item.unit}', ${item.itemPrice}, ${item.price}, ${item.comment ? `'${item.comment}'` : null})`;
+                                                                                                        return `('${uniqueId}', '${billId}', '${item.itemId}', ${item.qty}, '${item.unit}', ${item.itemPrice}, ${item.price}, ${item.comment ? `'${item.comment}'` : null}, 'Dine In', 'cash', 'print', STR_TO_DATE('${currentDate}','%b %d %Y'))`;
                                                                                                     }).join(', ');
-                                                                                                    let sql_query_addItems = `INSERT INTO billing_billWiseItem_data(iwbId, billId, itemId, qty, unit, itemPrice, price, comment)
+                                                                                                    let sql_query_addItems = `INSERT INTO billing_billWiseItem_data(iwbId, billId, itemId, qty, unit, itemPrice, price, comment, billType, billPayType, billStatus, billDate)
                                                                                                                               VALUES ${addBillWiseItemData}`;
                                                                                                     connection.query(sql_query_addItems, (err) => {
                                                                                                         if (err) {
@@ -867,7 +867,7 @@ const updateSubTokenDataById = (req, res) => {
                                                         let addBillWiseItemData = added.length ? added.map((item, index) => {
                                                             let uniqueId = `iwb_${Date.now() + index + '_' + index}`; // Generating a unique ID using current timestamp
                                                             iwbIdAddArray = [...iwbIdAddArray, uniqueId]
-                                                            return `('${uniqueId}', '${billData.billId}', '${item.itemId}', ${item.qty}, '${item.unit}', ${item.itemPrice}, ${item.price}, ${item.comment ? `'${item.comment}'` : null})`;
+                                                            return `('${uniqueId}', '${billData.billId}', '${item.itemId}', ${item.qty}, '${item.unit}', ${item.itemPrice}, ${item.price}, ${item.comment ? `'${item.comment}'` : null}, 'Dine In', 'cash', 'running', STR_TO_DATE('${currentDate}','%b %d %Y'))`;
                                                         }).join(', ') : '';
 
                                                         let addRemovedKotItem = removed.length ? removed.map((item, index) => {
@@ -905,7 +905,7 @@ const updateSubTokenDataById = (req, res) => {
                                                                 WHERE iwbId IN (${modifiedNewJson.map(item => `'${item.iwbId}'`).join(', ')});`
                                                             : `SELECT * FROM user_details WHERE userId = '0'`;
 
-                                                        let sql_query_adjustItem = `${added.length ? `INSERT INTO billing_billWiseItem_data(iwbId, billId, itemId, qty, unit, itemPrice, price, comment)
+                                                        let sql_query_adjustItem = `${added.length ? `INSERT INTO billing_billWiseItem_data(iwbId, billId, itemId, qty, unit, itemPrice, price, comment, billType, billPayType, billStatus, billDate)
                                                                                                       VALUES ${addBillWiseItemData};` : ''}
                                                                                                       ${removed.length ? `DELETE FROM billing_billWiseItem_data WHERE iwbId IN (${removeJsonIds});` : ''}
                                                                                                       ${modifiedNewJson.length ? `${updateQuery};` : `${updateQuery};`}`;
@@ -1346,7 +1346,11 @@ const updateDineInBillData = (req, res) => {
                                                                          billDate = STR_TO_DATE('${currentDate}','%b %d %Y'),
                                                                          billStatus = '${billData.billStatus}'`;
 
+                                                let updateItemColumnField = `billPayType = '${billData.billPayType}',
+                                                                             billStatus = '${billData.billStatus}'`;
+
                                                 let sql_querry_updateBillInfo = `UPDATE billing_data SET ${updateColumnField} WHERE billId = '${billData.billId}';
+                                                                                 UPDATE billing_billWiseItem_data SET ${updateItemColumnField} WHERE billId = '${billData.billId}';
                                                                                  ${!isExist && billData.isOfficial ?
                                                         `INSERT INTO billing_Official_data (billNumber, ${columnData}) VALUES(${nextOfficialBillNo}, ${values})` :
                                                         `UPDATE billing_Official_data SET ${updateColumnField} WHERE billId = '${billData.billId}'`};
@@ -1392,7 +1396,7 @@ const updateDineInBillData = (req, res) => {
                                                                 // ADD New Item In Bill
                                                                 let addBillWiseItemData = added.length ? added.map((item, index) => {
                                                                     let uniqueId = `iwb_${Date.now() + index + '_' + index}`; // Generating a unique ID using current timestamp
-                                                                    return `('${uniqueId}', '${billData.billId}', '${item.itemId}', ${item.qty}, '${item.unit}', ${item.itemPrice}, ${item.price}, ${item.comment ? `'${item.comment}'` : null})`;
+                                                                    return `('${uniqueId}', '${billData.billId}', '${item.itemId}', ${item.qty}, '${item.unit}', ${item.itemPrice}, ${item.price}, ${item.comment ? `'${item.comment}'` : null}, 'Dine In', '${billData.billPayType}', '${billData.billStatus}', STR_TO_DATE('${currentDate}','%b %d %Y'))`;
                                                                 }).join(', ') : '';
 
                                                                 // Remove Items
@@ -1420,7 +1424,7 @@ const updateDineInBillData = (req, res) => {
                                                                     WHERE iwbId IN (${modifiedNewJson.map(item => `'${item.iwbId}'`).join(', ')});`
                                                                     : `SELECT * FROM user_details WHERE userId = '0'`;
 
-                                                                let sql_query_adjustItem = `${added.length ? `INSERT INTO billing_billWiseItem_data(iwbId, billId, itemId, qty, unit, itemPrice, price, comment)
+                                                                let sql_query_adjustItem = `${added.length ? `INSERT INTO billing_billWiseItem_data(iwbId, billId, itemId, qty, unit, itemPrice, price, comment, billType, billPayType, billStatus, billDate)
                                                                                             VALUES ${addBillWiseItemData};` : ''}
                                                                                             ${removed.length ? `DELETE FROM billing_billWiseItem_data WHERE iwbId IN (${removeJsonIds});
                                                                                                                 DELETE FROM billing_itemWiseSubToken_data WHERE iwbId IN (${removeJsonIds});` : ''}
@@ -2028,7 +2032,11 @@ const sattledBillDataByID = (req, res) => {
                                                                          settledAmount = ${billData.settledAmount},
                                                                          billStatus = '${billData.billStatus}'`;
 
+                                                let updateItemColumnField = `billPayType = '${billData.billPayType}',
+                                                                             billStatus = '${billData.billStatus}'`;
+
                                                 let sql_querry_updateBillInfo = `UPDATE billing_data SET ${updateColumnField} WHERE billId = '${billData.billId}';
+                                                                                 UPDATE billing_billWiseItem_data SET ${updateItemColumnField} WHERE billId = '${billData.billId}';
                                                         ${!isExist && billData.isOfficial
                                                         ?
                                                         `INSERT INTO billing_Official_data(billId, billNumber, firmId, cashier, menuStatus, billType, billPayType, discountType, discountValue, totalDiscount, totalAmount, settledAmount, billComment, billDate, billStatus)
@@ -2253,6 +2261,7 @@ const cancelBillDataByID = (req, res) => {
                                                                          billStatus = '${billData.billStatus}'`;
 
                                                 let sql_querry_updateBillInfo = `UPDATE billing_data SET ${updateColumnField} WHERE billId = '${billData.billId}';
+                                                                                 UPDATE billing_billWiseItem_data SET ${updateColumnField} WHERE billId = '${billData.billId}';
                                                                                  UPDATE billing_Official_data SET ${updateColumnField} WHERE billId = '${billData.billId}';
                                                                                  UPDATE billing_Complimentary_data SET ${updateColumnField} WHERE billId = '${billData.billId}'`;
 

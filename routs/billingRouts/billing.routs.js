@@ -129,6 +129,7 @@ router.post('/updatePrinterData', protect, printerController.updatePrinterData);
 const accountConntroller = require("../../controller/billingController/dueAccount.controller.js");
 
 router.get('/getCustomerAccountList', protect, accountConntroller.getCustomerAccountList);
+router.get('/getDueCustomerDataById', protect, accountConntroller.getDueCustomerDataById);
 router.post('/addCustomerAccount', protect, accountConntroller.addCustomerAccount);
 router.delete('/removeCustomerAccount', protect, accountConntroller.removeCustomerAccount);
 router.post('/updateCustomerAccount', protect, accountConntroller.updateCustomerAccount);
@@ -142,6 +143,7 @@ router.delete('/removeDueBillDataById', protect, accountConntroller.removeDueBil
 router.delete('/removeDueDebitTransactionById', protect, accountConntroller.removeDueDebitTransactionById);
 router.post('/updateDueBillDataById', protect, accountConntroller.updateDueBillDataById);
 router.get('/ddlDueAccountData', protect, accountConntroller.ddlDueAccountData);
+router.get('/exportDueTransactionInvoice', protect, accountConntroller.exportDueTransactionInvoice);
 
 // UPI Routs
 

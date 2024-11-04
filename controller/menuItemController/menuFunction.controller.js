@@ -22,7 +22,8 @@ function getItemVariants(itemId, subCategoryId, menuId, callback) {
     let sql_query_getData = `-- GET ACTIVE VARIANTS
                                 SELECT uwpId, unit, price, status
                                 FROM item_unitWisePrice_data 
-                                WHERE itemId = '${itemId}' AND menuCategoryId = '${menuId}' AND status = 1;
+                                WHERE itemId = '${itemId}' AND menuCategoryId = '${menuId}' AND status = 1
+                                ORDER BY FIELD(unit, 'No', 'HP', 'Kg');
                             -- GET PERIOD
                                 SELECT 
                                 startTime, 

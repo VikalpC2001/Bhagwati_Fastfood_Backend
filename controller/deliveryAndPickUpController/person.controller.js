@@ -27,7 +27,7 @@ const getDeliveryPersonList = (req, res) => {
             startDate: (req.query.startDate ? req.query.startDate : '').slice(4, 15),
             endDate: (req.query.endDate ? req.query.endDate : '').slice(4, 15)
         }
-        sql_querry_getCountDetails = `SELECT count(*) as numRows FROM delivery_person_data`;
+        sql_querry_getCountDetails = `SELECT count(*) as numRows FROM delivery_person_data WHERE delivery_person_data.personName LIKE '%` + filterData.searchWord + `%'`;
         pool.query(sql_querry_getCountDetails, (err, rows, fields) => {
             if (err) {
                 console.error("An error occurred in SQL Queery", err);

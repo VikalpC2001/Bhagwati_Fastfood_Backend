@@ -952,6 +952,7 @@ const changePayTypeByDelivery = (req, res) => {
                                                                      desiredAmt = ${deliveryData.payTypeData.desiredAmt ? deliveryData.payTypeData.desiredAmt : 0}
                                                                  WHERE bwdId = '${deliveryData.payTypeData.bwdId}';
                                                                  UPDATE billing_data SET billStatus = '${deliveryData.payTypeData.billPayType}' WHERE billId = '${deliveryData.payTypeData.billId}';
+                                                                 UPDATE billing_billWiseItem_data SET billStatus = '${deliveryData.payTypeData.billPayType}' WHERE billId = '${deliveryData.payTypeData.billId}';
                                                                  UPDATE billing_Official_data SET billStatus = '${deliveryData.payTypeData.billPayType}' WHERE billId = '${deliveryData.payTypeData.billId}'`;
                                 connection.query(sql_querry_updateDelivery, (err) => {
                                     if (err) {
@@ -1007,11 +1008,13 @@ const changePayTypeByDelivery = (req, res) => {
                                         ${deliveryData.payTypeData.billPayType == 'Cancel'
                                                 ?
                                                 `UPDATE billing_data SET billPayType = '${deliveryData.payTypeData.billPayType}', billStatus = '${deliveryData.payTypeData.billPayType}' WHERE billId = '${deliveryData.payTypeData.billId}';
+                                                 UPDATE billing_billWiseItem_data SET billPayType = '${deliveryData.payTypeData.billPayType}', billStatus = '${deliveryData.payTypeData.billPayType}' WHERE billId = '${deliveryData.payTypeData.billId}';
                                                  UPDATE billing_Official_data SET billPayType = '${deliveryData.payTypeData.billPayType}', billStatus = '${deliveryData.payTypeData.billPayType}' WHERE billId = '${deliveryData.payTypeData.billId}';
                                                  DELETE FROM billing_billWiseUpi_data WHERE billId = '${deliveryData.payTypeData.billId}';
                                                  DELETE FROM due_billAmount_data WHERE billId = '${deliveryData.payTypeData.billId}';`
                                                 :
                                                 `UPDATE billing_data SET billPayType = '${deliveryData.payTypeData.billPayType}' WHERE billId = '${deliveryData.payTypeData.billId}';
+                                                 UPDATE billing_billWiseItem_data SET billPayType = '${deliveryData.payTypeData.billPayType}' WHERE billId = '${deliveryData.payTypeData.billId}';
                                                  UPDATE billing_Official_data SET billPayType = '${deliveryData.payTypeData.billPayType}' WHERE billId = '${deliveryData.payTypeData.billId}';
                                                  DELETE FROM billing_billWiseUpi_data WHERE billId = '${deliveryData.payTypeData.billId}';
                                                  DELETE FROM due_billAmount_data WHERE billId = '${deliveryData.payTypeData.billId}';

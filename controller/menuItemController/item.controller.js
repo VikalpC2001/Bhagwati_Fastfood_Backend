@@ -645,7 +645,6 @@ const updateItemPriceByMenuId = (req, res) => {
         Promise.all(queries)
             .then(results => {
                 const availableItem = results.filter(item => item.itemStatus !== 0);
-
                 const total = availableItem.reduce((acc, item) => acc + item.price, 0);
                 const result = { total, itemsData: availableItem };
 

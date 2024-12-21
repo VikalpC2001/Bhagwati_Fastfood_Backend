@@ -751,7 +751,6 @@ const getProductDetailsTable = (req, res) => {
                                         ON
                                             p.productId = somw.productId`;
         }
-        console.log('>>>>', sql_get_pagination);
         pool.query(sql_get_pagination, (err, rows, fields) => {
             if (err) {
                 console.error("An error occurred in SQL Queery", err);
@@ -930,7 +929,6 @@ const getProductDetailsTable = (req, res) => {
                                         p.productId = somw.productId
                                         ORDER BY p.productName LIMIT ${limit}`
                 }
-                console.log(">>>>>>>>>>>>>>>>", sql_queries_getdetails);
                 pool.query(sql_queries_getdetails, (err, rows, fields) => {
                     if (err) {
                         console.error("An error occurred in SQL Queery", err);

@@ -56,5 +56,6 @@ router.post('/updateMultipleItemPrice', protect, itemController.updateMultipleIt
 router.get('/updateItemStatus', protect, itemController.updateItemStatus);
 router.get('/getItemSalesReport', itemController.getItemSalesReport);
 router.post('/updateItemPriceByMenuId', itemController.updateItemPriceByMenuId);
+router.get('/exportPdfForItemSalesReport', itemController.exportPdfForItemSalesReport);
 
 module.exports = router;

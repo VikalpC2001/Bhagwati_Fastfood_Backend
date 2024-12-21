@@ -237,16 +237,11 @@ const addBusinessReport = (req, res) => {
             const decoded = jwt.verify(token, process.env.JWT_SECRET);
             const userId = decoded.id.id;
             const staticWalletId = process.env.STATIC_WALLETID;
-            const staticCreditMistaketId = process.env.STATIC_MISTAKE_CREDITID;
-            const staticDebitMistakeId = process.env.STATIC_MISTAKE_DEBITID;
-            const staticMistakeCategoryId = process.env.STATIC_MISTAKE_CATEGORYID;
+
             const uid1 = new Date();
             const balanceId = String('OpeningBalance_' + uid1.getTime());
             const businessReport = req.body.businessReport;
-            const creditId = String("credit_" + uid1.getTime());
-            const debitId = String("debit_" + (uid1.getTime() + 1));
-            const transactionId = String("transaction_" + (uid1.getTime() + 2));
-            const expenseId = String("expense_" + (uid1.getTime() + 3));
+
             const data = {
                 openingBalanceAmt: req.body.openingBalanceAmt ? req.body.openingBalanceAmt : 0,
                 openingBalanceComment: req.body.openingBalanceComment,
@@ -281,52 +276,7 @@ const addBusinessReport = (req, res) => {
                                 console.error("An error occurred in SQL Queery", err);
                                 return res.status(500).send('Database Error');
                             }
-                            // sql_querry_getWalletAvailableBalance = `SELECT bd.availableBalance + COALESCE(SUM(dtd.debitAmount),0) - COALESCE(SUM(ctd.creditAmount),0) AS availableBalance FROM bank_data AS bd
-                            //                                         LEFT JOIN credit_transaction_data AS ctd ON ctd.toId = bd.bankId AND ctd.creditDate > CURDATE()
-                            //                                         LEFT JOIN debit_transaction_data AS dtd ON dtd.fromId = bd.bankId AND dtd.debitDate > CURDATE()
-                            //                                         WHERE bd.bankId = '${staticWalletId}'
-                            //                                         GROUP BY bd.bankId;`;
-                            // pool.query(sql_querry_getWalletAvailableBalance, (err, raw) => {
-                            //     if (err) {
-                            //         console.error("An error occurred in SQL Queery", err);
-                            //         return res.status(500).send('Database Error');
-                            //     }
-                            //     const availableBalance = raw[0].availableBalance;
-                            //     console.log('ddddd', availableBalance);
-                            //     if (availableBalance < data.closingBalance) {
-                            //         sql_query_addMistakeData = `-- ADD CREDIT DATA
-                            //                                         INSERT INTO credit_transaction_data (creditId, userId, transactionId, fromId, toId, creditAmount, creditComment, creditDate)
-                            //                                         VALUES ('${creditId}', '${userId}', '${transactionId}', '${staticCreditMistaketId}', '${staticWalletId}', ABS(${availableBalance - data.closingBalance}), 'Mistake Credit', STR_TO_DATE('${data.reportDate}','%b %d %Y'));
-                            //                                     -- UPDATE DEBIT AVAILBALE BALANCE
-                            //                                         UPDATE bank_data SET availableBalance = availableBalance + ABS(${availableBalance - data.closingBalance}) WHERE bankId = '${staticWalletId}';
-                            //                                     -- ADD TRANSACTION DATA DATE WISE 
-                            //                                         INSERT INTO transactionId_with_date (transactionId, transactionType, transactionValue, transactionDate)
-                            //                                         VALUES('${transactionId}', 'CREDIT', ABS(${availableBalance - data.closingBalance}), STR_TO_DATE('${data.reportDate}','%b %d %Y'))`;
-                            //     } else if (availableBalance > data.closingBalance) {
-                            //         sql_query_addMistakeData = `-- ADD EXPENSE DATA
-                            //                                         INSERT INTO expense_data (expenseId, userId, transactionId, moneySourceId, categoryId, subcategoryId, expenseAmount, expenseComment, expenseDate)
-                            //                                         VALUES ('${expenseId}', '${userId}', '${transactionId}', '${staticWalletId}', '${staticMistakeCategoryId}','${staticDebitMistakeId}', ABS(${availableBalance - data.closingBalance}), 'Mistake Expense', STR_TO_DATE('${data.reportDate}','%b %d %Y'));
-                            //                                     -- ADD DEBIT DATA
-                            //                                         INSERT INTO debit_transaction_data (debitId, userId, transactionId, fromId, toId, debitAmount, debitComment, debitDate)
-                            //                                         VALUES ('${debitId}', '${userId}', '${transactionId}', '${staticWalletId}', '${staticDebitMistakeId}', ABS(${availableBalance - data.closingBalance}), 'Mistake Debit', STR_TO_DATE('${data.reportDate}','%b %d %Y'));
-                            //                                     -- UPDATE AVAILBALE BALANCE
-                            //                                         UPDATE bank_data SET availableBalance = availableBalance - ABS(${availableBalance - data.closingBalance}) WHERE bankId = '${staticWalletId}';
-                            //                                     -- ADD TRANSACTION DATA DATE WISE
-                            //                                         INSERT INTO transactionId_with_date (transactionId, transactionType, transactionValue, transactionDate)
-                            //                                         VALUES('${transactionId}', 'DEBIT', ABS(${availableBalance - data.closingBalance}), STR_TO_DATE('${data.reportDate}','%b %d %Y'))`;
-                            //     } else {
-                            //         console.log('no Change');
-                            //         return res.status(200).send("Business Report Added Successfully");
-                            //     }
-                            //     pool.query(sql_query_addMistakeData, (err, mistakeResult) => {
-                            //         if (err) {
-                            //             console.error("An error occurred in SQL Queery", err);
-                            //             return res.status(500).send('Database Error');
-                            //         }
-                            //         console.log('Change');
                             return res.status(200).send("Business Report Added Successfully");
-                            //     })
-                            // })
                         })
                     }
                 })
@@ -408,15 +358,9 @@ const updateBusinessReport = (req, res) => {
             const decoded = jwt.verify(token, process.env.JWT_SECRET);
             const userId = decoded.id.id;
             const staticWalletId = process.env.STATIC_WALLETID;
-            const staticCreditMistaketId = process.env.STATIC_MISTAKE_CREDITID;
-            const staticDebitMistakeId = process.env.STATIC_MISTAKE_DEBITID;
-            const staticMistakeCategoryId = process.env.STATIC_MISTAKE_CATEGORYID;
             const uid1 = new Date();
             const businessReport = req.body.businessReport;
-            const creditId = String("credit_" + uid1.getTime());
-            const debitId = String("debit_" + (uid1.getTime() + 1));
-            const transactionIds = String("transaction_" + (uid1.getTime() + 2));
-            const expenseId = String("expense_" + (uid1.getTime() + 3));
+
             const datas = {
                 openingBalanceAmt: req.body.openingBalanceAmt ? req.body.openingBalanceAmt : 0,
                 openingBalanceComment: req.body.openingBalanceComment,
@@ -454,86 +398,7 @@ const updateBusinessReport = (req, res) => {
                         console.error("An error occurred in SQL Queery", err);
                         return res.status(500).send('Database Error');
                     }
-                    //     sql_queries_getMistakeData = `SELECT transactionId, transactionType, transactionValue FROM transactionId_with_date WHERE transactionDate = STR_TO_DATE('${datas.reportDate}','%b %d %Y')`;
-                    //     pool.query(sql_queries_getMistakeData, (err, mistake) => {
-                    //         if (err) {
-                    //             console.error("An error occurred in SQL Queery", err);
-                    //             return res.status(500).send('Database Error');
-                    //         }
-                    //         const transactionId = mistake && mistake[0] ? mistake[0].transactionId : null;
-                    //         const transactionType = mistake && mistake[0] ? mistake[0].transactionType : null;
-                    //         const transactionValue = mistake && mistake[0] ? mistake[0].transactionValue : 0;
-                    //         if (transactionType == 'CREDIT') {
-                    //             sql_querry_removedetails = `UPDATE bank_data SET availableBalance = availableBalance - ${transactionValue} WHERE bankId = '${process.env.STATIC_WALLETID}';
-                    //                                         DELETE FROM credit_transaction_data WHERE transactionId = '${transactionId}';
-                    //                                         DELETE FROM transactionId_with_date WHERE transactionId = '${transactionId}'`;
-                    //             console.log('DELETE CREDIT');
-                    //         } else if (transactionType == 'DEBIT') {
-                    //             sql_querry_removedetails = `UPDATE bank_data SET availableBalance = availableBalance + ${transactionValue} WHERE bankId = '${process.env.STATIC_WALLETID}';
-                    //                                         DELETE FROM expense_data WHERE transactionId = '${transactionId}';
-                    //                                         DELETE FROM debit_transaction_data WHERE transactionId = '${transactionId}';
-                    //                                         DELETE FROM transactionId_with_date WHERE transactionId = '${transactionId}'`;
-                    //             console.log('DELETE DEBIT');
-                    //         } else {
-                    //             sql_querry_removedetails = `SELECT * FROM bank_data`;
-                    //             console.log('NOTHING');
-                    //         }
-                    //         pool.query(sql_querry_removedetails, (err, deleteMistake) => {
-                    //             if (err) {
-                    //                 console.error("An error occurred in SQL Queery", err);
-                    //                 return res.status(500).send('Database Error');
-                    //             }
-
-                    //             sql_querry_getWalletAvailableBalance = `SELECT bd.availableBalance + COALESCE(SUM(dtd.debitAmount),0) - COALESCE(SUM(ctd.creditAmount),0) AS availableBalance FROM bank_data AS bd
-                    //                                                     LEFT JOIN credit_transaction_data AS ctd ON ctd.toId = bd.bankId AND ctd.creditDate > STR_TO_DATE('${datas.reportDate}','%b %d %Y')
-                    //                                                     LEFT JOIN debit_transaction_data AS dtd ON dtd.fromId = bd.bankId AND dtd.debitDate > STR_TO_DATE('${datas.reportDate}','%b %d %Y')
-                    //                                                     WHERE bd.bankId = '${staticWalletId}'
-                    //                                                     GROUP BY bd.bankId;`;
-                    //             pool.query(sql_querry_getWalletAvailableBalance, (err, raw) => {
-                    //                 if (err) {
-                    //                     console.error("An error occurred in SQL Queery", err);
-                    //                     return res.status(500).send('Database Error');
-                    //                 }
-                    //                 const availableBalance = raw[0].availableBalance;
-                    //                 console.log('ddddd', availableBalance, 'Closing Balance', datas.closingBalance, datas.reportDate);
-                    //                 if (availableBalance < datas.closingBalance) {
-                    //                     sql_query_addMistakeData = `-- ADD CREDIT DATA
-                    //                                                     INSERT INTO credit_transaction_data (creditId, userId, transactionId, fromId, toId, creditAmount, creditComment, creditDate)
-                    //                                                     VALUES ('${creditId}', '${userId}', '${transactionIds}', '${staticCreditMistaketId}', '${staticWalletId}', ABS(${availableBalance - datas.closingBalance}), 'Mistake Credit', STR_TO_DATE('${datas.reportDate}','%b %d %Y'));
-                    //                                                 -- UPDATE DEBIT AVAILBALE BALANCE
-                    //                                                     UPDATE bank_data SET availableBalance = availableBalance + ABS(${availableBalance - datas.closingBalance}) WHERE bankId = '${staticWalletId}';
-                    //                                                 -- ADD TRANSACTION DATA DATE WISE 
-                    //                                                     INSERT INTO transactionId_with_date (transactionId, transactionType, transactionValue, transactionDate)
-                    //                                                     VALUES('${transactionIds}', 'CREDIT', ABS(${availableBalance - datas.closingBalance}), STR_TO_DATE('${datas.reportDate}','%b %d %Y'))`;
-                    //                     console.log('ADD CREDIT');
-                    //                 } else if (availableBalance > datas.closingBalance) {
-                    //                     sql_query_addMistakeData = `-- ADD EXPENSE DATA
-                    //                                                     INSERT INTO expense_data (expenseId, userId, transactionId, moneySourceId, categoryId, subcategoryId, expenseAmount, expenseComment, expenseDate)
-                    //                                                     VALUES ('${expenseId}', '${userId}', '${transactionIds}', '${staticWalletId}', '${staticMistakeCategoryId}','${staticDebitMistakeId}', ABS(${availableBalance - datas.closingBalance}), 'Mistake Expense', STR_TO_DATE('${datas.reportDate}','%b %d %Y'));
-                    //                                                 -- ADD DEBIT DATA
-                    //                                                     INSERT INTO debit_transaction_data (debitId, userId, transactionId, fromId, toId, debitAmount, debitComment, debitDate)
-                    //                                                     VALUES ('${debitId}', '${userId}', '${transactionIds}', '${staticWalletId}', '${staticDebitMistakeId}', ABS(${availableBalance - datas.closingBalance}), 'Mistake Debit', STR_TO_DATE('${datas.reportDate}','%b %d %Y'));
-                    //                                                 -- UPDATE AVAILBALE BALANCE
-                    //                                                     UPDATE bank_data SET availableBalance = availableBalance - ABS(${availableBalance - datas.closingBalance}) WHERE bankId = '${staticWalletId}';
-                    //                                                 -- ADD TRANSACTION DATA DATE WISE
-                    //                                                     INSERT INTO transactionId_with_date (transactionId, transactionType, transactionValue, transactionDate)
-                    //                                                     VALUES('${transactionIds}', 'DEBIT', ABS(${availableBalance - datas.closingBalance}), STR_TO_DATE('${datas.reportDate}','%b %d %Y'))`;
-                    //                     console.log('ADD DEBIT');
-                    //                 } else {
-                    //                     console.log('no Change');
-                    //                     return res.status(200).send("Business Report Updated Successfully");
-                    //                 }
-                    //                 pool.query(sql_query_addMistakeData, (err, mistakeResult) => {
-                    //                     if (err) {
-                    //                         console.error("An error occurred in SQL Queery", err);
-                    //                         return res.status(500).send('Database Error');
-                    //                     }
-                    //                     console.log('Change');
                     return res.status(200).send("Business Report Updated Successfully");
-                    //                 })
-                    //             })
-                    //         })
-                    //     })
                 })
             }
         } else {

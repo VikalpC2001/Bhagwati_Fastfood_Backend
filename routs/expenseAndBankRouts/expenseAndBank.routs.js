@@ -69,7 +69,7 @@ router.get('/exportExcelForBankTransactionById', protect, transactionController.
 router.get('/exportPdfForBankTransactionById', protect, transactionController.exportPdfForBankTransactionById);
 router.get('/exportExcelForFundTransfer', protect, transactionController.exportExcelForFundTransfer);
 router.get('/exportPdfForFundTransfer', protect, transactionController.exportPdfForFundTransfer);
-router.get('/getMonthWiseTransaction', protect, transactionController.getMonthWiseTransaction);
+router.get('/getMonthWiseTransactionForBankById', protect, transactionController.getMonthWiseTransactionForBankById);
 
 // Expense Routs
 

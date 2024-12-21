@@ -148,7 +148,23 @@ const getBankTransactionById = (req, res) => {
             } else {
                 const numRows = rows[0].numRows;
                 const numPages = Math.ceil(numRows / numPerPage);
-                const sql_query_combinedData = `SELECT transactionId, enterBy, userName, fromId, toId, amount, transactionType, status, comment, displayTransactionDate, displayTransactionDateTime, transactionDate`;
+                const sql_query_combinedData = `SELECT transactionId, enterBy, userName, fromId, toId, amount, transactionType, status, comment, displayTransactionDate, displayTransactionDateTime, transactionDate,
+                                                ((SELECT COALESCE(SUM(ctd.creditAmount), 0)
+                                                 FROM credit_transaction_data AS ctd
+                                                 WHERE ctd.toId = '${bankId}'
+                                                   AND (
+                                                        ctd.creditDate < combined_data.transactionDate
+                                                        OR (ctd.creditDate = combined_data.transactionDate AND ctd.creditCreationDate <= combined_data.transactionDateTime)
+                                                   )
+                                                ) -      
+                                                (SELECT COALESCE(SUM(dtd.debitAmount), 0)
+                                                 FROM debit_transaction_data AS dtd
+                                                 WHERE dtd.fromId = '${bankId}'
+                                                   AND (
+                                                        dtd.debitDate < combined_data.transactionDate
+                                                        OR (dtd.debitDate = combined_data.transactionDate AND dtd.debitCreationDate <= combined_data.transactionDateTime)
+                                                   )
+                                                )) AS balance`;
                 const sql_query_orderAndLimit = `ORDER BY transactionDate DESC, transactionDateTime DESC LIMIT ${limit}`;
                 if (req.query.startDate && req.query.endDate && req.query.bankId2 && req.query.transactionType) {
                     sql_queries_getdetails = `${sql_query_combinedData}
@@ -583,7 +599,23 @@ const exportExcelForBankTransactionById = (req, res) => {
                                   LEFT JOIN expense_subcategory_data AS escd ON escd.subCategoryId = dtd.toId
                                   LEFT JOIN user_details ON user_details.userId = dtd.userId
                                   WHERE dtd.fromId = '${bankId}'`;
-    const sql_query_combinedData = `SELECT transactionId, enterBy, userName, fromId, toId, amount, transactionType, status, comment, displayTransactionDate, displayTransactionDateTime`;
+    const sql_query_combinedData = `SELECT transactionId, enterBy, userName, fromId, toId, amount, transactionType, status, comment, displayTransactionDate, displayTransactionDateTime,
+                                    ((SELECT COALESCE(SUM(ctd.creditAmount), 0)
+                                      FROM credit_transaction_data AS ctd
+                                      WHERE ctd.toId = '${bankId}'
+                                        AND (
+                                             ctd.creditDate < combined_data.transactionDate
+                                             OR (ctd.creditDate = combined_data.transactionDate AND ctd.creditCreationDate <= combined_data.transactionDateTime)
+                                        )
+                                     ) -      
+                                     (SELECT COALESCE(SUM(dtd.debitAmount), 0)
+                                      FROM debit_transaction_data AS dtd
+                                      WHERE dtd.fromId = '${bankId}'
+                                        AND (
+                                             dtd.debitDate < combined_data.transactionDate
+                                             OR (dtd.debitDate = combined_data.transactionDate AND dtd.debitCreationDate <= combined_data.transactionDateTime)
+                                        )
+                                     )) AS "Balance"`;
     const sql_query_orderAndLimit = `ORDER BY transactionDate DESC, transactionDateTime DESC`;
     if (req.query.startDate && req.query.endDate && req.query.bankId2 && req.query.transactionType) {
         sql_queries_getdetails = `${sql_query_combinedData}
@@ -718,7 +750,7 @@ const exportExcelForBankTransactionById = (req, res) => {
             }
 
             /*Column headers*/
-            worksheet.getRow(2).values = ['Sr.No', 'Date', 'Source', 'Destination', 'Amount', 'Type', 'Comment', 'Time', 'Enter By'];
+            worksheet.getRow(2).values = ['Sr.No', 'Date', 'Source', 'Destination', 'Amount', 'Type', 'Comment', 'Time', 'Enter By', 'Balance'];
 
             // Column for data in excel. key must match data key
             worksheet.columns = [
@@ -730,7 +762,8 @@ const exportExcelForBankTransactionById = (req, res) => {
                 { key: "transactionType", width: 10 },
                 { key: "comment", width: 40 },
                 { key: "displayTransactionDateTime", width: 15 },
-                { key: "userName", width: 20 }
+                { key: "userName", width: 20 },
+                { key: "Balance", width: 20 }
             ]
             //Looping through User data
             const arr = rows
@@ -960,7 +993,23 @@ const exportPdfForBankTransactionById = (req, res) => {
                                   LEFT JOIN expense_subcategory_data AS escd ON escd.subCategoryId = dtd.toId
                                   LEFT JOIN user_details ON user_details.userId = dtd.userId
                                   WHERE dtd.fromId = '${bankId}'`;
-        const sql_query_combinedData = `SELECT displayTransactionDate AS "Date", fromId AS "Source", toId AS "Destination", amount AS "Amount", transactionType AS "Type", comment AS "Comment", displayTransactionDateTime AS "Time", userName AS "Enter By"`;
+        const sql_query_combinedData = `SELECT displayTransactionDate AS "Date", fromId AS "Source", toId AS "Destination", amount AS "Amount", transactionType AS "Type", comment AS "Comment", displayTransactionDateTime AS "Time", userName AS "Enter By",
+                                        ((SELECT COALESCE(SUM(ctd.creditAmount), 0)
+                                          FROM credit_transaction_data AS ctd
+                                          WHERE ctd.toId = '${bankId}'
+                                            AND (
+                                                 ctd.creditDate < combined_data.transactionDate
+                                                 OR (ctd.creditDate = combined_data.transactionDate AND ctd.creditCreationDate <= combined_data.transactionDateTime)
+                                            )
+                                         ) -      
+                                         (SELECT COALESCE(SUM(dtd.debitAmount), 0)
+                                          FROM debit_transaction_data AS dtd
+                                          WHERE dtd.fromId = '${bankId}'
+                                            AND (
+                                                 dtd.debitDate < combined_data.transactionDate
+                                                 OR (dtd.debitDate = combined_data.transactionDate AND dtd.debitCreationDate <= combined_data.transactionDateTime)
+                                            )
+                                         )) AS "Balance"`;
         const sql_query_orderAndLimit = `ORDER BY transactionDate DESC, transactionDateTime DESC`;
         if (req.query.startDate && req.query.endDate && req.query.bankId2 && req.query.transactionType) {
             sql_queries_getdetails = `${sql_query_combinedData}
@@ -1376,7 +1425,7 @@ const exportPdfForFundTransfer = (req, res) => {
 
 // Get Month Wise Transaction In Bank
 
-const getMonthWiseTransaction = (req, res) => {
+const getMonthWiseTransactionForBankById = (req, res) => {
     try {
         const bankId = req.query.bankId;
         let page = req.query.page; // Page number
@@ -1402,6 +1451,12 @@ const getMonthWiseTransaction = (req, res) => {
             if (err) {
                 console.error("An error occurred in SQL Queery", err);
                 return res.status(500).send('Database Error');
+            } else if (!data[0].length) {
+                const numRows = 0;
+                const rows = [{
+                    'msg': 'No Data Found'
+                }]
+                return res.status(200).send({ rows, numRows });
             } else {
                 const creditAmtJson = data && data[0] ? Object.values(JSON.parse(JSON.stringify(data[0]))) : [];
                 const debitAmtSum = data && data[1] ? data[1][0].debitAmt : 0;
@@ -1413,7 +1468,15 @@ const getMonthWiseTransaction = (req, res) => {
                 });
                 const rows = result.slice(startIndex, endIndex);
                 const numRows = arr.length
-                return res.status(200).send({ rows, numRows });
+
+                if (numRows != 0) {
+                    return res.status(200).send({ rows, numRows });
+                } else {
+                    const rows = [{
+                        'msg': 'No Data Found'
+                    }]
+                    return res.status(200).send({ rows, numRows });
+                }
             }
         })
     } catch (error) {
@@ -1454,5 +1517,5 @@ module.exports = {
     exportPdfForBankTransactionById,
     exportExcelForFundTransfer,
     exportPdfForFundTransfer,
-    getMonthWiseTransaction
+    getMonthWiseTransactionForBankById
 }

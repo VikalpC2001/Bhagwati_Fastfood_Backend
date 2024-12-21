@@ -525,6 +525,8 @@ const getItemSalesReport = (req, res) => {
         var lastDay = new Date(y, m + 1, 0).toString().slice(4, 15);
 
         const data = {
+            subCategoryId: req.query.subCategoryId ? req.query.subCategoryId : null,
+            billType: req.query.billType ? req.query.billType : '',
             startDate: (req.query.startDate ? req.query.startDate : '').slice(4, 15),
             endDate: (req.query.endDate ? req.query.endDate : '').slice(4, 15)
         }
@@ -534,19 +536,106 @@ const getItemSalesReport = (req, res) => {
                                          item.itemSubCategory,
                                          iscd.subCategoryName,
                                          uwi.unit,
-                                         SUM(CASE WHEN bd.billStatus != 'cancel' AND bd.billPayType != 'complimentary' THEN bbi.qty ELSE 0 END) AS soldQty,
-                                         SUM(CASE WHEN bd.billStatus != 'cancel' AND bd.billPayType != 'complimentary' THEN bbi.price ELSE 0 END) AS soldRevenue,
-                                         SUM(CASE WHEN bd.billStatus != 'cancel' AND bd.billPayType = 'complimentary' THEN bbi.qty ELSE 0 END) AS complimentaryQty,
-                                         SUM(CASE WHEN bd.billStatus != 'cancel' AND bd.billPayType = 'complimentary' THEN bbi.price ELSE 0 END) AS complimentaryRevenue,
-                                         SUM(CASE WHEN bd.billStatus = 'cancel' THEN bbi.qty ELSE 0 END) AS cancelQty,
-                                         SUM(CASE WHEN bd.billStatus = 'cancel' THEN bbi.price ELSE 0 END) AS cancelRevenue
+                                         SUM(CASE WHEN bbi.billStatus != 'cancel' AND bbi.billPayType != 'complimentary' THEN bbi.qty ELSE 0 END) AS soldQty,
+                                         SUM(CASE WHEN bbi.billStatus != 'cancel' AND bbi.billPayType != 'complimentary' THEN bbi.price ELSE 0 END) AS soldRevenue,
+                                         SUM(CASE WHEN bbi.billStatus != 'cancel' AND bbi.billPayType = 'complimentary' THEN bbi.qty ELSE 0 END) AS complimentaryQty,
+                                         SUM(CASE WHEN bbi.billStatus != 'cancel' AND bbi.billPayType = 'complimentary' THEN bbi.price ELSE 0 END) AS complimentaryRevenue,
+                                         SUM(CASE WHEN bbi.billStatus = 'cancel' THEN bbi.qty ELSE 0 END) AS cancelQty,
+                                         SUM(CASE WHEN bbi.billStatus = 'cancel' THEN bbi.price ELSE 0 END) AS cancelRevenue
                                      FROM
                                          item_unitWisePrice_data AS uwi
                                      INNER JOIN item_menuList_data AS item ON item.itemId = uwi.itemId
                                      INNER JOIN item_subCategory_data AS iscd ON iscd.subCategoryId = item.itemSubCategory
-                                     LEFT JOIN billing_billWiseItem_data AS bbi ON uwi.itemId = bbi.itemId AND uwi.unit = bbi.unit
-                                     LEFT JOIN billing_data AS bd ON bd.billId = bbi.billId AND bd.billDate BETWEEN STR_TO_DATE('${data.startDate ? data.startDate : firstDay}', '%b %d %Y') AND STR_TO_DATE('${data.endDate ? data.endDate : lastDay}', '%b %d %Y')
-                                     WHERE uwi.menuCategoryId = 'base_2001'
+                                     LEFT JOIN billing_billWiseItem_data AS bbi ON uwi.itemId = bbi.itemId 
+                                     AND uwi.unit = bbi.unit 
+                                     AND bbi.billDate BETWEEN STR_TO_DATE('${data.startDate ? data.startDate : firstDay}', '%b %d %Y') AND STR_TO_DATE('${data.endDate ? data.endDate : lastDay}', '%b %d %Y')
+                                     AND bbi.billType LIKE '%` + data.billType + `%'
+                                     WHERE uwi.menuCategoryId = '${process.env.BASE_MENU}' ${data.subCategoryId ? `AND iscd.subCategoryId = '${data.subCategoryId}'` : ''}
+                                     GROUP BY
+                                         uwi.itemId,
+                                         uwi.unit,
+                                         item.itemName,
+                                         item.itemSubCategory
+                                     ORDER BY
+                                         uwi.itemId,
+                                         CASE
+                                            WHEN uwi.unit = 'NO' THEN 1
+                                            WHEN uwi.unit = 'HP' THEN 2
+                                            WHEN uwi.unit = 'KG' THEN 3
+                                            ELSE 4
+                                          END`;
+        pool.query(sql_querry_getDetails, (err, data) => {
+            if (err) {
+                console.error("An error occurred in SQL Queery", err);
+                return res.status(500).send('Database Error');
+            } else if (!data.length) {
+                return res.status(404).send('No Data Found');
+            } else {
+                const result = data.reduce((acc, item) => {
+                    const key = item.subCategoryName;
+                    if (!acc[key]) {
+                        acc[key] = {
+                            items: [],
+                            totalQty: 0, totalRevenue: 0,
+                            totalComplimentaryQty: 0, totalComplimentaryRevenue: 0,
+                            totalCancelQty: 0, totalCancelRevenue: 0
+                        };
+                    }
+                    acc[key].items.push(item);
+                    if (item.soldRevenue !== null) {
+                        acc[key].totalQty += item.soldQty;
+                        acc[key].totalRevenue += item.soldRevenue;
+                        acc[key].totalComplimentaryQty += item.complimentaryQty;
+                        acc[key].totalComplimentaryRevenue += item.complimentaryRevenue;
+                        acc[key].totalCancelQty += item.cancelQty;
+                        acc[key].totalCancelRevenue += item.cancelRevenue;
+                    }
+                    return acc;
+                }, {});
+                return res.status(200).send(result[data[0].subCategoryName]);
+            }
+        })
+    } catch (error) {
+        console.error('An error occurred', error);
+        res.status(500).send('Internal Server Error');
+    }
+}
+
+// Get Item Sell Report
+
+const exportPdfForItemSalesReport = (req, res) => {
+    try {
+        var date = new Date(), y = date.getFullYear(), m = (date.getMonth());
+        var firstDay = new Date(y, m, 1).toString().slice(4, 15);
+        var lastDay = new Date(y, m + 1, 0).toString().slice(4, 15);
+
+        const data = {
+            subCategoryId: req.query.subCategoryId ? req.query.subCategoryId : null,
+            billType: req.query.billType ? req.query.billType : '',
+            startDate: (req.query.startDate ? req.query.startDate : '').slice(4, 15),
+            endDate: (req.query.endDate ? req.query.endDate : '').slice(4, 15)
+        }
+        let sql_querry_getDetails = `SELECT
+                                         uwi.itemId,
+                                         CONCAT(item.itemName,' (',uwi.unit,')') AS itemName,
+                                         item.itemSubCategory,
+                                         iscd.subCategoryName,
+                                         uwi.unit,
+                                         SUM(CASE WHEN bbi.billStatus != 'cancel' AND bbi.billPayType != 'complimentary' THEN bbi.qty ELSE 0 END) AS soldQty,
+                                         SUM(CASE WHEN bbi.billStatus != 'cancel' AND bbi.billPayType != 'complimentary' THEN bbi.price ELSE 0 END) AS soldRevenue,
+                                         SUM(CASE WHEN bbi.billStatus != 'cancel' AND bbi.billPayType = 'complimentary' THEN bbi.qty ELSE 0 END) AS complimentaryQty,
+                                         SUM(CASE WHEN bbi.billStatus != 'cancel' AND bbi.billPayType = 'complimentary' THEN bbi.price ELSE 0 END) AS complimentaryRevenue,
+                                         SUM(CASE WHEN bbi.billStatus = 'cancel' THEN bbi.qty ELSE 0 END) AS cancelQty,
+                                         SUM(CASE WHEN bbi.billStatus = 'cancel' THEN bbi.price ELSE 0 END) AS cancelRevenue
+                                     FROM
+                                         item_unitWisePrice_data AS uwi
+                                     INNER JOIN item_menuList_data AS item ON item.itemId = uwi.itemId
+                                     INNER JOIN item_subCategory_data AS iscd ON iscd.subCategoryId = item.itemSubCategory
+                                     LEFT JOIN billing_billWiseItem_data AS bbi ON uwi.itemId = bbi.itemId 
+                                     AND uwi.unit = bbi.unit 
+                                     AND bbi.billDate BETWEEN STR_TO_DATE('${data.startDate ? data.startDate : firstDay}', '%b %d %Y') AND STR_TO_DATE('${data.endDate ? data.endDate : lastDay}', '%b %d %Y')
+                                     AND bbi.billType LIKE '%` + data.billType + `%'
+                                     WHERE uwi.menuCategoryId = '${process.env.BASE_MENU}' ${data.subCategoryId ? `AND iscd.subCategoryId = '${data.subCategoryId}'` : ''}
                                      GROUP BY
                                          uwi.itemId,
                                          uwi.unit,
@@ -595,7 +684,6 @@ const getItemSalesReport = (req, res) => {
                         console.log(err);
                         res.status(500).send('Error creating PDF');
                     });
-                // return res.status(200).send(result);
             }
         })
     } catch (error) {
@@ -669,5 +757,6 @@ module.exports = {
     updateMultipleItemPrice,
     updateItemStatus,
     getItemSalesReport,
-    updateItemPriceByMenuId
+    updateItemPriceByMenuId,
+    exportPdfForItemSalesReport
 }

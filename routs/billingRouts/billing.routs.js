@@ -8,6 +8,7 @@ const categoryController = require("../../controller/billingController/billCateg
 
 router.get('/getBillCategory', protect, categoryController.getBillCategory);
 router.post('/updateBillCategoryData', protect, categoryController.updateBillCategoryData);
+router.get('/ddlBillCategory', protect, categoryController.ddlBillCategory);
 
 // Comment Routs
 
@@ -44,11 +45,12 @@ router.post('/addHotelData', protect, hotelController.addHotelData);
 router.delete('/removeHotelData', protect, hotelController.removeHotelData);
 router.post('/updateHotelData', protect, hotelController.updateHotelData);
 router.get('/ddlHotelList', protect, hotelController.ddlHotelList);
-router.get('/exportPdfBillDataById', hotelController.exportPdfBillDataById);
+router.get('/exportPdfHotelBillDataById', hotelController.exportPdfHotelBillDataById);
 router.post('/addHotelTransactionData', protect, hotelController.addHotelTransactionData);
 router.delete('/removeHotelTransactionById', protect, hotelController.removeHotelTransactionById);
 router.get('/getMonthWiseTransactionForHotel', protect, hotelController.getMonthWiseTransactionForHotel);
 router.get('/getHotelTransactionListById', protect, hotelController.getHotelTransactionListById);
+router.get('/exportHotelTransactionInvoice', protect, hotelController.exportHotelTransactionInvoice);
 
 // Firm Routs
 
@@ -171,5 +173,11 @@ router.post('/sattledBillDataByID', protect, dineInController.sattledBillDataByI
 router.post('/cancelBillDataByID', protect, dineInController.cancelBillDataByID);
 router.get('/moveTable', protect, dineInController.moveTable);
 router.get('/isTableEmpty', protect, dineInController.isTableEmpty);
+
+// Dash Board Statics Routs
+
+const dashBoardController = require("../../controller/billingController/dashBoard.controller.js");
+
+router.get('/getThreeCategorDashBoardData', protect, dashBoardController.getThreeCategorDashBoardData);
 
 module.exports = router;

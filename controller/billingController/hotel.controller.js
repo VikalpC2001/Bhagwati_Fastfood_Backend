@@ -1,7 +1,28 @@
 const pool = require('../../database');
 const jwt = require("jsonwebtoken");
+const { PDFDocument, StandardFonts, rgb } = require("pdf-lib");
+const { writeFileSync, readFileSync } = require("fs");
+const fs = require('fs');
+const { Readable } = require('stream')
 const { jsPDF } = require('jspdf');
 require('jspdf-autotable');
+
+
+function addStartAndEndDates(data) {
+    return data.map(item => {
+        const [month, year] = item.date.split("-");
+        const startDate = new Date(`${month} 1, ${year}`);
+        const endDate = new Date(startDate);
+        endDate.setMonth(endDate.getMonth() + 1); // Go to next month
+        endDate.setDate(0); // Set to last day of the previous month
+
+        return {
+            ...item,
+            startDate: "...." + startDate.toDateString().replace(/^\w+ /, ""),
+            endDate: "...." + endDate.toDateString().replace(/^\w+ /, "")
+        };
+    });
+}
 
 // Get Hotel List
 
@@ -23,11 +44,11 @@ const getHotelList = (req, res) => {
                 const sql_query_getDetails = `SELECT 
                                                 hotelId,
                                                 hotelName,
-                                                COALESCE(hotelAddress,'N/A') AS hotelAddress,
-                                                COALESCE(hotelLocality,'N/A') AS hotelLocality,
-                                                COALESCE(hotelPincode,'N/A') AS hotelPincode,
+                                                COALESCE(hotelAddress,NULL) AS hotelAddress,
+                                                COALESCE(hotelLocality,NULL) AS hotelLocality,
+                                                COALESCE(hotelPincode,NULL) AS hotelPincode,
                                                 hotelMobileNo,
-                                                COALESCE(otherMobileNo,'N/A') AS otherMobileNo,
+                                                COALESCE(otherMobileNo,NULL) AS otherMobileNo,
                                                 payType,
                                                 discountType,
                                                 CASE
@@ -39,6 +60,7 @@ const getHotelList = (req, res) => {
                                               FROM 
                                                 billing_hotel_data
                                               WHERE hotelName LIKE '%` + searchWord + `%'
+                                              ORDER BY billing_hotel_data.hotelName ASC
                                               LIMIT ${limit}`;
                 pool.query(sql_query_getDetails, (err, rows, fields) => {
                     if (err) {
@@ -77,11 +99,11 @@ const getHotelDataById = (req, res) => {
             sql_querry_getCountDetails = `SELECT
                                             hotelId,
                                             hotelName,
-                                            COALESCE(hotelAddress,'N/A') AS hotelAddress,
-                                            COALESCE(hotelLocality,'N/A') AS hotelLocality,
-                                            COALESCE(hotelPincode,'N/A') AS hotelPincode,
+                                            COALESCE(hotelAddress,NULL) AS hotelAddress,
+                                            COALESCE(hotelLocality,NULL) AS hotelLocality,
+                                            COALESCE(hotelPincode,NULL) AS hotelPincode,
                                             hotelMobileNo,
-                                            COALESCE(otherMobileNo,'N/A') AS otherMobileNo,
+                                            COALESCE(otherMobileNo,NULL) AS otherMobileNo,
                                             payType,
                                             discountType,
                                             CASE
@@ -342,7 +364,6 @@ const getHotelBillDataById = (req, res) => {
                                           WHERE hif.hotelId = '${data.hotelId}'
                                           AND bod.billDate BETWEEN STR_TO_DATE('${firstDay}','%b %d %Y') AND STR_TO_DATE('${lastDay}','%b %d %Y')`;
         }
-        console.log(sql_querry_getCountDetails);
         pool.query(sql_querry_getCountDetails, (err, rows, fields) => {
             if (err) {
                 console.error("An error occurred in SQL Queery", err);
@@ -447,35 +468,22 @@ const getHotelStaticsData = (req, res) => {
             startDate: (req.query.startDate ? req.query.startDate : '').slice(4, 15),
             endDate: (req.query.endDate ? req.query.endDate : '').slice(4, 15)
         }
-        if (data.startDate && data.endDate) {
-            sql_query_hotelStatics = `SELECT 
-                                          ROUND(SUM(CASE WHEN bod.billStatus != 'cancel' THEN bod.settledAmount ELSE 0 END), 2) AS totalBusiness,
-                                          ROUND(SUM(CASE WHEN bod.billPayType = 'cash' AND bod.billStatus != 'cancel' THEN bod.settledAmount ELSE 0 END), 2) AS totalCash,
-                                          ROUND(SUM(CASE WHEN bod.billPayType = 'debit' AND bod.billStatus != 'cancel' THEN bod.settledAmount ELSE 0 END), 2) AS totalDebit,
-                                          ROUND(SUM(CASE WHEN bod.billStatus = 'cancel' THEN bod.settledAmount ELSE 0 END), 2) AS totalCancel,
-                                          ROUND(SUM(CASE WHEN bod.billStatus != 'cancel' THEN bod.totalDiscount ELSE 0 END), 2) AS totalDiscount,
-                                          0 AS totalRemaining
-                                      FROM 
-                                          billing_Official_data AS bod
+
+        let sql_query_hotelStatics = `SELECT 
+                                          COALESCE(ROUND(SUM(CASE WHEN bod.billStatus != 'cancel' THEN bod.settledAmount ELSE 0 END), 2),0) AS totalBusiness,
+                                          COALESCE(ROUND(SUM(CASE WHEN bod.billPayType = 'cash' AND bod.billStatus != 'cancel' THEN bod.settledAmount ELSE 0 END), 2),0) AS totalCash,
+                                          COALESCE(ROUND(SUM(CASE WHEN bod.billPayType = 'debit' AND bod.billStatus != 'cancel' THEN bod.settledAmount ELSE 0 END), 2),0) AS totalDebit,
+                                          COALESCE(ROUND(SUM(CASE WHEN bod.billStatus = 'cancel' THEN bod.settledAmount ELSE 0 END), 2),0) AS totalCancel,
+                                          COALESCE(ROUND(SUM(CASE WHEN bod.billStatus != 'cancel' THEN bod.totalDiscount ELSE 0 END), 2),0) AS totalDiscount,
+                                            (SELECT ROUND(SUM(CASE WHEN bod.billPayType = 'debit' AND bod.billStatus != 'cancel' THEN bod.settledAmount ELSE 0 END), 2) AS totalDebit FROM billing_Official_data AS bod
+                                            LEFT JOIN billing_hotelInfo_data AS hif ON bod.billId = hif.billId
+                                            WHERE hif.hotelId = '${hotelId}')
+                                            - 
+                                            (SELECT ROUND(COALESCE(SUM(billing_hotelTransaction_data.paidAmount),0),2) FROM billing_hotelTransaction_data WHERE billing_hotelTransaction_data.hotelId = '${hotelId}') 
+                                          AS totalRemaining
+                                      FROM billing_Official_data AS bod
                                       LEFT JOIN billing_hotelInfo_data AS hif ON bod.billId = hif.billId
-                                      WHERE 
-                                          hif.hotelId = '${hotelId}'
-                                          AND bod.billDate BETWEEN STR_TO_DATE('${data.startDate}', '%b %d %Y') AND STR_TO_DATE('${data.endDate}', '%b %d %Y')`;
-        } else {
-            sql_query_hotelStatics = `SELECT 
-                                          ROUND(SUM(CASE WHEN bod.billStatus != 'cancel' THEN bod.settledAmount ELSE 0 END), 2) AS totalBusiness,
-                                          ROUND(SUM(CASE WHEN bod.billPayType = 'cash' AND bod.billStatus != 'cancel' THEN bod.settledAmount ELSE 0 END), 2) AS totalCash,
-                                          ROUND(SUM(CASE WHEN bod.billPayType = 'debit' AND bod.billStatus != 'cancel' THEN bod.settledAmount ELSE 0 END), 2) AS totalDebit,
-                                          ROUND(SUM(CASE WHEN bod.billStatus = 'cancel' THEN bod.settledAmount ELSE 0 END), 2) AS totalCancel,
-                                          ROUND(SUM(CASE WHEN bod.billStatus != 'cancel' THEN bod.totalDiscount ELSE 0 END), 2) AS totalDiscount,
-                                          0 AS totalRemaining
-                                      FROM 
-                                          billing_Official_data AS bod
-                                      LEFT JOIN billing_hotelInfo_data AS hif ON bod.billId = hif.billId
-                                      WHERE 
-                                          hif.hotelId = '${hotelId}'
-                                          AND bod.billDate BETWEEN STR_TO_DATE('${firstDay}', '%b %d %Y') AND STR_TO_DATE('${lastDay}', '%b %d %Y')`;
-        }
+                                      WHERE hif.hotelId = '${hotelId}' AND bod.billDate BETWEEN STR_TO_DATE('${data.startDate ? data.startDate : firstDay}', '%b %d %Y') AND STR_TO_DATE('${data.endDate ? data.endDate : lastDay}', '%b %d %Y')`;
         pool.query(sql_query_hotelStatics, (err, statics) => {
             if (err) {
                 console.error("An error occurred in SQL Queery", err);
@@ -622,7 +630,7 @@ async function createBillPDF(res, datas, sumFooterArray, tableHeading) {
 
 // Export Hotel Data PDF
 
-const exportPdfBillDataById = (req, res) => {
+const exportPdfHotelBillDataById = (req, res) => {
     try {
         var date = new Date(), y = date.getFullYear(), m = (date.getMonth());
         var firstDay = new Date(y, m, 1).toString().slice(4, 15);
@@ -634,7 +642,6 @@ const exportPdfBillDataById = (req, res) => {
             startDate: (req.query.startDate ? req.query.startDate : '').slice(4, 15),
             endDate: (req.query.endDate ? req.query.endDate : '').slice(4, 15)
         }
-        console.log(data.startDate)
         const commanTransactionQuarry = `SELECT hotelName FROM billing_hotel_data WHERE hotelId = '${data.hotelId}';
                                          SELECT 
                                             CONCAT(DATE_FORMAT(bod.billDate,'%d-%m-%Y'),' ',DATE_FORMAT(bod.billCreationDate,'%h:%i %p')) AS Date,
@@ -645,30 +652,30 @@ const exportPdfBillDataById = (req, res) => {
                                          LEFT JOIN billing_hotelInfo_data AS hif ON bod.billId = hif.billId`;
         if (data.payType && data.startDate && data.endDate) {
             sql_query_getDetails = `${commanTransactionQuarry}
-                                        WHERE hif.hotelId = '${data.hotelId}'
-                                        AND bod.billPayType = '${data.payType}'
-                                        AND bod.billStatus != 'Cancel' 
-                                        AND bod.billDate BETWEEN STR_TO_DATE('${data.startDate}','%b %d %Y') AND STR_TO_DATE('${data.endDate}','%b %d %Y')
-                                        ORDER BY bod.billDate ASC`;
+                                    WHERE hif.hotelId = '${data.hotelId}'
+                                    AND bod.billPayType = '${data.payType}'
+                                    AND bod.billStatus != 'Cancel' 
+                                    AND bod.billDate BETWEEN STR_TO_DATE('${data.startDate}','%b %d %Y') AND STR_TO_DATE('${data.endDate}','%b %d %Y')
+                                    ORDER BY bod.billDate ASC, bod.billCreationDate ASC`;
         } else if (data.startDate && data.endDate) {
             sql_query_getDetails = `${commanTransactionQuarry}
-                                        WHERE hif.hotelId = '${data.hotelId}'
-                                        AND bod.billStatus != 'Cancel'
-                                        AND bod.billDate BETWEEN STR_TO_DATE('${data.startDate}','%b %d %Y') AND STR_TO_DATE('${data.endDate}','%b %d %Y')
-                                        ORDER BY bod.billDate ASC`;
+                                    WHERE hif.hotelId = '${data.hotelId}'
+                                    AND bod.billStatus != 'Cancel'
+                                    AND bod.billDate BETWEEN STR_TO_DATE('${data.startDate}','%b %d %Y') AND STR_TO_DATE('${data.endDate}','%b %d %Y')
+                                    ORDER BY bod.billDate ASC, bod.billCreationDate ASC`;
         } else if (data.payType) {
             sql_query_getDetails = `${commanTransactionQuarry}
-                                        WHERE hif.hotelId = '${data.hotelId}'
-                                        AND bod.billPayType = '${data.payType}'
-                                        AND bod.billStatus != 'Cancel'
-                                        AND bod.billDate BETWEEN STR_TO_DATE('${firstDay}','%b %d %Y') AND STR_TO_DATE('${lastDay}','%b %d %Y')
-                                        ORDER BY bod.billDate ASC`;
+                                    WHERE hif.hotelId = '${data.hotelId}'
+                                    AND bod.billPayType = '${data.payType}'
+                                    AND bod.billStatus != 'Cancel'
+                                    AND bod.billDate BETWEEN STR_TO_DATE('${firstDay}','%b %d %Y') AND STR_TO_DATE('${lastDay}','%b %d %Y')
+                                    ORDER BY bod.billDate ASC, bod.billCreationDate ASC`;
         } else {
             sql_query_getDetails = `${commanTransactionQuarry}
-                                        WHERE hif.hotelId = '${data.hotelId}'
-                                        AND bod.billStatus != 'Cancel'
-                                        AND bod.billDate BETWEEN STR_TO_DATE('${firstDay}','%b %d %Y') AND STR_TO_DATE('${lastDay}','%b %d %Y')
-                                        ORDER BY bod.billDate ASC`;
+                                    WHERE hif.hotelId = '${data.hotelId}'
+                                    AND bod.billStatus != 'Cancel'
+                                    AND bod.billDate BETWEEN STR_TO_DATE('${firstDay}','%b %d %Y') AND STR_TO_DATE('${lastDay}','%b %d %Y')
+                                    ORDER BY bod.billDate ASC, bod.billCreationDate ASC`;
         }
         pool.query(sql_query_getDetails, (err, rows) => {
             if (err) {
@@ -722,23 +729,21 @@ const addHotelTransactionData = async (req, res) => {
                 return res.status(400).send("Please Fill all the feilds");
             }
             const get_remaining_amount = `SELECT
-                                              COALESCE(SUM(CASE 
-                                                  WHEN bod.billPayType = 'debit' AND bod.billStatus != 'Cancel' THEN bod.settledAmount 
-                                                  ELSE 0 
-                                              END), 0) - COALESCE(SUM(ht.paidAmount), 0) AS remainingAmount
+                                             (SELECT ROUND(SUM(CASE WHEN bod.billPayType = 'debit' AND bod.billStatus != 'cancel' THEN bod.settledAmount ELSE 0 END), 2) AS totalDebit FROM billing_Official_data AS bod
+                                            LEFT JOIN billing_hotelInfo_data AS hif ON bod.billId = hif.billId
+                                            WHERE hif.hotelId = '${hotelId}')
+                                            - 
+                                            (SELECT ROUND(COALESCE(SUM(billing_hotelTransaction_data.paidAmount),0),2) FROM billing_hotelTransaction_data WHERE billing_hotelTransaction_data.hotelId = '${hotelId}') 
+                                          AS remainingAmount
                                           FROM
-                                              billing_hotel_data AS bhd
-                                          LEFT JOIN billing_hotelInfo_data AS hinfo ON bhd.hotelId = hinfo.hotelId
-                                          LEFT JOIN billing_Official_data AS bod ON hinfo.billId = bod.billId
-                                          LEFT JOIN billing_hotelTransaction_data AS ht ON bhd.hotelId = ht.hotelId
-                                          WHERE bhd.hotelId = '${hotelId}'
-                                          GROUP BY bhd.hotelName`;
+                                              billing_hotel_data AS bhd`;
             pool.query(get_remaining_amount, (err, data) => {
                 if (err) {
                     console.error("An error occurred in SQL Queery", err);
                     return res.status(500).send('Database Error');
                 }
-                const remainingAmount = data[0].remainingAmount
+                const remainingAmount = data[0].remainingAmount;
+                console.log(remainingAmount);
 
                 const sql_querry_addTransaction = `INSERT INTO billing_hotelTransaction_data (transactionId, hotelId, receivedBy, givenBy, pendingAmount, paidAmount, transactionNote, transactionDate)  
                                                    VALUES ('${transactionId}', '${hotelId}', '${cashier}', ${givenBy ? `'${givenBy}'` : null}, ${remainingAmount}, ${paidAmount}, ${transactionNote ? `'${transactionNote}'` : null}, STR_TO_DATE('${transactionDate}','%b %d %Y'))`;
@@ -831,18 +836,18 @@ const getHotelTransactionListById = (req, res) => {
             } else {
                 const numRows = rows[0].numRows;
                 const numPages = Math.ceil(numRows / numPerPage);
-                const sql_query_staticQuery = `SELECT transactionId, hotelId, receivedBy, givenBy, pendingAmount, paidAmount, transactionNote, transactionDate FROM billing_hotelTransaction_data`;
+                const sql_query_staticQuery = `SELECT transactionId, hotelId, receivedBy, givenBy, pendingAmount, paidAmount, transactionNote, DATE_FORMAT(transactionDate, '%d %b %Y') AS displayDate, DATE_FORMAT(creationDate, '%h:%i %p') AS diplayTime FROM billing_hotelTransaction_data`;
                 if (data.startDate && data.endDate) {
                     sql_query_getDetails = `${sql_query_staticQuery}
                                             WHERE hotelId = '${data.hotelId}' 
                                             AND transactionDate BETWEEN STR_TO_DATE('${data.startDate}', '%b %d %Y') AND STR_TO_DATE('${data.endDate}', '%b %d %Y')
-                                            ORDER BY transactionDate DESC
+                                            ORDER BY billing_hotelTransaction_data.transactionDate DESC, billing_hotelTransaction_data.creationDate DESC
                                             LIMIT ${limit}`;
                 } else {
                     sql_query_getDetails = `${sql_query_staticQuery}
                                             WHERE hotelId = '${data.hotelId}' 
                                             AND transactionDate BETWEEN STR_TO_DATE('${firstDay}', '%b %d %Y') AND STR_TO_DATE('${lastDay}', '%b %d %Y')
-                                            ORDER BY transactionDate DESC
+                                            ORDER BY billing_hotelTransaction_data.transactionDate DESC, billing_hotelTransaction_data.creationDate DESC
                                             LIMIT ${limit}`;
                 }
                 pool.query(sql_query_getDetails, (err, rows, fields) => {
@@ -897,8 +902,8 @@ const getMonthWiseTransactionForHotel = (req, res) => {
                                           FROM
                                             billing_hotel_data AS bhd
                                           LEFT JOIN billing_hotelInfo_data AS hid ON hid.hotelId = bhd.hotelId
-                                          LEFT JOIN billing_Official_data AS bod ON bod.billId = hid.billId 
-                                          WHERE bhd.hotelId = '${hotelId}'
+                                          LEFT JOIN billing_Official_data AS bod ON bod.billId = hid.billId
+                                          WHERE bhd.hotelId = '${hotelId}' AND bod.billPayType = 'debit' AND bod.billStatus != 'Cancel'
                                           GROUP BY 
                                             YEAR(bod.billDate), 
                                             MONTH(bod.billDate)
@@ -907,9 +912,16 @@ const getMonthWiseTransactionForHotel = (req, res) => {
                                             MONTH(bod.billDate) ASC;
                                           SELECT COALESCE(ROUND(SUM(paidAmount)),0) AS totalPaidAmount FROM billing_hotelTransaction_data WHERE hotelId = '${hotelId}'`;
         pool.query(sql_query_getMonthWiseData, (err, data) => {
+            console.log(data[0].length);
             if (err) {
                 console.error("An error occurred in SQL Queery", err);
                 return res.status(500).send('Database Error');
+            } else if (!data[0].length) {
+                const numRows = 0;
+                const rows = [{
+                    'msg': 'No Data Found'
+                }]
+                return res.status(200).send({ rows, numRows });
             } else {
                 const creditAmtJson = data && data[0] ? Object.values(JSON.parse(JSON.stringify(data[0]))) : [];
                 const debitAmtSum = data && data[1] ? data[1][0].totalPaidAmount : 0;
@@ -919,9 +931,18 @@ const getMonthWiseTransactionForHotel = (req, res) => {
                     let dateB = new Date(b.date);
                     return dateB - dateA;
                 });
-                const rows = result.slice(startIndex, endIndex);
+                const resulst = addStartAndEndDates(result);
+                console.log(resulst);
+                const rows = resulst.slice(startIndex, endIndex);
                 const numRows = arr.length
-                return res.status(200).send({ rows, numRows });
+                if (numRows != 0) {
+                    return res.status(200).send({ rows, numRows });
+                } else {
+                    const rows = [{
+                        'msg': 'No Data Found'
+                    }]
+                    return res.status(200).send({ rows, numRows });
+                }
             }
         })
     } catch (error) {
@@ -952,6 +973,187 @@ function MonthWiseData(arr, cutAmt) {
     return newArray;
 }
 
+// Export PDF of Transaction Invoice Hotel
+
+async function createPDF(res, data) {
+    try {
+        const details = {
+            invoiceNumber: data[0].invoiceNumber ? data[0].invoiceNumber.toString() : '',
+            paidBy: data[0].paidBy ? data[0].paidBy : '',
+            customerName: data[0].customerName ? data[0].customerName : '',
+            customerNumber: data[0].customerNumber ? data[0].customerNumber : '',
+            receivedBy: data[0].receivedBy ? data[0].receivedBy : '',
+            pendingAmount: data[0].pendingAmount ? data[0].pendingAmount.toString() : '',
+            paidAmount: data[0].paidAmount ? data[0].paidAmount.toString() : '',
+            remainingAmount: data[0].remainingAmount ? data[0].remainingAmount.toString() : '',
+            transactionNote: data[0].transactionNote ? data[0].transactionNote : '',
+            transactionDate: data[0].transactionDate ? data[0].transactionDate : '',
+            transactionTime: data[0].transactionTime ? data[0].transactionTime : '',
+        }
+        const document = await PDFDocument.load(readFileSync(process.env.INVOICE_BHAGWATI_URL));
+        console.log('>>?>>?>?>?', process.env.INVOICE_BHAGWATI_URL)
+        const helveticaFont = await document.embedFont(StandardFonts.Helvetica);
+        const HelveticaBold = await document.embedFont(StandardFonts.HelveticaBold);
+        const firstPage = document.getPage(0);
+
+        // Load the image data synchronously using readFileSync
+        const draftImageData = fs.readFileSync(process.env.DRAFT_LOGO_IMAGE_URL);
+
+        // Embed the image data in the PDF document
+        const draftImage = await document.embedPng(draftImageData);
+
+        // Draw the image on the desired page
+        const draftImageDims = draftImage.scale(0.6); // Adjust the scale as needed
+        firstPage.drawImage(draftImage, {
+            x: 50, // Adjust the X position as needed
+            y: 100, // Adjust the Y position as needed
+            width: draftImageDims.width + 50,
+            height: draftImageDims.height + 100,
+            opacity: 0.09, // Apply transparency (0.0 to 1.0)
+        });
+
+        firstPage.moveTo(105, 530);
+        firstPage.drawText(details.invoiceNumber, {
+            x: 140,
+            y: 635,
+            size: 10,
+            fontSize: 100,
+            font: HelveticaBold
+        })
+
+        firstPage.drawText(details.transactionDate, {
+            x: 140,
+            y: 621,
+            size: 9,
+            font: helveticaFont
+        })
+
+        firstPage.drawText(details.transactionTime, {
+            x: 140,
+            y: 606,
+            size: 9,
+            font: helveticaFont
+        })
+
+        firstPage.drawText(details.customerName, {
+            x: 300,
+            y: 635,
+            size: 10,
+            fontSize: 100,
+            font: HelveticaBold
+        })
+
+        firstPage.drawText(details.customerNumber, {
+            x: 300,
+            y: 621,
+            size: 9,
+            font: helveticaFont
+        })
+
+        firstPage.drawText(details.receivedBy, {
+            x: 50,
+            y: 505,
+            size: 9,
+            font: helveticaFont
+        })
+
+        firstPage.drawText(details.paidBy, {
+            x: 159,
+            y: 505,
+            size: 9,
+            font: helveticaFont
+        })
+
+        firstPage.drawText(details.pendingAmount, {
+            x: 295,
+            y: 505,
+            size: 9,
+            font: helveticaFont
+        })
+
+        firstPage.drawText(details.paidAmount, {
+            x: 404,
+            y: 505,
+            size: 9,
+            font: helveticaFont
+        })
+
+        firstPage.drawText(details.remainingAmount, {
+            x: 476,
+            y: 505,
+            size: 9,
+            font: helveticaFont
+        })
+
+        firstPage.drawText(details.transactionNote, {
+            x: 85,
+            y: 435,
+            size: 9,
+            font: helveticaFont
+        })
+
+        const pdfBytes = await document.save();
+
+        const stream = new Readable();
+        stream.push(pdfBytes);
+        stream.push(null);
+
+        const fileName = 'jane-doe.pdf'; // Set the desired file name
+
+        res.setHeader('Content-Disposition', `attachment; filename="${fileName}"`);
+        res.setHeader('Content-Type', 'application/pdf');
+
+        stream.pipe(res);
+    } catch (error) {
+        console.error('An error occurred', error);
+        res.status(500).json('Internal Server Error');
+    }
+    // writeFileSync("jane-doe.pdf", await document.save());
+}
+
+const exportHotelTransactionInvoice = async (req, res) => {
+    try {
+        const transactionId = req.query.transactionId;
+        const sql_queries_getInvoiceDetails = `SELECT
+                                                   RIGHT(htd.transactionId, 9) AS invoiceNumber,
+                                                   hd.hotelName AS customerName,
+                                                   hd.hotelMobileNo AS customerNumber,
+                                                   receivedBy AS receivedBy,
+                                                   givenBy AS paidBy,
+                                                   pendingAmount,
+                                                   paidAmount,
+                                                   (pendingAmount - paidAmount) AS remainingAmount,
+                                                   transactionNote,
+                                                   DATE_FORMAT(transactionDate, '%d %M %Y, %W') AS transactionDate,
+                                                   DATE_FORMAT(htd.creationDate, '%h:%i %p') AS transactionTime
+                                               FROM
+                                                   billing_hotelTransaction_data AS htd
+                                               INNER JOIN billing_hotel_data AS hd ON hd.hotelId = htd.hotelId
+                                               WHERE htd.transactionId = '${transactionId}'`;
+        pool.query(sql_queries_getInvoiceDetails, (err, data) => {
+            if (err) {
+                console.error("An error occurred in SQL Queery", err);
+                return res.status(500).send('Database Error');
+            } else if (!data.length) {
+                return res.status(500).send('Invoice Not Found');
+            } else {
+                createPDF(res, data)
+                    .then(() => {
+                        console.log('PDF created successfully');
+                        res.status(200);
+                    })
+                    .catch((err) => {
+                        console.log(err);
+                        res.status(500).send('Error creating PDF');
+                    });
+            }
+        })
+    } catch (error) {
+        console.error('An error occurred', error);
+        res.status(500).json('Internal Server Error');
+    }
+}
+
 module.exports = {
     getHotelList,
     getHotelDataById,
@@ -961,9 +1163,10 @@ module.exports = {
     removeHotelData,
     updateHotelData,
     ddlHotelList,
-    exportPdfBillDataById,
+    exportPdfHotelBillDataById,
     addHotelTransactionData,
     removeHotelTransactionById,
     getMonthWiseTransactionForHotel,
-    getHotelTransactionListById
+    getHotelTransactionListById,
+    exportHotelTransactionInvoice
 }

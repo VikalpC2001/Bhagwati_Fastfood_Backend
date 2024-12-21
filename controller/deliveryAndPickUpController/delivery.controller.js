@@ -1023,10 +1023,10 @@ const changePayTypeByDelivery = (req, res) => {
                                                     `INSERT INTO billing_billWiseUpi_data(bwuId, onlineId, billId, amount, onlineDate)
                                                      VALUES('${bwuId}', '${deliveryData.onlineId}', '${deliveryData.payTypeData.billId}', '${deliveryData.payTypeData.billAmt}', STR_TO_DATE('${currentDate}','%b %d %Y'));`
                                                     :
-                                                    deliveryData.accountId && billData.payTypeData.billPayType == 'due'
+                                                    deliveryData.accountId && deliveryData.payTypeData.billPayType == 'due'
                                                         ?
-                                                        `INSERT INTO due_billAmount_data(dabId, accountId, billId, billAmount, billNote, dueDate)
-                                                         VALUES('${dabId}','${deliveryData.accountId}','${deliveryData.payTypeData.billId}',${deliveryData.payTypeData.billAmt},${deliveryData.billNote ? `'${deliveryData.billNote}'` : null}, STR_TO_DATE('${currentDate}','%b %d %Y'));`
+                                                        `INSERT INTO due_billAmount_data(dabId, enterBy, accountId, billId, billAmount, dueNote, dueDate)
+                                                         VALUES('${dabId}', '${enterBy}', '${deliveryData.accountId}','${deliveryData.payTypeData.billId}',${deliveryData.payTypeData.billAmt},${deliveryData.billNote ? `'${deliveryData.billNote}'` : null}, STR_TO_DATE('${currentDate}','%b %d %Y'));`
                                                         :
                                                         ''}
                                                  ${!isExist && deliveryData.isOfficial

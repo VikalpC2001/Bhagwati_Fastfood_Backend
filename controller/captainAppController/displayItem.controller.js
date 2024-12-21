@@ -22,7 +22,6 @@ const getItemDataForApp = (req, res) => {
                                            item_menuList_data AS imd
                                        INNER JOIN item_subCategory_data AS iscd ON iscd.subCategoryId = imd.itemSubCategory`;
         const sql_query_getMenuId = `SELECT menuId FROM billing_category_data WHERE categoryName = 'Dine In'`;
-
         let sql_querry_getItem = `${sql_query_staticQuery}
                                   ORDER BY imd.itemCode ASC;
                                   ${sql_query_getMenuId}`;
@@ -47,18 +46,18 @@ const getItemDataForApp = (req, res) => {
                                 }
                             ))
 
-                            const result = combinedData.reduce((acc, item) => {
+                            const result = Object.values(combinedData.reduce((acc, item) => {
                                 const key = item.subCategoryName;
                                 if (!acc[key]) {
-                                    acc[key] = []; // Initialize as an array directly
+                                    acc[key] = { categoryName: key, listOfItems: [] };
                                 }
-                                acc[key].push(item); // Push the item directly into the array
+                                acc[key].listOfItems.push(item);
                                 return acc;
-                            }, {});
+                            }, {}));
 
 
                             const newJson = {
-                                category: Object.keys(result),
+                                category: result.map((e) => e.categoryName),
                                 categoryWiseItem: result
 
                             }

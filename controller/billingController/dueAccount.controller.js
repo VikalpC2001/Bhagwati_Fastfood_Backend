@@ -456,9 +456,16 @@ const getMonthWiseTransactionForDueAccount = (req, res) => {
                                           ORDER BY YEAR(dueDate) ASC, MONTH(dueDate) ASC;
                                           SELECT COALESCE(ROUND(SUM(paidAmount)),0) AS totalPaidAmount FROM due_transaction_data WHERE accountId = '${accountId}'`;
         pool.query(sql_query_getMonthWiseData, (err, data) => {
+            console.log(data.length, '..', data);
             if (err) {
                 console.error("An error occurred in SQL Queery", err);
                 return res.status(500).send('Database Error');
+            } else if (!data[0].length) {
+                const numRows = 0;
+                const rows = [{
+                    'msg': 'No Data Found'
+                }]
+                return res.status(200).send({ rows, numRows });
             } else {
                 const creditAmtJson = data && data[0] ? Object.values(JSON.parse(JSON.stringify(data[0]))) : [];
                 const debitAmtSum = data && data[1] ? data[1][0].totalPaidAmount : 0;
@@ -470,7 +477,14 @@ const getMonthWiseTransactionForDueAccount = (req, res) => {
                 });
                 const rows = result.slice(startIndex, endIndex);
                 const numRows = arr.length
-                return res.status(200).send({ rows, numRows });
+                if (numRows != 0) {
+                    return res.status(200).send({ rows, numRows });
+                } else {
+                    const rows = [{
+                        'msg': 'No Data Found'
+                    }]
+                    return res.status(200).send({ rows, numRows });
+                }
             }
         })
     } catch (error) {
@@ -536,13 +550,13 @@ const getDueBillDataById = (req, res) => {
                     sql_query_getDetails = `${sql_query_staticQuery}
                                             WHERE accountId = '${data.accountId}' 
                                             AND dueDate BETWEEN STR_TO_DATE('${data.startDate}', '%b %d %Y') AND STR_TO_DATE('${data.endDate}', '%b %d %Y')
-                                            ORDER BY due_billAmount_data.dueDate DESC
+                                            ORDER BY due_billAmount_data.dueDate DESC, due_billAmount_data.creationDate DESC
                                             LIMIT ${limit}`;
                 } else {
                     sql_query_getDetails = `${sql_query_staticQuery}
                                             WHERE accountId = '${data.accountId}' 
                                             AND dueDate BETWEEN STR_TO_DATE('${firstDay}', '%b %d %Y') AND STR_TO_DATE('${lastDay}', '%b %d %Y')
-                                            ORDER BY due_billAmount_data.dueDate DESC
+                                            ORDER BY due_billAmount_data.dueDate DESC, due_billAmount_data.creationDate DESC
                                             LIMIT ${limit}`;
                 }
                 pool.query(sql_query_getDetails, (err, rows, fields) => {
@@ -606,19 +620,19 @@ const getDueDebitTransactionListById = (req, res) => {
                     sql_query_getDetails = `${sql_query_staticQuery}
                                             WHERE accountId = '${data.accountId}' 
                                             AND transactionDate BETWEEN STR_TO_DATE('${data.startDate}', '%b %d %Y') AND STR_TO_DATE('${data.endDate}', '%b %d %Y')
-                                            ORDER BY transactionDate DESC
+                                            ORDER BY due_transaction_data.transactionDate DESC, due_transaction_data.creationDate DESC
                                             LIMIT ${limit}`;
                 } else if (data.searchInvoiceNumber) {
                     sql_query_getDetails = `${sql_query_staticQuery}
                                             WHERE accountId = '${data.accountId}' 
                                             AND transactionId LIKE '%` + data.searchInvoiceNumber + `%'
-                                            ORDER BY transactionDate DESC
+                                            ORDER BY due_transaction_data.transactionDate DESC, due_transaction_data.creationDate DESC
                                             LIMIT ${limit}`;
                 } else {
                     sql_query_getDetails = `${sql_query_staticQuery}
                                             WHERE accountId = '${data.accountId}' 
                                             AND transactionDate BETWEEN STR_TO_DATE('${firstDay}', '%b %d %Y') AND STR_TO_DATE('${lastDay}', '%b %d %Y')
-                                            ORDER BY transactionDate DESC
+                                            ORDER BY due_transaction_data.transactionDate DESC, due_transaction_data.creationDate DESC
                                             LIMIT ${limit}`;
                 }
                 pool.query(sql_query_getDetails, (err, rows, fields) => {

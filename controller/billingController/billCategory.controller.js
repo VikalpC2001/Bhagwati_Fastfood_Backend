@@ -103,7 +103,31 @@ const updateBillCategoryData = (req, res) => {
     }
 }
 
+// DDL Bill Category
+
+const ddlBillCategory = (req, res) => {
+    try {
+        let sql_query_getCategory = `SELECT
+                                         bcd.categoryName AS categoryName
+                                     FROM
+                                         billing_category_data AS bcd`;
+        pool.query(sql_query_getCategory, (err, data) => {
+            if (err) {
+                console.error("An error occurred in SQL Query", err);
+                return res.status(500).send('Database Error');
+            } else {
+                const categoryArray = data.map((e) => e.categoryName)
+                return res.status(200).send(categoryArray);
+            }
+        });
+    } catch (error) {
+        console.error('An error occurred', error);
+        res.status(500).send('Internal Server Error');
+    }
+}
+
 module.exports = {
     getBillCategory,
-    updateBillCategoryData
+    updateBillCategoryData,
+    ddlBillCategory
 }

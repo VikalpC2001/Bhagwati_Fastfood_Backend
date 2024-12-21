@@ -13,6 +13,7 @@ const getBankDashboardData = (req, res) => {
                                         bank_data AS bd
                                         LEFT JOIN credit_transaction_data AS ctd ON ctd.toId = bd.bankId AND ctd.creditDate > CURDATE()
                                         LEFT JOIN debit_transaction_data AS dtd ON dtd.fromId = bd.bankId AND dtd.debitDate > CURDATE()
+                                        WHERE bd.isActive = 1
                                         GROUP BY bd.bankId
                                         ORDER BY bankDisplayName ASC`;
         pool.query(sql_queries_getBankDetails, (err, data) => {
@@ -47,7 +48,7 @@ const getBankList = (req, res) => {
                 const numPages = Math.ceil(numRows / numPerPage);
 
 
-                sql_queries_getdetails = `SELECT bankId, bankName, bankShortForm, bankAccountNumber, ifscCode, bankDisplayName, bankIconName FROM bank_data 
+                sql_queries_getdetails = `SELECT bankId, bankName, bankShortForm, bankAccountNumber, ifscCode, bankDisplayName, bankIconName, isActive, isViewMonthlyTransaction FROM bank_data 
                                           Order BY bankName limit ${limit}`;
                 pool.query(sql_queries_getdetails, (err, rows, fields) => {
                     if (err) {
@@ -86,6 +87,8 @@ const addBankData = (req, res) => {
             bankShortForm: req.body.bankShortForm ? req.body.bankShortForm.trim() : null,
             bankAccountNumber: req.body.bankAccountNumber ? req.body.bankAccountNumber.trim() : null,
             ifscCode: req.body.ifscCode ? req.body.ifscCode.trim() : null,
+            isActive: req.body.isActive ? true : false,
+            isViewMonthlyTransaction: req.body.isViewMonthlyTransaction ? true : false
         }
         if (!data.bankName || !data.bankDisplayName || !data.bankIconName) {
             return res.status(400).send("Please Fill All The Fields");
@@ -98,8 +101,8 @@ const addBankData = (req, res) => {
                 if (row && row.length) {
                     return res.status(400).send('Bank is Already In Use');
                 } else {
-                    const sql_querry_addDetails = `INSERT INTO bank_data(bankId, bankName, bankDisplayName, bankShortForm, bankIconName, bankAccountNumber, ifscCode, availableBalance)
-                                                   VALUES('${bankId}', '${data.bankName}', '${data.bankDisplayName}', ${data.bankShortForm ? `'${data.bankShortForm}'` : null}, '${data.bankIconName}', ${data.bankAccountNumber ? `'${data.bankAccountNumber}'` : null}, ${data.ifscCode ? `'${data.ifscCode}'` : null}, 0)`;
+                    const sql_querry_addDetails = `INSERT INTO bank_data(bankId, bankName, bankDisplayName, bankShortForm, bankIconName, bankAccountNumber, ifscCode, availableBalance, isActive, isViewMonthlyTransaction)
+                                                   VALUES('${bankId}', '${data.bankName}', '${data.bankDisplayName}', ${data.bankShortForm ? `'${data.bankShortForm}'` : null}, '${data.bankIconName}', ${data.bankAccountNumber ? `'${data.bankAccountNumber}'` : null}, ${data.ifscCode ? `'${data.ifscCode}'` : null}, 0, ${data.isActive}, ${data.isViewMonthlyTransaction})`;
                     pool.query(sql_querry_addDetails, (err, data) => {
                         if (err) {
                             console.error("An error occurred in SQL Queery", err);
@@ -159,7 +162,9 @@ const updateBankData = (req, res) => {
             bankIconName: req.body.bankIconName.trim(),
             bankShortForm: req.body.bankShortForm.trim(),
             bankAccountNumber: req.body.bankAccountNumber ? req.body.bankAccountNumber.trim() : null,
-            ifscCode: req.body.ifscCode ? req.body.ifscCode.trim() : null
+            ifscCode: req.body.ifscCode ? req.body.ifscCode.trim() : null,
+            isActive: req.body.isActive ? true : false,
+            isViewMonthlyTransaction: req.body.isViewMonthlyTransaction ? true : false
         }
         if (!data.bankName || !data.bankDisplayName || !data.bankIconName) {
             return res.status(400).send("Please Fill All The Fields");
@@ -183,7 +188,9 @@ const updateBankData = (req, res) => {
                                                         bankIconName = '${data.bankIconName}',
                                                         bankShortForm = '${data.bankShortForm}',
                                                         bankAccountNumber = ${data.bankAccountNumber ? `'${data.bankAccountNumber}'` : null},
-                                                        ifscCode = ${data.ifscCode ? `'${data.ifscCode}'` : null}
+                                                        ifscCode = ${data.ifscCode ? `'${data.ifscCode}'` : null},
+                                                        isActive = ${data.isActive},
+                                                        isViewMonthlyTransaction = ${data.isViewMonthlyTransaction}
                                                       WHERE
                                                         bankId = '${bankId}'`;
                     pool.query(sql_querry_updateDetails, (err, data) => {
@@ -207,7 +214,7 @@ const updateBankData = (req, res) => {
 const getBankDetailsById = (req, res) => {
     try {
         const bankId = req.query.bankId;
-        sql_quey_getBankDetails = `SELECT bankName, bankDisplayName, bankShortForm, bankAccountNumber, ifscCode FROM bank_data
+        sql_quey_getBankDetails = `SELECT bankName, bankDisplayName, bankShortForm, bankAccountNumber, ifscCode, isActive, isViewMonthlyTransaction FROM bank_data
                                    WHERE bankId = '${bankId}'`;
         pool.query(sql_quey_getBankDetails, (err, data) => {
             if (err) {

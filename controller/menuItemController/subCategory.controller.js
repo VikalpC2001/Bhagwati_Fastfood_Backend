@@ -11,6 +11,13 @@ const getSubCategoryList = (req, res) => {
         const numPerPage = req.query.numPerPage;
         const skip = (page - 1) * numPerPage;
         const limit = skip + ',' + numPerPage;
+
+        var date = new Date(), y = date.getFullYear(), m = (date.getMonth());
+        var firstDay = new Date(y, m, 1).toString().slice(4, 15);
+        var lastDay = new Date(y, m + 1, 0).toString().slice(4, 15);
+        const startDate = (req.query.startDate ? req.query.startDate : '').slice(4, 15);
+        const endDate = (req.query.endDate ? req.query.endDate : '').slice(4, 15);
+
         sql_querry_getCountDetails = `SELECT count(*) as numRows FROM item_subCategory_data`;
         pool.query(sql_querry_getCountDetails, (err, rows, fields) => {
             if (err) {
@@ -19,7 +26,22 @@ const getSubCategoryList = (req, res) => {
             } else {
                 const numRows = rows[0].numRows;
                 const numPages = Math.ceil(numRows / numPerPage);
-                const sql_query_getDetails = `SELECT subCategoryId, subCategoryName, categoryId AS mainCategory, displayRank FROM item_subCategory_data LIMIT ${limit}`;
+                const sql_query_getDetails = `SELECT
+                                                  iscd.subCategoryId,
+                                                  iscd.categoryId,
+                                                  imcd.categoryName,
+                                                  iscd.subCategoryName,
+                                                  iscd.displayRank,
+                                                  COALESCE(SUM(bbd.price),0) AS totalRs
+                                              FROM
+                                                  item_subCategory_data AS iscd
+                                              LEFT JOIN item_mainCategory_data AS imcd ON imcd.categoryId = iscd.categoryId
+                                              LEFT JOIN item_menuList_data AS imld ON imld.itemSubCategory = iscd.subCategoryId
+                                              LEFT JOIN billing_billWiseItem_data AS bbd ON bbd.itemId = imld.itemId AND bbd.billDate BETWEEN STR_TO_DATE('${startDate ? startDate : firstDay}', '%b %d %Y') AND STR_TO_DATE('${endDate ? endDate : lastDay}', '%b %d %Y') 
+                                              AND bbd.billPayType NOT IN ('Cancel','complimentary') AND bbd.billStatus != 'Cancel'
+                                              GROUP BY iscd.subCategoryId, iscd.subCategoryName
+                                              ORDER BY iscd.subCategoryName ASC
+                                              LIMIT ${limit}`;
                 pool.query(sql_query_getDetails, (err, rows, fields) => {
                     if (err) {
                         console.error("An error occurred in SQL Queery", err);

@@ -4,7 +4,7 @@ require('jspdf-autotable');
 
 // Get Category List
 
-const getThreeCategorDashBoardData = async (req, res) => {
+const getThreeCategorDashBoardData = (req, res) => {
     try {
         var date = new Date(), y = date.getFullYear(), m = (date.getMonth());
         var firstDay = new Date(y, m, 1).toString().slice(4, 15);
@@ -35,15 +35,25 @@ const getThreeCategorDashBoardData = async (req, res) => {
         let sql_querry_getBusinessCategory = `SELECT 
                                                   imcd.categoryId AS categoryId,
                                                   imcd.categoryName AS categoryName,
-                                                  COALESCE(SUM(bbd.price),0) AS totalRs
+                                                  COALESCE(SUM(bbd.price), 0) AS totalRs
                                               FROM 
                                                   item_mainCategory_data AS imcd
                                               LEFT JOIN item_subCategory_data AS iscd ON iscd.categoryId = imcd.categoryId
                                               LEFT JOIN item_menuList_data AS imld ON imld.itemSubCategory = iscd.subCategoryId
-                                              LEFT JOIN billing_billWiseItem_data AS bbd ON bbd.itemId = imld.itemId AND bbd.billDate BETWEEN STR_TO_DATE('${startDate ? startDate : firstDay}', '%b %d %Y') AND STR_TO_DATE('${endDate ? endDate : lastDay}', '%b %d %Y') 
-                                              AND bbd.billPayType NOT IN ('Cancel','complimentary') AND bbd.billStatus != 'Cancel'
+                                              LEFT JOIN (
+                                                  SELECT 
+                                                      itemId, 
+                                                      SUM(price) AS price
+                                                  FROM 
+                                                      billing_billWiseItem_data
+                                                  WHERE 
+                                                      billDate BETWEEN STR_TO_DATE('${startDate ? startDate : firstDay}', '%b %d %Y') AND STR_TO_DATE('${endDate ? endDate : lastDay}', '%b %d %Y')
+                                                      AND billPayType NOT IN ('Cancel', 'complimentary')
+                                                      AND billStatus != 'Cancel'
+                                                  GROUP BY itemId
+                                              ) AS bbd ON bbd.itemId = imld.itemId
                                               GROUP BY imcd.categoryId, imcd.categoryName
-                                              ORDER BY imcd.categoryName ASC`;
+                                              ORDER BY imcd.categoryName ASC;`;
 
         const sql_queries_getAllCategoryData = `${sql_queries_getInventoryCategory};
                                                 ${sql_querry_getStaffCategory};

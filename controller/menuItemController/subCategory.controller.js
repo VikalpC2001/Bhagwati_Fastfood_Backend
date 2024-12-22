@@ -26,30 +26,41 @@ const getSubCategoryList = (req, res) => {
             } else {
                 const numRows = rows[0].numRows;
                 const numPages = Math.ceil(numRows / numPerPage);
-                const sql_query_getDetails = `SELECT
-                                                  iscd.subCategoryId,
-                                                  iscd.categoryId,
-                                                  imcd.categoryName,
-                                                  iscd.subCategoryName,
-                                                  iscd.displayRank,
-                                                  COALESCE(SUM(bbd.price),0) AS totalRs
-                                              FROM
-                                                  item_subCategory_data AS iscd
-                                              LEFT JOIN item_mainCategory_data AS imcd ON imcd.categoryId = iscd.categoryId
-                                              LEFT JOIN item_menuList_data AS imld ON imld.itemSubCategory = iscd.subCategoryId
-                                              LEFT JOIN billing_billWiseItem_data AS bbd ON bbd.itemId = imld.itemId AND bbd.billDate BETWEEN STR_TO_DATE('${startDate ? startDate : firstDay}', '%b %d %Y') AND STR_TO_DATE('${endDate ? endDate : lastDay}', '%b %d %Y') 
-                                              AND bbd.billPayType NOT IN ('Cancel','complimentary') AND bbd.billStatus != 'Cancel'
-                                              GROUP BY iscd.subCategoryId, iscd.subCategoryName
-                                              ORDER BY iscd.subCategoryName ASC
-                                              LIMIT ${limit}`;
+                const sql_query_getDetails = `WITH FilteredBillingData AS (
+                                                SELECT
+                                                    itemId,
+                                                    SUM(price) AS totalRs
+                                                FROM
+                                                    billing_billWiseItem_data
+                                                WHERE
+                                                    billDate BETWEEN STR_TO_DATE('${startDate ? startDate : firstDay}', '%b %d %Y') AND STR_TO_DATE('${endDate ? endDate : lastDay}', '%b %d %Y')
+                                                    AND billPayType NOT IN ('Cancel', 'complimentary')
+                                                    AND billStatus != 'Cancel'
+                                                GROUP BY itemId
+                                            )
+                                            SELECT
+                                                iscd.subCategoryId,
+                                                iscd.categoryId,
+                                                imcd.categoryName,
+                                                iscd.subCategoryName,
+                                                iscd.displayRank,
+                                                COALESCE(SUM(fbd.totalRs), 0) AS totalRs
+                                            FROM
+                                                item_subCategory_data AS iscd
+                                            LEFT JOIN item_mainCategory_data AS imcd ON imcd.categoryId = iscd.categoryId
+                                            LEFT JOIN item_menuList_data AS imld ON imld.itemSubCategory = iscd.subCategoryId
+                                            LEFT JOIN FilteredBillingData AS fbd ON fbd.itemId = imld.itemId
+                                            GROUP BY
+                                                iscd.subCategoryId,
+                                                iscd.subCategoryName
+                                            ORDER BY
+                                                iscd.subCategoryName ASC
+                                                LIMIT ${limit}`;
                 pool.query(sql_query_getDetails, (err, rows, fields) => {
                     if (err) {
                         console.error("An error occurred in SQL Queery", err);
                         return res.status(500).send('Database Error');;
                     } else {
-                        console.log(rows);
-                        console.log(numRows);
-                        console.log("Total Page :-", numPages);
                         if (numRows === 0) {
                             const rows = [{
                                 'msg': 'No Data Found'

@@ -17,6 +17,7 @@ const billingrouter = require('./routs/billingRouts/billing.routs');
 const deliveryAndPickUprouter = require('./routs/deliveryAndPickUpRouts/deliveryAndPickUp.routs');
 const captainApprouter = require('./routs/captainAppRouts/captainApp.routs');
 const merchantApprouter = require('./routs/merchantAppRouts/merchantApp.routs');
+const whatsApprouter = require('./routs/whatsAppRouts/whatsApp.route');
 
 // app.use(cors({
 //   credentials: true,
@@ -59,6 +60,7 @@ app.use('/billingrouter', billingrouter);
 app.use('/deliveryAndPickUprouter', deliveryAndPickUprouter);
 app.use('/captainApprouter', captainApprouter);
 app.use('/merchantApprouter', merchantApprouter);
+app.use('/whatsApprouter', whatsApprouter);
 
 app.use(notFound);
 app.use(erroHandler);

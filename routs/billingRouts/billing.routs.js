@@ -51,6 +51,7 @@ router.delete('/removeHotelTransactionById', protect, hotelController.removeHote
 router.get('/getMonthWiseTransactionForHotel', protect, hotelController.getMonthWiseTransactionForHotel);
 router.get('/getHotelTransactionListById', protect, hotelController.getHotelTransactionListById);
 router.get('/exportHotelTransactionInvoice', protect, hotelController.exportHotelTransactionInvoice);
+router.get('/exportPdfHotelBillData', protect, hotelController.exportPdfHotelBillData);
 
 // Firm Routs
 
@@ -146,6 +147,8 @@ router.delete('/removeDueDebitTransactionById', protect, accountConntroller.remo
 router.post('/updateDueBillDataById', protect, accountConntroller.updateDueBillDataById);
 router.get('/ddlDueAccountData', protect, accountConntroller.ddlDueAccountData);
 router.get('/exportDueTransactionInvoice', protect, accountConntroller.exportDueTransactionInvoice);
+router.get('/exportPdfForDueBillData', protect, accountConntroller.exportPdfForDueBillData);
+router.get('/exportPdfForDueBillTransactionData', protect, accountConntroller.exportPdfForDueBillTransactionData);
 
 // UPI Routs
 

@@ -57,5 +57,7 @@ router.get('/updateItemStatus', protect, itemController.updateItemStatus);
 router.get('/getItemSalesReport', itemController.getItemSalesReport);
 router.post('/updateItemPriceByMenuId', itemController.updateItemPriceByMenuId);
 router.get('/exportPdfForItemSalesReport', itemController.exportPdfForItemSalesReport);
+router.get('/getItmeDataForTouchView', itemController.getItmeDataForTouchView);
+router.get('/getItemDataByCode', itemController.getItemDataByCode);
 
 module.exports = router;

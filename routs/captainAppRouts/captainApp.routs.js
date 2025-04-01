@@ -7,6 +7,10 @@ const { protect } = require("../../middlewares/authMiddlewares.js");
 const appController = require("../../controller/captainAppController/order.controller.js");
 
 router.post('/addDineInOrderByApp', protect, appController.addDineInOrderByApp);
+router.post('/updateSubTokenDataByIdForApp', protect, appController.updateSubTokenDataByIdForApp);
+router.get('/getSubTokensByBillIdForApp', protect, appController.getSubTokensByBillIdForApp);
+router.delete('/removeSubTokenDataByIdForApp', protect, appController.removeSubTokenDataByIdForApp);
+router.get('/isTableEmpty', protect, appController.isTableEmpty);
 
 // Item App Routs
 

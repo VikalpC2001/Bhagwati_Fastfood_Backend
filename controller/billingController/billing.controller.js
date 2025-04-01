@@ -183,6 +183,16 @@ const getLiveViewByCategoryId = (req, res) => {
                                                              billing_billWiseItem_data AS bwid
                                                          INNER JOIN item_menuList_data AS imd ON imd.itemId = bwid.itemId
                                                          WHERE bwid.billId = '${billId}'`;
+                        let sql_query_getItemWiseAddons = `SELECT
+                                                              iwad.iwaId,
+                                                              iwad.iwbId,
+                                                              iwad.addOnsId,
+                                                              iad.addonsName,
+                                                              iad.price
+                                                          FROM
+                                                              billing_itemWiseAddon_data AS iwad
+                                                          LEFT JOIN item_addons_data AS iad ON iad.addonsId = iwad.addOnsId
+                                                          WHERE iwad.iwbId IN(SELECT COALESCE(bwid.iwbId, NULL) FROM billing_billWiseItem_data AS bwid WHERE bwid.billId = '${billId}')`;
                         let sql_query_getCustomerInfo = `SELECT
                                                              bwcd.bwcId AS bwcId,
                                                              bwcd.customerId AS customerId,
@@ -229,6 +239,7 @@ const getLiveViewByCategoryId = (req, res) => {
                         const sql_query_getBillData = `${sql_query_getBillingData};
                                                        ${sql_query_getBillwiseItem};
                                                        ${sql_query_getFirmData};
+                                                       ${sql_query_getItemWiseAddons};
                                                        ${billType == 'Hotel' ? sql_query_getHotelInfo + ';' : ''}
                                                        ${['Pick Up', 'Delivery', 'Dine In'].includes(billType) ? sql_query_getCustomerInfo + ';' : ''}
                                                        ${billType == 'Dine In' ? sql_query_getTableData : ''}`;
@@ -238,13 +249,25 @@ const getLiveViewByCategoryId = (req, res) => {
                                     console.error("An error occurred in SQL Query", err);
                                     return reject('Database Error');
                                 } else {
+                                    const itemsData = billData && billData[1] ? billData[1] : [];
+                                    const addonsData = billData && billData[3] ? billData[3] : [];
+
+                                    const newItemJson = itemsData.map(item => {
+                                        const itemAddons = addonsData.filter(addon => addon.iwbId === item.iwbId);
+                                        return {
+                                            ...item,
+                                            addons: itemAddons.map(({ iwbId, ...rest }) => rest),
+                                            addonPrice: itemAddons.reduce((sum, { price }) => sum + price, 0)
+                                        };
+                                    });
+
                                     const json = {
                                         ...billData[0][0],
-                                        itemData: billData && billData[1] ? billData[1] : [],
+                                        itemData: newItemJson,
                                         firmData: billData && billData[2] ? billData[2][0] : [],
-                                        ...(billType === 'Hotel' ? { hotelDetails: billData[3][0] } : ''),
-                                        ...(['Pick Up', 'Delivery', 'Dine In'].includes(billType) ? { customerDetails: billData && billData[3][0] ? billData[3][0] : '' } : ''),
-                                        ...(billType === 'Dine In' ? { tableInfo: billData[4][0] } : '')
+                                        ...(billType === 'Hotel' ? { hotelDetails: billData[4][0] } : ''),
+                                        ...(['Pick Up', 'Delivery', 'Dine In'].includes(billType) ? { customerDetails: billData && billData[4][0] ? billData[4][0] : '' } : ''),
+                                        ...(billType === 'Dine In' ? { tableInfo: billData[5][0] } : '')
                                     }
                                     return resolve(json);
                                 }
@@ -458,6 +481,16 @@ const getBillDataByToken = (req, res) => {
                                                                          billing_billWiseItem_data AS bwid
                                                                      INNER JOIN item_menuList_data AS imd ON imd.itemId = bwid.itemId
                                                                      WHERE bwid.billId = '${billId}'`;
+                                    let sql_query_getItemWiseAddons = `SELECT
+                                                                         iwad.iwaId,
+                                                                         iwad.iwbId,
+                                                                         iwad.addOnsId,
+                                                                         iad.addonsName,
+                                                                         iad.price
+                                                                     FROM
+                                                                         billing_itemWiseAddon_data AS iwad
+                                                                     LEFT JOIN item_addons_data AS iad ON iad.addonsId = iwad.addOnsId
+                                                                     WHERE iwad.iwbId IN(SELECT COALESCE(bwid.iwbId, NULL) FROM billing_billWiseItem_data AS bwid WHERE bwid.billId = '${billId}')`;
                                     let sql_query_getCustomerInfo = `SELECT
                                                                          bwcd.bwcId AS bwcId,
                                                                          bwcd.customerId AS customerId,
@@ -504,6 +537,7 @@ const getBillDataByToken = (req, res) => {
                                     const sql_query_getBillData = `${sql_query_getBillingData};
                                                                    ${sql_query_getBillwiseItem};
                                                                    ${sql_query_getFirmData};
+                                                                   ${sql_query_getItemWiseAddons};
                                                                    ${billType == 'Hotel' ? sql_query_getHotelInfo + ';' : ''}
                                                                    ${['Pick Up', 'Delivery', 'Dine In'].includes(billType) ? sql_query_getCustomerInfo + ';' : ''}
                                                                    ${billType == 'Dine In' ? sql_query_getTableData : ''}`;
@@ -512,13 +546,25 @@ const getBillDataByToken = (req, res) => {
                                             console.error("An error occurred in SQL Queery", err);
                                             return res.status(500).send('Database Error'); t
                                         } else {
+                                            const itemsData = billData && billData[1] ? billData[1] : [];
+                                            const addonsData = billData && billData[3] ? billData[3] : [];
+
+                                            const newItemJson = itemsData.map(item => {
+                                                const itemAddons = addonsData.filter(addon => addon.iwbId === item.iwbId);
+                                                return {
+                                                    ...item,
+                                                    addons: itemAddons.map(({ iwbId, ...rest }) => rest),
+                                                    addonPrice: itemAddons.reduce((sum, { price }) => sum + price, 0)
+                                                };
+                                            });
+
                                             const json = {
                                                 ...billData[0][0],
-                                                itemData: billData && billData[1] ? billData[1] : [],
+                                                itemData: newItemJson,
                                                 firmData: billData && billData[2] ? billData[2][0] : [],
-                                                ...(billType === 'Hotel' ? { hotelDetails: billData[3][0] } : ''),
-                                                ...(['Pick Up', 'Delivery', 'Dine In'].includes(billType) ? { customerDetails: billData && billData[3][0] ? billData[3][0] : '' } : ''),
-                                                ...(billType === 'Dine In' ? { tableInfo: billData[4][0] } : ''),
+                                                ...(billType === 'Hotel' ? { hotelDetails: billData[4][0] } : ''),
+                                                ...(['Pick Up', 'Delivery', 'Dine In'].includes(billType) ? { customerDetails: billData && billData[4][0] ? billData[4][0] : '' } : ''),
+                                                ...(billType === 'Dine In' ? { tableInfo: billData[5][0] } : ''),
                                                 ...(['due'].includes(billData[0][0].billPayType) ? { "payInfo": { "accountId": billData[0][0].typeId, "customerName": billData[0][0].typeName } } : '')
                                             }
                                             return res.status(200).send(json);
@@ -615,6 +661,16 @@ const getBillDataById = (req, res) => {
                                                              billing_billWiseItem_data AS bwid
                                                          INNER JOIN item_menuList_data AS imd ON imd.itemId = bwid.itemId
                                                          WHERE bwid.billId = '${billId}'`;
+                        let sql_query_getItemWiseAddons = `SELECT
+                                                               iwad.iwaId,
+                                                               iwad.iwbId,
+                                                               iwad.addOnsId,
+                                                               iad.addonsName,
+                                                               iad.price
+                                                           FROM
+                                                               billing_itemWiseAddon_data AS iwad
+                                                           LEFT JOIN item_addons_data AS iad ON iad.addonsId = iwad.addOnsId
+                                                           WHERE iwad.iwbId IN(SELECT COALESCE(bwid.iwbId, NULL) FROM billing_billWiseItem_data AS bwid WHERE bwid.billId = '${billId}')`;
                         let sql_query_getCustomerInfo = `SELECT
                                                              bwcd.bwcId AS bwcId,
                                                              bwcd.customerId AS customerId,
@@ -663,6 +719,7 @@ const getBillDataById = (req, res) => {
                         const sql_query_getBillData = `${sql_query_getBillingData};
                                                        ${sql_query_getBillwiseItem};
                                                        ${sql_query_getFirmData};
+                                                       ${sql_query_getItemWiseAddons};
                                                        ${billType == 'Hotel' ? sql_query_getHotelInfo + ';' : ''}
                                                        ${['Pick Up', 'Delivery', 'Dine In'].includes(billType) ? sql_query_getCustomerInfo + ';' : ''}
                                                        ${billType == 'Dine In' ? sql_query_getTableData + ';' + sql_querry_getSubTokens : ''}`;
@@ -671,14 +728,27 @@ const getBillDataById = (req, res) => {
                                 console.error("An error occurred in SQL Queery", err);
                                 return res.status(500).send('Database Error'); t
                             } else {
+
+                                const itemsData = billData && billData[1] ? billData[1] : [];
+                                const addonsData = billData && billData[3] ? billData[3] : [];
+
+                                const newItemJson = itemsData.map(item => {
+                                    const itemAddons = addonsData.filter(addon => addon.iwbId === item.iwbId);
+                                    return {
+                                        ...item,
+                                        addons: itemAddons.map(({ iwbId, ...rest }) => rest),
+                                        addonPrice: itemAddons.reduce((sum, { price }) => sum + price, 0)
+                                    };
+                                });
+
                                 const json = {
                                     ...billData[0][0],
-                                    itemData: billData && billData[1] ? billData[1] : [],
+                                    itemData: newItemJson,
                                     firmData: billData && billData[2] ? billData[2][0] : [],
-                                    ...(billType === 'Hotel' ? { hotelDetails: billData[3][0] } : ''),
-                                    ...(['Pick Up', 'Delivery', 'Dine In'].includes(billType) ? { customerDetails: billData && billData[3][0] ? billData[3][0] : '' } : ''),
-                                    ...(billType === 'Dine In' ? { tableInfo: billData[4][0] } : ''),
-                                    subTokens: billData && billData[5] && billData[5].length ? billData[5].map(item => item.subTokenNumber).sort((a, b) => a - b).join(", ") : null,
+                                    ...(billType === 'Hotel' ? { hotelDetails: billData[4][0] } : ''),
+                                    ...(['Pick Up', 'Delivery', 'Dine In'].includes(billType) ? { customerDetails: billData && billData[4][0] ? billData[4][0] : '' } : ''),
+                                    ...(billType === 'Dine In' ? { tableInfo: billData[5][0] } : ''),
+                                    subTokens: billData && billData[5] && billData[6].length ? billData[6].map(item => item.subTokenNumber).sort((a, b) => a - b).join(", ") : null,
                                     ...(['due'].includes(billPayType) ? { "payInfo": { "accountId": billData[0][0].typeId, "customerName": billData[0][0].typeName } } : '')
                                 }
                                 return res.status(200).send(json);
@@ -810,12 +880,27 @@ const addHotelBillData = (req, res) => {
                                                             });
                                                         } else {
                                                             const billItemData = billData.itemsData
-                                                            let addBillWiseItemData = billItemData.map((item, index) => {
-                                                                let uniqueId = `iwb_${Date.now() + index + '_' + index}`; // Generating a unique ID using current timestamp
-                                                                return `('${uniqueId}', '${billId}', '${item.itemId}', ${item.qty}, '${item.unit}', ${item.itemPrice}, ${item.price}, ${item.comment ? `'${item.comment}'` : null}, 'Hotel', '${billData.billPayType}', '${billData.billStatus}', STR_TO_DATE('${currentDate}','%b %d %Y'))`;
-                                                            }).join(', ');
+
+                                                            const addBillWiseItemData = [];
+                                                            const addItemWiseAddonData = [];
+
+                                                            billItemData.forEach((item, index) => {
+                                                                let uniqueId = `iwb_${Date.now() + index}_${index}`; // Unique ID generation
+
+                                                                // Construct SQL_Add_1 for the main item
+                                                                addBillWiseItemData.push(`('${uniqueId}', '${billId}', '${item.itemId}', ${item.qty}, '${item.unit}', ${item.itemPrice}, ${item.price}, ${item.comment ? `'${item.comment}'` : null}, 'Hotel', '${billData.billPayType}', '${billData.billStatus}', STR_TO_DATE('${currentDate}','%b %d %Y'))`);
+
+                                                                // Construct SQL_Add_2 for the addons
+                                                                if (item.addons && item.addons.length) {
+                                                                    item.addons.forEach((addon, addonIndex) => {
+                                                                        let iwaId = `iwa_${Date.now() + addonIndex + index}_${index}`; // Unique ID for each addon
+                                                                        addItemWiseAddonData.push(`('${iwaId}', '${uniqueId}', '${addon.addOnsId}')`);
+                                                                    });
+                                                                }
+                                                            });
+
                                                             let sql_query_addItems = `INSERT INTO billing_billWiseItem_data(iwbId, billId, itemId, qty, unit, itemPrice, price, comment, billType, billPayType, billStatus, billDate)
-                                                                                      VALUES ${addBillWiseItemData}`;
+                                                                                      VALUES ${addBillWiseItemData.join(", ")}`;
                                                             connection.query(sql_query_addItems, (err) => {
                                                                 if (err) {
                                                                     console.error("Error inserting Bill Wise Item Data:", err);
@@ -824,7 +909,8 @@ const addHotelBillData = (req, res) => {
                                                                         return res.status(500).send('Database Error');
                                                                     });
                                                                 } else {
-                                                                    let sql_query_getFirmData = `SELECT firmId, firmName, gstNumber, firmAddress, pincode, firmMobileNo, otherMobileNo FROM billing_firm_data WHERE firmId = '${billData.firmId}'`;
+                                                                    let sql_query_getFirmData = `SELECT firmId, firmName, gstNumber, firmAddress, pincode, firmMobileNo, otherMobileNo FROM billing_firm_data WHERE firmId = '${billData.firmId}';
+                                                                                                 ${addItemWiseAddonData.length ? `INSERT INTO billing_itemWiseAddon_data (iwaId, iwbId, addOnsId) VALUES ${addItemWiseAddonData.join(", ")};` : ''}`;
                                                                     connection.query(sql_query_getFirmData, (err, firm) => {
                                                                         if (err) {
                                                                             console.error("Error inserting Bill Wise Item Data:", err);
@@ -909,6 +995,7 @@ const addPickUpBillData = (req, res) => {
 
                         const currentDate = getCurrentDate();
                         const billData = req.body;
+
                         if (!billData.customerDetails || !billData.firmId || !billData.subTotal || !billData.settledAmount || !billData.billPayType || !billData.billStatus || !billData.itemsData) {
                             connection.rollback(() => {
                                 connection.release();
@@ -998,12 +1085,27 @@ const addPickUpBillData = (req, res) => {
                                                     });
                                                 } else {
                                                     const billItemData = billData.itemsData
-                                                    let addBillWiseItemData = billItemData.map((item, index) => {
-                                                        let uniqueId = `iwb_${Date.now() + index + '_' + index}`; // Generating a unique ID using current timestamp
-                                                        return `('${uniqueId}', '${billId}', '${item.itemId}', ${item.qty}, '${item.unit}', ${item.itemPrice}, ${item.price}, ${item.comment ? `'${item.comment}'` : null}, 'Pick Up', '${billData.billPayType}', '${billData.billStatus}', STR_TO_DATE('${currentDate}','%b %d %Y'))`;
-                                                    }).join(', ');
+
+                                                    const addBillWiseItemData = [];
+                                                    const addItemWiseAddonData = [];
+
+                                                    billItemData.forEach((item, index) => {
+                                                        let uniqueId = `iwb_${Date.now() + index}_${index}`; // Unique ID generation
+
+                                                        // Construct SQL_Add_1 for the main item
+                                                        addBillWiseItemData.push(`('${uniqueId}', '${billId}', '${item.itemId}', ${item.qty}, '${item.unit}', ${item.itemPrice}, ${item.price}, ${item.comment ? `'${item.comment}'` : null}, 'Pick Up', '${billData.billPayType}', '${billData.billStatus}', STR_TO_DATE('${currentDate}','%b %d %Y'))`);
+
+                                                        // Construct SQL_Add_2 for the addons
+                                                        if (item.addons && item.addons.length) {
+                                                            item.addons.forEach((addon, addonIndex) => {
+                                                                let iwaId = `iwa_${Date.now() + addonIndex + index}_${index}`; // Unique ID for each addon
+                                                                addItemWiseAddonData.push(`('${iwaId}', '${uniqueId}', '${addon.addOnsId}')`);
+                                                            });
+                                                        }
+                                                    });
+
                                                     let sql_query_addItems = `INSERT INTO billing_billWiseItem_data(iwbId, billId, itemId, qty, unit, itemPrice, price, comment, billType, billPayType, billStatus, billDate)
-                                                                              VALUES ${addBillWiseItemData}`;
+                                                                              VALUES ${addBillWiseItemData.join(", ")}`;
                                                     connection.query(sql_query_addItems, (err) => {
                                                         if (err) {
                                                             console.error("Error inserting Bill Wise Item Data:", err);
@@ -1029,7 +1131,12 @@ const addPickUpBillData = (req, res) => {
                                                                                          LEFT JOIN billing_data AS bd ON bd.billId = btd.billId
                                                                                          WHERE btd.billType = 'Pick Up' AND bd.billStatus NOT IN ('complete','Cancel') AND btd.billDate = STR_TO_DATE('${currentDate}','%b %d %Y')
                                                                                          ORDER BY btd.tokenNo ASC;
-                                                                                         ${billData.billPayType == 'online' && billData.onlineId && billData.onlineId != 'other'
+                                                                    ${addItemWiseAddonData.length
+                                                                    ?
+                                                                    `INSERT INTO billing_itemWiseAddon_data (iwaId, iwbId, addOnsId) VALUES ${addItemWiseAddonData.join(", ")};`
+                                                                    :
+                                                                    ''}
+                                                                    ${billData.billPayType == 'online' && billData.onlineId && billData.onlineId != 'other'
                                                                     ?
                                                                     `INSERT INTO billing_billWiseUpi_data(bwuId, onlineId, billId, amount, onlineDate)
                                                                      VALUES('${bwuId}', '${billData.onlineId}', '${billId}', '${billData.settledAmount}', STR_TO_DATE('${currentDate}','%b %d %Y'))`
@@ -1609,12 +1716,27 @@ const addDeliveryBillData = (req, res) => {
                                                     });
                                                 } else {
                                                     const billItemData = billData.itemsData
-                                                    let addBillWiseItemData = billItemData.map((item, index) => {
-                                                        let uniqueId = `iwb_${Date.now() + index + '_' + index}`; // Generating a unique ID using current timestamp
-                                                        return `('${uniqueId}', '${billId}', '${item.itemId}', ${item.qty}, '${item.unit}', ${item.itemPrice}, ${item.price}, ${item.comment ? `'${item.comment}'` : null}, 'Delivery', '${billData.billPayType}', '${billData.billStatus}', STR_TO_DATE('${currentDate}','%b %d %Y'))`;
-                                                    }).join(', ');
+
+                                                    const addBillWiseItemData = [];
+                                                    const addItemWiseAddonData = [];
+
+                                                    billItemData.forEach((item, index) => {
+                                                        let uniqueId = `iwb_${Date.now() + index}_${index}`; // Unique ID generation
+
+                                                        // Construct SQL_Add_1 for the main item
+                                                        addBillWiseItemData.push(`('${uniqueId}', '${billId}', '${item.itemId}', ${item.qty}, '${item.unit}', ${item.itemPrice}, ${item.price}, ${item.comment ? `'${item.comment}'` : null}, 'Delivery', '${billData.billPayType}', '${billData.billStatus}', STR_TO_DATE('${currentDate}','%b %d %Y'))`);
+
+                                                        // Construct SQL_Add_2 for the addons
+                                                        if (item.addons && item.addons.length) {
+                                                            item.addons.forEach((addon, addonIndex) => {
+                                                                let iwaId = `iwa_${Date.now() + addonIndex + index}_${index}`; // Unique ID for each addon
+                                                                addItemWiseAddonData.push(`('${iwaId}', '${uniqueId}', '${addon.addOnsId}')`);
+                                                            });
+                                                        }
+                                                    });
+
                                                     let sql_query_addItems = `INSERT INTO billing_billWiseItem_data(iwbId, billId, itemId, qty, unit, itemPrice, price, comment, billType, billPayType, billStatus, billDate)
-                                                                              VALUES ${addBillWiseItemData}`;
+                                                                              VALUES ${addBillWiseItemData.join(", ")}`;
                                                     connection.query(sql_query_addItems, (err) => {
                                                         if (err) {
                                                             console.error("Error inserting Bill Wise Item Data:", err);
@@ -1623,9 +1745,13 @@ const addDeliveryBillData = (req, res) => {
                                                                 return res.status(500).send('Database Error');
                                                             });
                                                         } else {
-                                                            console.log(billData.onlineId, 'jojojok')
                                                             let sql_query_getFirmData = `SELECT firmId, firmName, gstNumber, firmAddress, pincode, firmMobileNo, otherMobileNo FROM billing_firm_data WHERE firmId = '${billData.firmId}';
-                                                                                        ${billData.billPayType == 'online' && billData.onlineId && billData.onlineId != 'other'
+                                                            ${addItemWiseAddonData.length
+                                                                    ?
+                                                                    `INSERT INTO billing_itemWiseAddon_data (iwaId, iwbId, addOnsId) VALUES ${addItemWiseAddonData.join(", ")};`
+                                                                    :
+                                                                    ''}
+                                                            ${billData.billPayType == 'online' && billData.onlineId && billData.onlineId != 'other'
                                                                     ?
                                                                     `INSERT INTO billing_billWiseUpi_data(bwuId, onlineId, billId, amount, onlineDate)
                                                                      VALUES('${bwuId}', '${billData.onlineId}', '${billId}', '${billData.settledAmount}', STR_TO_DATE('${currentDate}','%b %d %Y'))`
@@ -2165,7 +2291,8 @@ const updateHotelBillData = (req, res) => {
                                                             return res.status(500).send('Database Error');
                                                         });
                                                     } else {
-                                                        let sql_query_removeOldItemData = `DELETE FROM billing_billWiseItem_data WHERE billId = '${billData.billId}'`;
+                                                        let sql_query_removeOldItemData = `DELETE FROM billing_billWiseItem_data WHERE billId = '${billData.billId}';
+                                                                                           DELETE FROM billing_itemWiseAddon_data WHERE iwbId IN (SELECT COALESCE(iwbId,NULL) FROM billing_billWiseItem_data WHERE billId = '${billData.billId}')`;
                                                         connection.query(sql_query_removeOldItemData, (err) => {
                                                             if (err) {
                                                                 console.error("Error inserting Bill Wise Item Data:", err);
@@ -2175,12 +2302,27 @@ const updateHotelBillData = (req, res) => {
                                                                 });
                                                             } else {
                                                                 const billItemData = billData.itemsData
-                                                                let addBillWiseItemData = billItemData.map((item, index) => {
-                                                                    let uniqueId = `iwb_${Date.now() + index + '_' + index}`; // Generating a unique ID using current timestamp
-                                                                    return `('${uniqueId}', '${billData.billId}', '${item.itemId}', ${item.qty}, '${item.unit}', ${item.itemPrice}, ${item.price}, ${item.comment ? `'${item.comment}'` : null}, 'Hotel', '${billData.billPayType}', '${billData.billStatus}', STR_TO_DATE('${currentDate}','%b %d %Y'))`;
-                                                                }).join(', ');
+
+                                                                const addBillWiseItemData = [];
+                                                                const addItemWiseAddonData = [];
+
+                                                                billItemData.forEach((item, index) => {
+                                                                    let uniqueId = `iwb_${Date.now() + index}_${index}`; // Unique ID generation
+
+                                                                    // Construct SQL_Add_1 for the main item
+                                                                    addBillWiseItemData.push(`('${uniqueId}', '${billId}', '${item.itemId}', ${item.qty}, '${item.unit}', ${item.itemPrice}, ${item.price}, ${item.comment ? `'${item.comment}'` : null}, 'Hotel', '${billData.billPayType}', '${billData.billStatus}', STR_TO_DATE('${currentDate}','%b %d %Y'))`);
+
+                                                                    // Construct SQL_Add_2 for the addons
+                                                                    if (item.addons && item.addons.length) {
+                                                                        item.addons.forEach((addon, addonIndex) => {
+                                                                            let iwaId = `iwa_${Date.now() + addonIndex + index}_${index}`; // Unique ID for each addon
+                                                                            addItemWiseAddonData.push(`('${iwaId}', '${uniqueId}', '${addon.addOnsId}')`);
+                                                                        });
+                                                                    }
+                                                                });
+
                                                                 let sql_query_addItems = `INSERT INTO billing_billWiseItem_data(iwbId, billId, itemId, qty, unit, itemPrice, price, comment, billType, billPayType, billStatus, billDate)
-                                                                                          VALUES ${addBillWiseItemData}`;
+                                                                                          VALUES ${addBillWiseItemData.join(", ")}`;
                                                                 connection.query(sql_query_addItems, (err) => {
                                                                     if (err) {
                                                                         console.error("Error inserting Bill Wise Item Data:", err);
@@ -2189,7 +2331,8 @@ const updateHotelBillData = (req, res) => {
                                                                             return res.status(500).send('Database Error');
                                                                         });
                                                                     } else {
-                                                                        let sql_query_getFirmData = `SELECT firmId, firmName, gstNumber, firmAddress, pincode, firmMobileNo, otherMobileNo FROM billing_firm_data WHERE firmId = '${billData.firmId}'`;
+                                                                        let sql_query_getFirmData = `SELECT firmId, firmName, gstNumber, firmAddress, pincode, firmMobileNo, otherMobileNo FROM billing_firm_data WHERE firmId = '${billData.firmId}';
+                                                                                                    ${addItemWiseAddonData.length ? `INSERT INTO billing_itemWiseAddon_data (iwaId, iwbId, addOnsId) VALUES ${addItemWiseAddonData.join(", ")};` : ''}`;
                                                                         connection.query(sql_query_getFirmData, (err, firm) => {
                                                                             if (err) {
                                                                                 console.error("Error inserting Bill Wise Item Data:", err);
@@ -2385,7 +2528,8 @@ const updatePickUpBillData = (req, res) => {
                                                             return res.status(500).send('Database Error');
                                                         });
                                                     } else {
-                                                        let sql_query_removeOldItemData = `DELETE FROM billing_billWiseItem_data WHERE billId = '${billData.billId}'`;
+                                                        let sql_query_removeOldItemData = `DELETE FROM billing_billWiseItem_data WHERE billId = '${billData.billId}';
+                                                                                           DELETE FROM billing_itemWiseAddon_data WHERE iwbId IN (SELECT COALESCE(iwbId,NULL) FROM billing_billWiseItem_data WHERE billId = '${billData.billId}')`;
                                                         connection.query(sql_query_removeOldItemData, (err) => {
                                                             if (err) {
                                                                 console.error("Error inserting Bill Wise Item Data:", err);
@@ -2395,12 +2539,27 @@ const updatePickUpBillData = (req, res) => {
                                                                 });
                                                             } else {
                                                                 const billItemData = billData.itemsData
-                                                                let addBillWiseItemData = billItemData.map((item, index) => {
-                                                                    let uniqueId = `iwb_${Date.now() + index + '_' + index}`; // Generating a unique ID using current timestamp
-                                                                    return `('${uniqueId}', '${billData.billId}', '${item.itemId}', ${item.qty}, '${item.unit}', ${item.itemPrice}, ${item.price}, ${item.comment ? `'${item.comment}'` : null}, 'Pick Up', '${billData.billPayType}', '${billData.billStatus}', STR_TO_DATE('${currentDate}','%b %d %Y'))`;
-                                                                }).join(', ');
+
+                                                                const addBillWiseItemData = [];
+                                                                const addItemWiseAddonData = [];
+
+                                                                billItemData.forEach((item, index) => {
+                                                                    let uniqueId = `iwb_${Date.now() + index}_${index}`; // Unique ID generation
+
+                                                                    // Construct SQL_Add_1 for the main item
+                                                                    addBillWiseItemData.push(`('${uniqueId}', '${billData.billId}', '${item.itemId}', ${item.qty}, '${item.unit}', ${item.itemPrice}, ${item.price}, ${item.comment ? `'${item.comment}'` : null}, 'Pick Up', '${billData.billPayType}', '${billData.billStatus}', STR_TO_DATE('${currentDate}','%b %d %Y'))`);
+
+                                                                    // Construct SQL_Add_2 for the addons
+                                                                    if (item.addons && item.addons.length) {
+                                                                        item.addons.forEach((addon, addonIndex) => {
+                                                                            let iwaId = `iwa_${Date.now() + addonIndex + index}_${index}`; // Unique ID for each addon
+                                                                            addItemWiseAddonData.push(`('${iwaId}', '${uniqueId}', '${addon.addOnsId}')`);
+                                                                        });
+                                                                    }
+                                                                });
+
                                                                 let sql_query_addItems = `INSERT INTO billing_billWiseItem_data(iwbId, billId, itemId, qty, unit, itemPrice, price, comment, billType, billPayType, billStatus, billDate)
-                                                                                          VALUES ${addBillWiseItemData}`;
+                                                                                          VALUES ${addBillWiseItemData.join(", ")}`;
                                                                 connection.query(sql_query_addItems, (err) => {
                                                                     if (err) {
                                                                         console.error("Error inserting Bill Wise Item Data:", err);
@@ -2428,7 +2587,8 @@ const updatePickUpBillData = (req, res) => {
                                                                                                      ORDER BY btd.tokenNo ASC;
                                                                                                      DELETE FROM billing_billWiseUpi_data WHERE billId = '${billData.billId}';
                                                                                                      DELETE FROM due_billAmount_data WHERE billId = '${billData.billId}';
-                                                                                             ${billData.billPayType == 'online' && billData.onlineId && billData.onlineId != 'other'
+                                                                                ${addItemWiseAddonData.length ? `INSERT INTO billing_itemWiseAddon_data (iwaId, iwbId, addOnsId) VALUES ${addItemWiseAddonData.join(", ")};` : ''}
+                                                                                ${billData.billPayType == 'online' && billData.onlineId && billData.onlineId != 'other'
                                                                                 ?
                                                                                 `INSERT INTO billing_billWiseUpi_data(bwuId, onlineId, billId, amount, onlineDate)
                                                                                  VALUES('${bwuId}', '${billData.onlineId}', '${billData.billId}', '${billData.settledAmount}', STR_TO_DATE('${currentDate}','%b %d %Y'))`
@@ -3045,7 +3205,8 @@ const updateDeliveryBillData = (req, res) => {
                                                             return res.status(500).send('Database Error');
                                                         });
                                                     } else {
-                                                        let sql_query_removeOldItemData = `DELETE FROM billing_billWiseItem_data WHERE billId = '${billData.billId}'`;
+                                                        let sql_query_removeOldItemData = `DELETE FROM billing_billWiseItem_data WHERE billId = '${billData.billId}';
+                                                                                           DELETE FROM billing_itemWiseAddon_data WHERE iwbId IN (SELECT COALESCE(iwbId,NULL) FROM billing_billWiseItem_data WHERE billId = '${billData.billId}')`;
                                                         connection.query(sql_query_removeOldItemData, (err) => {
                                                             if (err) {
                                                                 console.error("Error inserting Bill Wise Item Data:", err);
@@ -3055,10 +3216,25 @@ const updateDeliveryBillData = (req, res) => {
                                                                 });
                                                             } else {
                                                                 const billItemData = billData.itemsData
-                                                                let addBillWiseItemData = billItemData.map((item, index) => {
-                                                                    let uniqueId = `iwb_${Date.now() + index + '_' + index}`; // Generating a unique ID using current timestamp
-                                                                    return `('${uniqueId}', '${billData.billId}', '${item.itemId}', ${item.qty}, '${item.unit}', ${item.itemPrice}, ${item.price}, ${item.comment ? `'${item.comment}'` : null}, 'Delivery', '${billData.billPayType}', '${billData.billStatus}', STR_TO_DATE('${currentDate}','%b %d %Y'))`;
-                                                                }).join(', ');
+
+                                                                const addBillWiseItemData = [];
+                                                                const addItemWiseAddonData = [];
+
+                                                                billItemData.forEach((item, index) => {
+                                                                    let uniqueId = `iwb_${Date.now() + index}_${index}`; // Unique ID generation
+
+                                                                    // Construct SQL_Add_1 for the main item
+                                                                    addBillWiseItemData.push(`('${uniqueId}', '${billData.billId}', '${item.itemId}', ${item.qty}, '${item.unit}', ${item.itemPrice}, ${item.price}, ${item.comment ? `'${item.comment}'` : null}, 'Delivery', '${billData.billPayType}', '${billData.billStatus}', STR_TO_DATE('${currentDate}','%b %d %Y'))`);
+
+                                                                    // Construct SQL_Add_2 for the addons
+                                                                    if (item.addons && item.addons.length) {
+                                                                        item.addons.forEach((addon, addonIndex) => {
+                                                                            let iwaId = `iwa_${Date.now() + addonIndex + index}_${index}`; // Unique ID for each addon
+                                                                            addItemWiseAddonData.push(`('${iwaId}', '${uniqueId}', '${addon.addOnsId}')`);
+                                                                        });
+                                                                    }
+                                                                });
+
                                                                 let sql_query_addItems = `INSERT INTO billing_billWiseItem_data(iwbId, billId, itemId, qty, unit, itemPrice, price, comment, billType, billPayType, billStatus, billDate)
                                                                                           VALUES ${addBillWiseItemData}`;
                                                                 connection.query(sql_query_addItems, (err) => {
@@ -3072,6 +3248,7 @@ const updateDeliveryBillData = (req, res) => {
                                                                         let sql_query_getFirmData = `SELECT firmId, firmName, gstNumber, firmAddress, pincode, firmMobileNo, otherMobileNo FROM billing_firm_data WHERE firmId = '${billData.firmId}';
                                                                                                      DELETE FROM billing_billWiseUpi_data WHERE billId = '${billData.billId}';
                                                                                                      DELETE FROM due_billAmount_data WHERE billId = '${billData.billId}';
+                                                                                                     ${addItemWiseAddonData.length ? `INSERT INTO billing_itemWiseAddon_data (iwaId, iwbId, addOnsId) VALUES ${addItemWiseAddonData.join(", ")};` : ''}
                                                                                                     ${billData.billPayType == 'online' && billData.onlineId && billData.onlineId != 'other'
                                                                                 ?
                                                                                 `INSERT INTO billing_billWiseUpi_data(bwuId, onlineId, billId, amount, onlineDate)

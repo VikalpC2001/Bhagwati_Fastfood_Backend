@@ -1429,7 +1429,8 @@ const getMonthWiseTransactionForBankById = (req, res) => {
     try {
         const bankId = req.query.bankId;
         let page = req.query.page; // Page number
-        let numPerPage = req.query.numPerPage; // Number of items per page
+        let numPerPage = Number(req.query.numPerPage);// Number of items per page
+
         if (!bankId || !page || !numPerPage) {
             return res.status(404).send('Not Found')
         }
@@ -1468,7 +1469,7 @@ const getMonthWiseTransactionForBankById = (req, res) => {
                 });
                 const rows = result.slice(startIndex, endIndex);
                 const numRows = arr.length
-
+                console.log(startIndex, endIndex);
                 if (numRows != 0) {
                     return res.status(200).send({ rows, numRows });
                 } else {

@@ -438,7 +438,7 @@ const getMonthWiseTransactionForDueAccount = (req, res) => {
     try {
         const accountId = req.query.accountId;
         let page = req.query.page; // Page number
-        let numPerPage = req.query.numPerPage; // Number of items per page
+        let numPerPage = Number(req.query.numPerPage);// Number of items per page
         if (!accountId || !page || !numPerPage) {
             return res.status(404).send('Not Found')
         }
@@ -689,7 +689,7 @@ const removeDueBillDataById = (req, res) => {
                             return res.status(200).send("Due Bill Deleted Successfully");
                         })
                     } else {
-                        return res.send('dabId Not Found');
+                        return res.status(404).send('dabId Not Found');
                     }
                 })
             }
@@ -731,7 +731,7 @@ const removeDueDebitTransactionById = (req, res) => {
                             return res.status(200).send("Transaction Deleted Successfully");
                         })
                     } else {
-                        return res.send('transactionId Not Found');
+                        return res.status(404).send('transactionId Not Found');
                     }
                 })
             }

@@ -293,7 +293,7 @@ const getStaticsForPerson = (req, res) => {
 const getDeliveryDataByPerson = (req, res) => {
     try {
         let page = req.query.page; // Page number
-        let numPerPage = req.query.numPerPage; // Number of items per page
+        let numPerPage = Number(req.query.numPerPage); // Number of items per page
         let startIndex = (page - 1) * numPerPage;
         let endIndex = startIndex + numPerPage;
         const filterData = {

@@ -284,6 +284,7 @@ const addDeliveryData = (req, res) => {
 
                         const currentDate = getCurrentDate();
                         const deliveryData = req.body;
+
                         if (!deliveryData.personId || !deliveryData.deliveryBillData.length) {
                             connection.rollback(() => {
                                 connection.release();
@@ -376,6 +377,14 @@ const addDeliveryData = (req, res) => {
                                             }
                                         })
                                     } else {
+
+                                        const sums = deliveryData.deliveryBillData.reduce((acc, bill) => {
+                                            acc.billAmt += bill.billAmt || 0;
+                                            acc.billChange += bill.billChange || 0;
+                                            acc.desiredAmt += bill.desiredAmt || 0;
+                                            return acc;
+                                        }, { billAmt: 0, billChange: 0, desiredAmt: 0 });
+
                                         let sql_querry_addDeliveryData = `INSERT INTO delivery_data (
                                                                                          deliveryId,
                                                                                          enterBy,
@@ -391,9 +400,9 @@ const addDeliveryData = (req, res) => {
                                                                                          '${deliveryId}',
                                                                                          '${enterBy}',
                                                                                          '${deliveryData.personId}',
-                                                                                          ${deliveryData.totalBillAmt ? deliveryData.totalBillAmt : 0},
-                                                                                          ${deliveryData.totalChange ? deliveryData.totalChange : 0},
-                                                                                          ${deliveryData.totalDesiredAmt ? deliveryData.totalDesiredAmt : 0},
+                                                                                          ${sums.billAmt ? sums.billAmt : 0},
+                                                                                          ${sums.billChange ? sums.billChange : 0},
+                                                                                          ${sums.desiredAmt ? sums.desiredAmt : 0},
                                                                                          '${deliveryData.durationTime}',
                                                                                          STR_TO_DATE('${currentDate}','%b %d %Y'),
                                                                                          'On Delivery'
@@ -607,14 +616,22 @@ const updateDeliveryData = (req, res) => {
                                 return res.status(404).send('Please Fill All The Fields..!');
                             })
                         } else {
+
+                            const sums = deliveryData.deliveryBillData.reduce((acc, bill) => {
+                                acc.billAmt += bill.billAmt || 0;
+                                acc.billChange += bill.billChange || 0;
+                                acc.desiredAmt += bill.desiredAmt || 0;
+                                return acc;
+                            }, { billAmt: 0, billChange: 0, desiredAmt: 0 });
+
                             let sql_querry_addDeliveryData = `UPDATE
                                                                   delivery_data
                                                               SET
                                                                   enterBy = '${enterBy}',
                                                                   personId = '${deliveryData.personId}',
-                                                                  totalBillAmt = ${deliveryData.totalBillAmt ? deliveryData.totalBillAmt : 0},
-                                                                  totalChange = ${deliveryData.totalChange ? deliveryData.totalChange : 0},
-                                                                  totalDesiredAmt = ${deliveryData.totalDesiredAmt ? deliveryData.totalDesiredAmt : 0}
+                                                                  totalBillAmt = ${sums.billAmt ? sums.billAmt : 0},
+                                                                  totalChange = ${sums.billChange ? sums.billChange : 0},
+                                                                  totalDesiredAmt = ${sums.desiredAmt ? sums.desiredAmt : 0}
                                                               WHERE
                                                                   deliveryId = '${deliveryData.deliveryId}';
                                                               UPDATE billing_data SET billStatus = 'Print' 
@@ -927,6 +944,7 @@ const changePayTypeByDelivery = (req, res) => {
                         const bwuId = String("bwu_" + uid1.getTime());
                         const dabId = String("dab_" + uid1.getTime());
                         const deliveryData = req.body;
+
                         const currentDate = getCurrentDate();
                         if (!deliveryData.deliveryId || !deliveryData.payTypeData ||
                             !deliveryData.payTypeData.bwdId || !deliveryData.payTypeData.deliveryType || !deliveryData.payTypeData.billPayType) {

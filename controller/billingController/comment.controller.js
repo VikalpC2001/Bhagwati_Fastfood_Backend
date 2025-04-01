@@ -157,37 +157,6 @@ const updateComment = async (req, res) => {
     }
 }
 
-// add Bill no test
-
-// const billNoTest = (req, res) => {
-//     try {
-//         let sql_queries_getOldBillNo = `SELECT id, MAX(billNo) AS billNo FROM billing_test_no WHERE creationDate = (SELECT MAX(creationDate) FROM billing_test_no)`;
-//         pool.query(sql_queries_getOldBillNo, (err, data) => {
-//             if (err) {
-//                 console.error("An error occurred in SQL Queery", err);
-//                 return res.status(500).send('Database Error');
-//             } else {
-//                 const lastBillNo = data && data[0] && data[0].billNo ? data[0].billNo : 0;
-//                 console.log()
-//                 let sql_queries_addBillNo = `INSERT INTO billing_test_no(billNo)
-//                                              VALUES(${lastBillNo} + 1)`;
-//                 pool.query(sql_queries_addBillNo, (err, data) => {
-//                     if (err) {
-//                         console.error("An error occurred in SQL Queery", err);
-//                         return res.status(500).send('Database Error');
-//                     } else {
-//                         return res.status(200).send('Bill Added Success');
-//                     }
-//                 })
-//             }
-//         })
-//     } catch (error) {
-//         console.error('An error occurred', error);
-//         res.status(500).send('Internal Server Error');
-//     }
-// }
-
-
 const billNoTest = (req, res) => {
     try {
         pool2.getConnection((err, connection) => {

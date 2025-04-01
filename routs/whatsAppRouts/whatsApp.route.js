@@ -5,8 +5,8 @@ const asyncHandler = require('express-async-handler');
 
 const whatsappController = require("../../controller/whatsappController/whatsapp.controller.js");
 
-router.get('/authUser', whatsappController.meta_wa_callbackurl);
-// router.post('/addUser', whatsappController.meta_wa_callbackurls);
+router.get('/verifyWebhook', whatsappController.verifyWebhook);
+router.post('/handleWebhookPost', whatsappController.handleWebhookPost);
 
 router.get('/meta_wa_callbackurl', (req, res) => {
     console.log(">>>")
@@ -33,8 +33,6 @@ router.get('/meta_wa_callbackurl', (req, res) => {
         return res.sendStatus(500);
     }
 });
-
-
 
 router.post('/meta_wa_callbackurl', asyncHandler(async (req, res) => {
     console.log(">>><<<")

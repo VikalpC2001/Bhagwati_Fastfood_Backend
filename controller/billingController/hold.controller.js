@@ -114,6 +114,16 @@ const getHoldBillDataById = (req, res) => {
                                                              hold_billWiseItem_data AS hwid
                                                          INNER JOIN item_menuList_data AS imd ON imd.itemId = hwid.itemId
                                                          WHERE hwid.holdId = '${holdId}'`;
+                        let sql_query_getItemWiseAddons = `SELECT
+                                                               iwad.iwaId,
+                                                               iwad.iwbId,
+                                                               iwad.addOnsId,
+                                                               iad.addonsName,
+                                                               iad.price
+                                                           FROM
+                                                               hold_itemWiseAddon_data AS iwad
+                                                           LEFT JOIN item_addons_data AS iad ON iad.addonsId = iwad.addOnsId
+                                                           WHERE iwad.iwbId IN(SELECT COALESCE(hbwid.iwbId, NULL) FROM hold_billWiseItem_data AS hbwid WHERE hbwid.holdId = '${holdId}')`;
                         let sql_query_getCustomerInfo = `SELECT
                                                              hwcd.bwcId AS bwcId,
                                                              hwcd.customerId AS customerId,
@@ -154,6 +164,7 @@ const getHoldBillDataById = (req, res) => {
                         const sql_query_getBillData = `${sql_query_getBillingData};
                                                        ${sql_query_getBillwiseItem};
                                                        ${sql_query_getFirmData};
+                                                       ${sql_query_getItemWiseAddons};
                                                        ${billType == 'Hotel' ? sql_query_getHotelInfo + ';' : ''}
                                                        ${billType == 'Pick Up' || billType == 'Delivery' ? sql_query_getCustomerInfo : ''}`;
                         pool.query(sql_query_getBillData, (err, billData) => {
@@ -161,12 +172,24 @@ const getHoldBillDataById = (req, res) => {
                                 console.error("An error occurred in SQL Queery", err);
                                 return res.status(500).send('Database Error'); t
                             } else {
+                                const itemsData = billData && billData[1] ? billData[1] : [];
+                                const addonsData = billData && billData[3] ? billData[3] : [];
+
+                                const newItemJson = itemsData.map(item => {
+                                    const itemAddons = addonsData.filter(addon => addon.iwbId === item.iwbId);
+                                    return {
+                                        ...item,
+                                        addons: itemAddons.map(({ iwbId, ...rest }) => rest),
+                                        addonPrice: itemAddons.reduce((sum, { price }) => sum + price, 0)
+                                    };
+                                });
+
                                 const json = {
                                     ...billData[0][0],
-                                    itemData: billData && billData[1] ? billData[1] : [],
+                                    itemData: newItemJson,
                                     firmData: billData && billData[2] ? billData[2][0] : [],
-                                    ...(billType === 'Hotel' ? { hotelDetails: billData[3][0] } : ''),
-                                    ...(billType == 'Pick Up' || billType == 'Delivery' ? { customerDetails: billData && billData[3][0] ? billData[3][0] : '' } : '')
+                                    ...(billType === 'Hotel' ? { hotelDetails: billData[4][0] } : ''),
+                                    ...(billType == 'Pick Up' || billType == 'Delivery' ? { customerDetails: billData && billData[4][0] ? billData[4][0] : '' } : '')
                                 }
                                 const holdJson = json;
                                 let sql_query_discardData = `DELETE FROM hold_data WHERE holdId = '${holdId}';
@@ -287,12 +310,27 @@ const addHotelHoldBillData = (req, res) => {
                                             });
                                         } else {
                                             const billItemData = holdData.itemsData
-                                            let addBillWiseItemData = billItemData.map((item, index) => {
-                                                let uniqueId = `iwb_${Date.now() + index + '_' + index}`; // Generating a unique ID using current timestamp
-                                                return `('${uniqueId}', '${holdId}', '${item.itemId}', ${item.qty}, '${item.unit}', ${item.itemPrice}, ${item.price}, ${item.comment ? `'${item.comment}'` : null})`;
-                                            }).join(', ');
+
+                                            const addBillWiseItemData = [];
+                                            const addItemWiseAddonData = [];
+
+                                            billItemData.forEach((item, index) => {
+                                                let uniqueId = `iwb_${Date.now() + index}_${index}`; // Unique ID generation
+
+                                                // Construct SQL_Add_1 for the main item
+                                                addBillWiseItemData.push(`('${uniqueId}', '${holdId}', '${item.itemId}', ${item.qty}, '${item.unit}', ${item.itemPrice}, ${item.price}, ${item.comment ? `'${item.comment}'` : null})`);
+
+                                                // Construct SQL_Add_2 for the addons
+                                                if (item.addons && item.addons.length) {
+                                                    item.addons.forEach((addon, addonIndex) => {
+                                                        let iwaId = `iwa_${Date.now() + addonIndex + index}_${index}`; // Unique ID for each addon
+                                                        addItemWiseAddonData.push(`('${iwaId}', '${uniqueId}', '${addon.addOnsId}')`);
+                                                    });
+                                                }
+                                            });
+
                                             let sql_query_addItems = `INSERT INTO hold_billWiseItem_data(iwbId, holdId, itemId, qty, unit, itemPrice, price, comment)
-                                                                      VALUES ${addBillWiseItemData}`;
+                                                                      VALUES ${addBillWiseItemData.join(", ")}`;
                                             connection.query(sql_query_addItems, (err) => {
                                                 if (err) {
                                                     console.error("Error inserting Bill Wise Item Data:", err);
@@ -301,7 +339,8 @@ const addHotelHoldBillData = (req, res) => {
                                                         return res.status(500).send('Database Error');
                                                     });
                                                 } else {
-                                                    let sql_query_getHoldCount = `SELECT COUNT(*) AS holdNo FROM hold_data`;
+                                                    let sql_query_getHoldCount = `SELECT COUNT(*) AS holdNo FROM hold_data;
+                                                                                  ${addItemWiseAddonData.length ? `INSERT INTO hold_itemWiseAddon_data (iwaId, iwbId, addOnsId) VALUES ${addItemWiseAddonData.join(", ")}` : ''}`;
                                                     connection.query(sql_query_getHoldCount, (err, count) => {
                                                         if (err) {
                                                             console.error("Error inserting Bill Wise Item Data:", err);
@@ -426,12 +465,27 @@ const addPickUpHoldBillData = (req, res) => {
                                     });
                                 } else {
                                     const billItemData = holdData.itemsData
-                                    let addBillWiseItemData = billItemData.map((item, index) => {
-                                        let uniqueId = `iwb_${Date.now() + index + '_' + index}`; // Generating a unique ID using current timestamp
-                                        return `('${uniqueId}', '${holdId}', '${item.itemId}', ${item.qty}, '${item.unit}', ${item.itemPrice}, ${item.price}, ${item.comment ? `'${item.comment}'` : null})`;
-                                    }).join(', ');
+
+                                    const addBillWiseItemData = [];
+                                    const addItemWiseAddonData = [];
+
+                                    billItemData.forEach((item, index) => {
+                                        let uniqueId = `iwb_${Date.now() + index}_${index}`; // Unique ID generation
+
+                                        // Construct SQL_Add_1 for the main item
+                                        addBillWiseItemData.push(`('${uniqueId}', '${holdId}', '${item.itemId}', ${item.qty}, '${item.unit}', ${item.itemPrice}, ${item.price}, ${item.comment ? `'${item.comment}'` : null})`);
+
+                                        // Construct SQL_Add_2 for the addons
+                                        if (item.addons && item.addons && item.addons.length) {
+                                            item.addons.forEach((addon, addonIndex) => {
+                                                let iwaId = `iwa_${Date.now() + addonIndex + index}_${index}`; // Unique ID for each addon
+                                                addItemWiseAddonData.push(`('${iwaId}', '${uniqueId}', '${addon.addOnsId}')`);
+                                            });
+                                        }
+                                    });
+
                                     let sql_query_addItems = `INSERT INTO hold_billWiseItem_data(iwbId, holdId, itemId, qty, unit, itemPrice, price, comment)
-                                                              VALUES ${addBillWiseItemData}`;
+                                                              VALUES ${addBillWiseItemData.join(", ")}`;
                                     connection.query(sql_query_addItems, (err) => {
                                         if (err) {
                                             console.error("Error inserting Bill Wise Item Data:", err);
@@ -440,7 +494,8 @@ const addPickUpHoldBillData = (req, res) => {
                                                 return res.status(500).send('Database Error');
                                             });
                                         } else {
-                                            let sql_query_getHoldCount = `SELECT COUNT(*) AS holdNo FROM hold_data`;
+                                            let sql_query_getHoldCount = `SELECT COUNT(*) AS holdNo FROM hold_data;
+                                                                         ${addItemWiseAddonData.length ? `INSERT INTO hold_itemWiseAddon_data (iwaId, iwbId, addOnsId) VALUES ${addItemWiseAddonData.join(", ")}` : ''}`;
                                             connection.query(sql_query_getHoldCount, (err, count) => {
                                                 if (err) {
                                                     console.error("Error inserting Bill Wise Item Data:", err);
@@ -956,12 +1011,26 @@ const addDeliveryHoldBillData = (req, res) => {
                                     });
                                 } else {
                                     const billItemData = holdData.itemsData
-                                    let addBillWiseItemData = billItemData.map((item, index) => {
-                                        let uniqueId = `iwb_${Date.now() + index + '_' + index}`; // Generating a unique ID using current timestamp
-                                        return `('${uniqueId}', '${holdId}', '${item.itemId}', ${item.qty}, '${item.unit}', ${item.itemPrice}, ${item.price}, ${item.comment ? `'${item.comment}'` : null})`;
-                                    }).join(', ');
+                                    const addBillWiseItemData = [];
+                                    const addItemWiseAddonData = [];
+
+                                    billItemData.forEach((item, index) => {
+                                        let uniqueId = `iwb_${Date.now() + index}_${index}`; // Unique ID generation
+
+                                        // Construct SQL_Add_1 for the main item
+                                        addBillWiseItemData.push(`('${uniqueId}', '${holdId}', '${item.itemId}', ${item.qty}, '${item.unit}', ${item.itemPrice}, ${item.price}, ${item.comment ? `'${item.comment}'` : null})`);
+
+                                        // Construct SQL_Add_2 for the addons
+                                        if (item.addons && item.addons.length) {
+                                            item.addons.forEach((addon, addonIndex) => {
+                                                let iwaId = `iwa_${Date.now() + addonIndex + index}_${index}`; // Unique ID for each addon
+                                                addItemWiseAddonData.push(`('${iwaId}', '${uniqueId}', '${addon.addOnsId}')`);
+                                            });
+                                        }
+                                    });
+
                                     let sql_query_addItems = `INSERT INTO hold_billWiseItem_data(iwbId, holdId, itemId, qty, unit, itemPrice, price, comment)
-                                                              VALUES ${addBillWiseItemData}`;
+                                                              VALUES ${addBillWiseItemData.join(", ")}`;
                                     connection.query(sql_query_addItems, (err) => {
                                         if (err) {
                                             console.error("Error inserting Bill Wise Item Data:", err);
@@ -970,7 +1039,8 @@ const addDeliveryHoldBillData = (req, res) => {
                                                 return res.status(500).send('Database Error');
                                             });
                                         } else {
-                                            let sql_query_getHoldCount = `SELECT COUNT(*) AS holdNo FROM hold_data`;
+                                            let sql_query_getHoldCount = `SELECT COUNT(*) AS holdNo FROM hold_data;
+                                                                         ${addItemWiseAddonData.length ? `INSERT INTO hold_itemWiseAddon_data (iwaId, iwbId, addOnsId) VALUES ${addItemWiseAddonData.join(", ")}` : ''}`;
                                             connection.query(sql_query_getHoldCount, (err, count) => {
                                                 if (err) {
                                                     console.error("Error inserting Bill Wise Item Data:", err);

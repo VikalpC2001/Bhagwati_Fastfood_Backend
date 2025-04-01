@@ -20,9 +20,23 @@ function generateUpdateQuery(data) {
 
 function getItemVariants(itemId, subCategoryId, menuId, callback) {
     let sql_query_getData = `-- GET ACTIVE VARIANTS
-                                SELECT uwpId, unit, price, status
-                                FROM item_unitWisePrice_data 
-                                WHERE itemId = '${itemId}' AND menuCategoryId = '${menuId}' AND status = 1
+                                SELECT 
+                                    uwip.uwpId AS uwpId,
+                                    uwip.unit AS unit,
+                                    uwip.price AS price,
+                                    uwip.status AS status,
+                                    uwaog.groupId AS groupId,
+                                    uwg.groupName AS groupName,
+                                    iad.addonsId AS addonsId,
+                                    iad.addonsName AS addonsName,
+                                    iad.price AS addonPrice,
+                                    iad.isActive AS isActive
+                                FROM 
+                                    item_unitWisePrice_data AS uwip
+                                LEFT JOIN item_unitWiseAddOnsGroup_data AS uwaog ON uwaog.uwpId = uwip.uwpId
+                                LEFT JOIN item_addonsGroup_data AS uwg ON uwg.groupId = uwaog.groupId
+                                LEFT JOIN item_addons_data AS iad ON iad.groupId = uwaog.groupId
+                                WHERE uwip.itemId = '${itemId}' AND uwip.menuCategoryId = '${menuId}' AND status = 1
                                 ORDER BY FIELD(unit, 'No', 'HP', 'Kg');
                             -- GET PERIOD
                                 SELECT 
@@ -46,9 +60,53 @@ function getItemVariants(itemId, subCategoryId, menuId, callback) {
         let variantAndPeriod = Object.values(JSON.parse(JSON.stringify(data)));
         if (variantAndPeriod.length != 0) {
             let variantsList = variantAndPeriod[0].length ? variantAndPeriod[0] : [];
+
+            // Grouping by unit and then by groupId
+            const groupedData = variantsList.reduce((acc, item) => {
+                const unitKey = item.unit; // Group by unit
+                if (!acc[unitKey]) {
+                    acc[unitKey] = {
+                        uwpId: item.uwpId,
+                        unit: item.unit,
+                        price: item.price,
+                        status: item.status,
+                        addOnsList: {}
+                    };
+                }
+
+                // Ensure valid group and addon information before processing
+                if (item.groupId && item.addonsId) {
+                    const groupKey = item.groupId;
+                    if (!acc[unitKey].addOnsList[groupKey]) {
+                        acc[unitKey].addOnsList[groupKey] = {
+                            groupId: item.groupId,
+                            groupName: item.groupName,
+                            addOnArray: []
+                        };
+                    }
+                    acc[unitKey].addOnsList[groupKey].addOnArray.push({
+                        addonsId: item.addonsId,
+                        addonsName: item.addonsName,
+                        addonPrice: item.addonPrice,
+                        isActive: item.isActive
+                    });
+                }
+
+                return acc;
+            }, {});
+
+            // Transform to the desired structure
+            const result = Object.values(groupedData).map(unit => ({
+                uwpId: unit.uwpId,
+                unit: unit.unit,
+                price: unit.price,
+                status: unit.status,
+                addOnsList: Object.keys(unit.addOnsList).length > 0 ? Object.values(unit.addOnsList) : [] // Check for empty addOnsList
+            }));
+
             let variantsAllList = variantAndPeriod[2].length ? variantAndPeriod[2] : [];
             let jsonData = {
-                varients: variantsList.sort((a, b) => (a.unit == "NO") ? -1 : (b.unit == "NO") ? 1 : 0),
+                varients: result.sort((a, b) => (a.unit == "NO") ? -1 : (b.unit == "NO") ? 1 : 0),
                 allVariantsList: variantsAllList.length ? variantsAllList.sort((a, b) => (a.unit == "NO") ? -1 : (b.unit == "NO") ? 1 : 0) : [],
                 periods: variantAndPeriod[1].length ? variantAndPeriod[1] : [],
                 status: variantsList.length ? true : false

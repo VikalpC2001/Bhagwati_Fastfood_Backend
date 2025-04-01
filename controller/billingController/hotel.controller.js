@@ -670,7 +670,7 @@ const getMonthWiseTransactionForHotel = (req, res) => {
     try {
         const hotelId = req.query.hotelId;
         let page = req.query.page; // Page number
-        let numPerPage = req.query.numPerPage; // Number of items per page
+        let numPerPage = Number(req.query.numPerPage);// Number of items per page
         if (!hotelId || !page || !numPerPage) {
             return res.status(404).send('Not Found')
         }

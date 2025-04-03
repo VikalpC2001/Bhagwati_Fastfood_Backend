@@ -2310,7 +2310,7 @@ const updateHotelBillData = (req, res) => {
                                                                     let uniqueId = `iwb_${Date.now() + index}_${index}`; // Unique ID generation
 
                                                                     // Construct SQL_Add_1 for the main item
-                                                                    addBillWiseItemData.push(`('${uniqueId}', '${billId}', '${item.itemId}', ${item.qty}, '${item.unit}', ${item.itemPrice}, ${item.price}, ${item.comment ? `'${item.comment}'` : null}, 'Hotel', '${billData.billPayType}', '${billData.billStatus}', STR_TO_DATE('${currentDate}','%b %d %Y'))`);
+                                                                    addBillWiseItemData.push(`('${uniqueId}', '${billData.billId}', '${item.itemId}', ${item.qty}, '${item.unit}', ${item.itemPrice}, ${item.price}, ${item.comment ? `'${item.comment}'` : null}, 'Hotel', '${billData.billPayType}', '${billData.billStatus}', STR_TO_DATE('${currentDate}','%b %d %Y'))`);
 
                                                                     // Construct SQL_Add_2 for the addons
                                                                     if (item.addons && item.addons.length) {

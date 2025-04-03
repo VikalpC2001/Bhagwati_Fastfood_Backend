@@ -415,7 +415,7 @@ const getTaxReportByFirmId = (req, res) => {
                                      WHERE firmId = '${data.firmId}' 
                                      ${data.billPayType ? `AND billPayType = '${data.billPayType}'` : ''}
                                      AND billDate BETWEEN STR_TO_DATE('${data.startDate ? data.startDate : firstDay}','%b %d %Y') AND STR_TO_DATE('${data.endDate ? data.endDate : lastDay}','%b %d %Y') 
-                                     ORDER BY billing_Official_data.billDate ASC, billNumber;
+                                     ORDER BY billing_Official_data.billDate ASC, billing_Official_data.billNumber ASC;
                                      ${sql_query_getFirmData}`;
         pool.query(sql_querry_getDetails, (err, data) => {
             if (err) {

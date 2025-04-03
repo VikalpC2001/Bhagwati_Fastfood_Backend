@@ -229,6 +229,8 @@ const ddlUPI = (req, res) => {
     try {
         const sql_query_getDetails = `SELECT
                                           onlineId,
+                                          holderName,
+                                          holderNumber,
                                           upiId,
                                           isOfficial
                                       FROM

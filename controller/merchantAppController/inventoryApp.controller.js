@@ -199,7 +199,7 @@ const getOutCategoryForApp = (req, res) => {
                             const rows = []
                             return res.status(200).send({ rows, numRows });
                         } else {
-                            return res.status(200).send({ rows, numRows, totalCategoryStockOutPrice: rows[0].totalCategoryStockOutPrice });
+                            return res.status(200).send({ rows, numRows });
                         }
                     }
                 });

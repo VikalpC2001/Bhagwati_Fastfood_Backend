@@ -73,7 +73,31 @@ const getBillingStaticsData = (req, res) => {
                                          COALESCE(SUM(CASE WHEN billStatus = 'cancel' THEN settledAmount ELSE 0 END), 0) AS cancleAmt,
                                          COALESCE(SUM(totalDiscount),0) AS discountAmt
                                      FROM billing_data
-                                     WHERE billType = 'Hotel' AND billDate = STR_TO_DATE('${currentDate}','%b %d %Y');`;
+                                     WHERE billType = 'Hotel' AND billDate = STR_TO_DATE('${currentDate}','%b %d %Y');
+                                     -- UPI Data
+                                     SELECT
+                                         oud.onlineId AS onlineId,
+                                         oud.holderName AS holderName,
+                                         oud.holderNumber AS holderNumber,
+                                         oud.upiId AS upiId,
+                                         ROUND(IFNULL(SUM(CASE WHEN bwu.onlineDate = STR_TO_DATE('${currentDate}','%b %d %Y') THEN bwu.amount ELSE 0 END), 0)) AS upiAmt,
+                                         oud.isOfficial AS isOfficial
+                                     FROM
+                                         billing_onlineUPI_data AS oud
+                                     LEFT JOIN billing_billWiseUpi_data AS bwu ON bwu.onlineId = oud.onlineId
+                                     GROUP BY oud.onlineId ORDER BY upiAmt ASC;
+                                     -- Due Bill Data
+                                     SELECT
+                                         dad.accountId,
+                                         dad.customerName,
+                                         dad.customerNumber,
+                                         ROUND(IFNULL(SUM(CASE WHEN dba.dueDate = STR_TO_DATE('${currentDate}','%b %d %Y') THEN dba.billAmount ELSE 0 END), 0)) AS dueAmt
+                                     FROM
+                                         due_account_data AS dad
+                                     LEFT JOIN due_billAmount_data AS dba ON dba.accountId = dad.accountId
+                                     GROUP BY dad.accountId
+                                     HAVING dueAmt != 0
+                                     ORDER BY dueAmt ASC`;
         pool.query(sql_queries_getStatics, (err, data) => {
             if (err) {
                 console.error("An error occurred in SQL Queery", err);
@@ -83,7 +107,9 @@ const getBillingStaticsData = (req, res) => {
                     pickUp: data[0][0],
                     delivery: data[1][0],
                     dineIn: data[2][0],
-                    hotel: data[3][0]
+                    hotel: data[3][0],
+                    upiJson: data[4],
+                    dueJson: data[5]
                 }
                 return res.status(200).send(json);
             }
@@ -440,6 +466,8 @@ const getBillDataByToken = (req, res) => {
                                                                             ELSE NULL
                                                                         END AS tokenNo,
                                                                         bwu.onlineId AS onlineId,
+                                                                        boud.holderName AS holderName,
+                                                                        boud.upiId AS upiId,    
                                                                         dba.accountId AS typeId,
                                                                         dad.customerName AS typeName,
                                                                         dba.dueNote AS dueNote,
@@ -464,6 +492,7 @@ const getBillDataByToken = (req, res) => {
                                                                     LEFT JOIN billing_token_data AS btd ON btd.billId = bd.billId
                                                                     LEFT JOIN billing_firm_data AS bfd ON bfd.firmId = bd.firmId
                                                                     LEFT JOIN billing_billWiseUpi_data AS bwu ON bwu.billId = bd.billId
+                                                                    LEFT JOIN billing_onlineUPI_data AS boud ON boud.onlineId = bwu.onlineId
                                                                     LEFT JOIN due_billAmount_data AS dba ON dba.billId = bd.billId
                                                                     LEFT JOIN due_account_data AS dad ON dad.accountId = dba.accountId
                                                                     WHERE bd.billId = '${billId}'`;
@@ -565,7 +594,14 @@ const getBillDataByToken = (req, res) => {
                                                 ...(billType === 'Hotel' ? { hotelDetails: billData[4][0] } : ''),
                                                 ...(['Pick Up', 'Delivery', 'Dine In'].includes(billType) ? { customerDetails: billData && billData[4][0] ? billData[4][0] : '' } : ''),
                                                 ...(billType === 'Dine In' ? { tableInfo: billData[5][0] } : ''),
-                                                ...(['due'].includes(billData[0][0].billPayType) ? { "payInfo": { "accountId": billData[0][0].typeId, "customerName": billData[0][0].typeName } } : '')
+                                                ...(['due', 'online'].includes(billData[0][0].billPayType) ?
+                                                    billData[0][0].billPayType == 'due' ?
+                                                        { "payInfo": { "accountId": billData[0][0].typeId, "customerName": billData[0][0].typeName } }
+                                                        :
+                                                        billData[0][0].billPayType == 'online' ?
+                                                            { "upiJson": { "onlineId": billData[0][0].onlineId, "holderName": billData[0][0].holderName, "upiId": billData[0][0].upiId } }
+                                                            : ''
+                                                    : '')
                                             }
                                             return res.status(200).send(json);
                                         }
@@ -620,6 +656,8 @@ const getBillDataById = (req, res) => {
                                                                 ELSE NULL
                                                             END AS tokenNo,
                                                             bwu.onlineId AS onlineId,
+                                                            boud.holderName AS holderName,
+                                                            boud.upiId AS upiId,
                                                             dba.accountId AS typeId,
                                                             dad.customerName AS typeName,
                                                             dba.dueNote AS dueNote,
@@ -644,6 +682,7 @@ const getBillDataById = (req, res) => {
                                                         LEFT JOIN billing_token_data AS btd ON btd.billId = bd.billId
                                                         LEFT JOIN billing_firm_data AS bfd ON bfd.firmId = bd.firmId
                                                         LEFT JOIN billing_billWiseUpi_data AS bwu ON bwu.billId = bd.billId
+                                                        LEFT JOIN billing_onlineUPI_data AS boud ON boud.onlineId = bwu.onlineId
                                                         LEFT JOIN due_billAmount_data AS dba ON dba.billId = bd.billId
                                                         LEFT JOIN due_account_data AS dad ON dad.accountId = dba.accountId
                                                         WHERE bd.billId = '${billId}'`;
@@ -749,7 +788,14 @@ const getBillDataById = (req, res) => {
                                     ...(['Pick Up', 'Delivery', 'Dine In'].includes(billType) ? { customerDetails: billData && billData[4][0] ? billData[4][0] : '' } : ''),
                                     ...(billType === 'Dine In' ? { tableInfo: billData[5][0] } : ''),
                                     subTokens: billData && billData[5] && billData[6].length ? billData[6].map(item => item.subTokenNumber).sort((a, b) => a - b).join(", ") : null,
-                                    ...(['due'].includes(billPayType) ? { "payInfo": { "accountId": billData[0][0].typeId, "customerName": billData[0][0].typeName } } : '')
+                                    ...(['due', 'online'].includes(billPayType) ?
+                                        billPayType == 'due' ?
+                                            { "payInfo": { "accountId": billData[0][0].typeId, "customerName": billData[0][0].typeName } }
+                                            :
+                                            billPayType == 'online' ?
+                                                { "upiJson": { "onlineId": billData[0][0].onlineId, "holderName": billData[0][0].holderName, "upiId": billData[0][0].upiId } }
+                                                : ''
+                                        : '')
                                 }
                                 return res.status(200).send(json);
                             }

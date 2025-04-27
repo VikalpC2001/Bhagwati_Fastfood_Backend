@@ -2468,7 +2468,6 @@ const updatePickUpBillData = (req, res) => {
 
                         const currentDate = getCurrentDate();
                         const billData = req.body;
-                        console.log(billData.billStatus);
                         if (!billData.billId || !billData.customerDetails || !billData.subTotal || !billData.settledAmount || !billData.billPayType || !billData.billStatus || !billData.itemsData) {
                             connection.rollback(() => {
                                 connection.release();
@@ -2485,7 +2484,6 @@ const updatePickUpBillData = (req, res) => {
                                         return res.status(500).send('Database Error');
                                     });
                                 } else {
-                                    console.log(chkExist);
                                     const isExist = chkExist && chkExist[0].length ? true : false;
                                     const staticBillNumber = chkExist && chkExist[0].length ? chkExist[0][0].billNumber : 0;
                                     const officialLastBillNo = chkExist && chkExist[1] ? chkExist[1][0].officialLastBillNo : 0;
@@ -2664,8 +2662,7 @@ const updatePickUpBillData = (req, res) => {
                                                                                     billDate: billDate,
                                                                                     billTime: billTime
                                                                                 }
-                                                                                console.log(!isExist && billData.isOfficial ? nextOfficialBillNo : staticBillNumber)
-                                                                                console.log(sendJson,)
+
                                                                                 const tokenList = firm && firm[1].length ? firm[1] : null;
                                                                                 const customerData = billData.customerDetails;
                                                                                 if (customerData && customerData.customerId && customerData.addressId) {
@@ -3144,7 +3141,7 @@ const updateDeliveryBillData = (req, res) => {
 
                         const currentDate = getCurrentDate();
                         const billData = req.body;
-                        console.log(billData);
+
                         if (!billData.billId || !billData.customerDetails || !billData.subTotal || !billData.settledAmount || !billData.billPayType || !billData.billStatus || !billData.itemsData || !billData.customerDetails.mobileNo) {
                             connection.rollback(() => {
                                 connection.release();

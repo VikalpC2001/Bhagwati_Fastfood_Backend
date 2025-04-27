@@ -205,7 +205,6 @@ const addDineInOrder = (req, res) => {
                     token = req.headers ? req.headers.authorization.split(" ")[1] : null;
                     if (token) {
                         const decoded = jwt.verify(token, process.env.JWT_SECRET);
-                        console.log(decoded);
                         const cashier = decoded.id.firstName;
 
                         const currentDate = getCurrentDate();
@@ -617,7 +616,6 @@ const removeSubTokenDataById = (req, res) => {
                                                             return res.status(500).send('Database Error');
                                                         });
                                                     } else {
-                                                        console.log(Date.now())
                                                         let modifiedId = `CONCAT('modified_',${Date.now()} + ROW_NUMBER() OVER (ORDER BY (SELECT NULL)),'_',ROW_NUMBER() OVER (ORDER BY (SELECT NULL)))`;
 
                                                         let sql_query_removeSubToken = `INSERT INTO billing_modifiedKot_data(modifiedId, iwbId, itemId, qty, unit, itemPrice, price, comment)
@@ -854,8 +852,6 @@ const updateSubTokenDataById = (req, res) => {
                                                 } else {
                                                     const json1 = Object.values(JSON.parse(JSON.stringify(oldJson)));
                                                     const json2 = Object.values(JSON.parse(JSON.stringify(billData.itemsData)));
-
-                                                    console.log(json1, json2);
 
                                                     const { added, removed, modified } = compareJson(json1, json2);
 

@@ -285,7 +285,6 @@ const addAmountOfSFA = (req, res) => {
                                                             ];
                                                             const desiredSalaryAmount = salaryOutData[0].paySalaryAmount;
                                                             console.log('jyare fine vadhare hoy tyare ni desiredAmount', desiredFineAmount);
-                                                            // console.log("?????", desiredSalaryAmount);
 
                                                             // Calculate total Salary out price
                                                             let remainingSalary = desiredSalaryAmount;
@@ -371,13 +370,11 @@ const addAmountOfSFA = (req, res) => {
                                                                         }
                                                                         const oldMsdData = Object.values(JSON.parse(JSON.stringify(datas)));
                                                                         const msData = Object.values(JSON.parse(JSON.stringify(datas)));
-                                                                        console.log(msData);
 
                                                                         const salaryOutData = [
                                                                             { monthlySalaryId: 1, paySalaryAmount: data.payAmount }
                                                                         ];
                                                                         const desiredSalaryAmount = salaryOutData[0].paySalaryAmount;
-                                                                        console.log("?????", desiredSalaryAmount);
 
                                                                         // Calculate total Salary out price
                                                                         let remainingSalary = desiredSalaryAmount;
@@ -720,7 +717,6 @@ const addAmountOfSFA = (req, res) => {
                                                                                     { monthlySalaryId: 1, paySalaryAmount: totalCutamountOffAdvance }
                                                                                 ];
                                                                                 const desiredSalaryAmount = salaryOutData[0].paySalaryAmount;
-                                                                                console.log("?????", desiredSalaryAmount);
 
                                                                                 // Calculate total Salary out price
                                                                                 let remainingSalary = desiredSalaryAmount;
@@ -804,7 +800,6 @@ const addAmountOfSFA = (req, res) => {
                                                                                             }
                                                                                             const oldMsdData = Object.values(JSON.parse(JSON.stringify(datas)));
                                                                                             const msData = Object.values(JSON.parse(JSON.stringify(datas)));
-                                                                                            console.log(msData);
 
                                                                                             const salaryOutData = [
                                                                                                 { monthlySalaryId: 1, paySalaryAmount: data.payAmount }
@@ -981,7 +976,6 @@ const addAmountOfSFA = (req, res) => {
                                                                             { monthlySalaryId: 1, paySalaryAmount: data.advanceAmount }
                                                                         ];
                                                                         const desiredSalaryAmount = salaryOutData[0].paySalaryAmount;
-                                                                        console.log("?????", desiredSalaryAmount);
 
                                                                         // Calculate total Salary out price
                                                                         let remainingSalary = desiredSalaryAmount;
@@ -1064,13 +1058,11 @@ const addAmountOfSFA = (req, res) => {
                                                                                     }
                                                                                     const oldMsdData = Object.values(JSON.parse(JSON.stringify(datas)));;
                                                                                     const msData = Object.values(JSON.parse(JSON.stringify(datas)));
-                                                                                    console.log(msData);
 
                                                                                     const salaryOutData = [
                                                                                         { monthlySalaryId: 1, paySalaryAmount: data.payAmount }
                                                                                     ];
                                                                                     const desiredSalaryAmount = salaryOutData[0].paySalaryAmount;
-                                                                                    console.log("?????", desiredSalaryAmount);
 
                                                                                     // Calculate total Salary out price
                                                                                     let remainingSalary = desiredSalaryAmount;
@@ -1164,13 +1156,11 @@ const addAmountOfSFA = (req, res) => {
                                                                 }
                                                                 const oldMsdData = Object.values(JSON.parse(JSON.stringify(datas)));
                                                                 const msData = Object.values(JSON.parse(JSON.stringify(datas)));
-                                                                console.log(msData);
 
                                                                 const salaryOutData = [
                                                                     { monthlySalaryId: 1, paySalaryAmount: data.payAmount }
                                                                 ];
                                                                 const desiredSalaryAmount = salaryOutData[0].paySalaryAmount;
-                                                                console.log("?????", desiredSalaryAmount);
 
                                                                 // Calculate total Salary out price
                                                                 let remainingSalary = desiredSalaryAmount;
@@ -1441,7 +1431,6 @@ const addAmountOfSFA = (req, res) => {
                                                             { monthlySalaryId: 1, paySalaryAmount: totalCutamountOffAdvance }
                                                         ];
                                                         const desiredSalaryAmount = salaryOutData[0].paySalaryAmount;
-                                                        console.log("?????", desiredSalaryAmount);
 
                                                         // Calculate total Salary out price
                                                         let remainingSalary = desiredSalaryAmount;
@@ -1500,9 +1489,6 @@ const addAmountOfSFA = (req, res) => {
                                                         // Join the array elements into a single string
                                                         const msWiseSid = combinedData.join(',');
 
-                                                        // Output the resulting string
-                                                        console.log(msWiseSid);
-
                                                         sql_querry_addmsFid = `INSERT INTO staff_msWiseSalaryId_data (salaryId, monthlySalaryId, cutSalaryAmount) VALUES ${msWiseSid}`
                                                         pool.query(sql_querry_addmsFid, (err, result) => {
                                                             if (err) {
@@ -1525,13 +1511,11 @@ const addAmountOfSFA = (req, res) => {
                                                                     }
                                                                     const oldMsdData = Object.values(JSON.parse(JSON.stringify(datas)));
                                                                     const msData = Object.values(JSON.parse(JSON.stringify(datas)));
-                                                                    console.log(msData);
 
                                                                     const salaryOutData = [
                                                                         { monthlySalaryId: 1, paySalaryAmount: data.payAmount }
                                                                     ];
                                                                     const desiredSalaryAmount = salaryOutData[0].paySalaryAmount;
-                                                                    console.log("?????", desiredSalaryAmount);
 
                                                                     // Calculate total Salary out price
                                                                     let remainingSalary = desiredSalaryAmount;
@@ -1709,13 +1693,11 @@ const addAmountOfSFA = (req, res) => {
                                                 }
                                                 const oldMsdData = Object.values(JSON.parse(JSON.stringify(datas)));
                                                 const msData = Object.values(JSON.parse(JSON.stringify(datas)));
-                                                console.log(msData);
 
                                                 const salaryOutData = [
                                                     { monthlySalaryId: 1, paySalaryAmount: data.advanceAmount }
                                                 ];
                                                 const desiredSalaryAmount = salaryOutData[0].paySalaryAmount;
-                                                console.log("?????", desiredSalaryAmount);
 
                                                 // Calculate total Salary out price
                                                 let remainingSalary = desiredSalaryAmount;
@@ -1800,13 +1782,11 @@ const addAmountOfSFA = (req, res) => {
                                                             }
                                                             const oldMsdData = Object.values(JSON.parse(JSON.stringify(datas)));;
                                                             const msData = Object.values(JSON.parse(JSON.stringify(datas)));
-                                                            console.log(msData);
 
                                                             const salaryOutData = [
                                                                 { monthlySalaryId: 1, paySalaryAmount: data.payAmount }
                                                             ];
                                                             const desiredSalaryAmount = salaryOutData[0].paySalaryAmount;
-                                                            console.log("?????", desiredSalaryAmount);
 
                                                             // Calculate total Salary out price
                                                             let remainingSalary = desiredSalaryAmount;
@@ -1923,13 +1903,11 @@ const addAmountOfSFA = (req, res) => {
                                                 }
                                                 const oldMsdData = Object.values(JSON.parse(JSON.stringify(datas)));
                                                 const msData = Object.values(JSON.parse(JSON.stringify(datas)));
-                                                console.log(msData);
 
                                                 const salaryOutData = [
                                                     { monthlySalaryId: 1, paySalaryAmount: data.totalSalary }
                                                 ];
                                                 const desiredSalaryAmount = salaryOutData[0].paySalaryAmount;
-                                                console.log("?????", desiredSalaryAmount);
 
                                                 // Calculate total Salary out price
                                                 let remainingSalary = desiredSalaryAmount;
@@ -2021,13 +1999,11 @@ const addAmountOfSFA = (req, res) => {
                                         }
                                         const oldMsdData = Object.values(JSON.parse(JSON.stringify(datas)));
                                         const msData = Object.values(JSON.parse(JSON.stringify(datas)));
-                                        console.log(msData);
 
                                         const salaryOutData = [
                                             { monthlySalaryId: 1, paySalaryAmount: data.payAmount }
                                         ];
                                         const desiredSalaryAmount = salaryOutData[0].paySalaryAmount;
-                                        console.log("?????", desiredSalaryAmount);
 
                                         // Calculate total Salary out price
                                         let remainingSalary = desiredSalaryAmount;
@@ -3038,7 +3014,6 @@ const removeCreditTransaction = (req, res) => {
             }
             if (row && row.length) {
                 sql_querry_getSalaryStatus = `SELECT cafId ,creditAmount ,creditType FROM staff_creditAdvanceFine_data WHERE cafId = '${creditId}'`;
-                console.log('joooaaa', sql_querry_getSalaryStatus);
                 pool.query(sql_querry_getSalaryStatus, (err, data) => {
                     if (err) {
                         console.error("An error occurred in SQL Queery", err);

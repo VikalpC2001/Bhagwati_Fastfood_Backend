@@ -258,7 +258,7 @@ const addBusinessReport = (req, res) => {
                     let uniqueId = `BRID_${Date.now() + index}`; // Generating a unique ID using current timestamp
                     return `('${uniqueId}', '${item}', ${businessReport[item] ? businessReport[item] : 0} , STR_TO_DATE('${data.reportDate}','%b %d %Y'))`;
                 }).join(', ');
-                console.log(addBRdata);
+
                 businessReport[keys[1]] = pool.query(`SELECT businessCategoryId FROM business_report_data WHERE businessDate = STR_TO_DATE('${data.reportDate}','%b %d %Y')`, function (err, row) {
                     if (err) {
                         console.error("An error occurred in SQL Queery", err);
@@ -560,7 +560,7 @@ const exportExcelForBusinessReport = async (req, res) => {
             const debitAmtSum = data[0].filter(item => item.businessType === 'DEBIT').reduce((sum, item) => sum + item.businessAmt, 0);
             const onlineAmtSum = data[0].filter(item => item.businessType === 'ONLINE').reduce((sum, item) => sum + item.businessAmt, 0);
             const dueAmtSum = data[0].filter(item => item.businessType === 'DUE').reduce((sum, item) => sum + item.businessAmt, 0);
-            console.log(cashAmtSum, debitAmtSum, onlineAmtSum);
+
             const combinedData = {
                 incomeSourceData: data[0],
                 expenseData: data[1],
@@ -885,7 +885,7 @@ const exportPdfForBusinessReport = (req, res) => {
             const debitAmtSum = data[0].filter(item => item.businessType === 'DEBIT').reduce((sum, item) => sum + item.businessAmt, 0);
             const onlineAmtSum = data[0].filter(item => item.businessType === 'ONLINE').reduce((sum, item) => sum + item.businessAmt, 0);
             const dueAmtSum = data[0].filter(item => item.businessType === 'DUE').reduce((sum, item) => sum + item.businessAmt, 0);
-            console.log(cashAmtSum, debitAmtSum, onlineAmtSum);
+
             const combinedData = {
                 incomeSourceData: data[0],
                 expenseData: data[1],
@@ -1079,7 +1079,7 @@ const exportExcelForBusinessReportNet = async (req, res) => {
         const now = new Date();
         now.setDate(now.getHours() <= 4 ? now.getDate() - 1 : now.getDate());
         const currentDate = now.toDateString().slice(4, 15);
-        console.log(currentDate);
+
         const data = {
             startDate: (req.query.startDate ? req.query.startDate : '').slice(4, 15),
             endDate: (req.query.endDate ? req.query.endDate : '').slice(4, 15)

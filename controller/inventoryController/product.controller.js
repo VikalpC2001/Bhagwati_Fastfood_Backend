@@ -934,9 +934,6 @@ const getProductDetailsTable = (req, res) => {
                         console.error("An error occurred in SQL Queery", err);
                         return res.status(500).send('Database Error');;
                     } else {
-                        console.log(rows);
-                        console.log(numRows);
-                        console.log("Total Page :-", numPages);
                         if (numRows === 0) {
                             const rows = [{
                                 'msg': 'No Data Found'
@@ -1416,7 +1413,7 @@ const exportExcelSheetForProductTable = (req, res) => {
     console.log('find me', sql_queries_getdetails)
     pool.query(sql_queries_getdetails, async (err, rows) => {
         if (err) return res.status(404).send(err);
-        console.log(":::", rows)
+
         const workbook = new excelJS.Workbook();  // Create a new workbook
         const worksheet = workbook.addWorksheet("All Products"); // New Worksheet
 

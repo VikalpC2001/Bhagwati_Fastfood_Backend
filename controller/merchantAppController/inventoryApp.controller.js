@@ -107,9 +107,6 @@ const getProductData = (req, res) => {
                         console.error("An error occurred in SQL Queery", err);
                         return res.status(500).send('Database Error');;
                     } else {
-                        console.log(rows);
-                        console.log(numRows);
-                        console.log("Total Page :-", numPages);
                         if (numRows === 0) {
                             const rows = []
                             return res.status(200).send({ rows, numRows });
@@ -192,9 +189,6 @@ const getOutCategoryForApp = (req, res) => {
                         console.error("An error occurred in SQL Queery", err);
                         return res.status(500).send('Database Error');;
                     } else {
-                        console.log(rows);
-                        console.log(numRows);
-                        console.log("Total Page :-", numPages);
                         if (numRows === 0) {
                             const rows = []
                             return res.status(200).send({ rows, numRows });
@@ -298,9 +292,6 @@ const getSupplierdataForApp = (req, res) => {
                         console.error("An error occurred in SQL Queery", err);
                         return res.status(500).send('Database Error');;
                     } else {
-                        console.log(rows);
-                        console.log(numRows);
-                        console.log("Total Page :-", numPages);
                         if (numRows === 0) {
                             const rows = []
                             return res.status(200).send({ rows, numRows });

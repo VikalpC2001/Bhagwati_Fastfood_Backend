@@ -67,9 +67,6 @@ const getHotelList = (req, res) => {
                         console.error("An error occurred in SQL Queery", err);
                         return res.status(500).send('Database Error');;
                     } else {
-                        console.log(rows);
-                        console.log(numRows);
-                        console.log("Total Page :-", numPages);
                         if (numRows === 0) {
                             const rows = [{
                                 'msg': 'No Data Found'
@@ -434,9 +431,6 @@ const getHotelBillDataById = (req, res) => {
                         console.error("An error occurred in SQL Queery", err);
                         return res.status(500).send('Database Error');;
                     } else {
-                        console.log(rows);
-                        console.log(numRows);
-                        console.log("Total Page :-", numPages);
                         if (numRows === 0) {
                             const rows = [{
                                 'msg': 'No Data Found'
@@ -769,9 +763,6 @@ function MonthWiseData(arr, cutAmt) {
 async function createBillPDF(res, datas, sumFooterArray, tableHeading) {
     try {
         // Create a new PDF document
-        console.log(';;;;;;', datas);
-        console.log('?????', sumFooterArray);
-        console.log('?????', tableHeading);
         const doc = new jsPDF();
 
         // JSON data

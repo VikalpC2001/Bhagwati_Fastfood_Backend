@@ -457,9 +457,6 @@ const exportExcelForSubCategoryData = (req, res) => {
 async function createPDF(res, datas, sumFooterArray, tableHeading) {
     try {
         // Create a new PDF document
-        console.log(';;;;;;', datas);
-        console.log('?????', sumFooterArray);
-        console.log('?????', tableHeading);
         const doc = new jsPDF();
 
         // JSON data

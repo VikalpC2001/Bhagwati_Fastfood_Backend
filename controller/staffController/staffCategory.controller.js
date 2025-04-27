@@ -141,9 +141,6 @@ const getStaffCategoryList = (req, res) => {
                         console.error("An error occurred in SQL Queery", err);
                         return res.status(500).send('Database Error');
                     } else {
-                        console.log(rows);
-                        console.log(numRows);
-                        console.log("Total Page :-", numPages);
                         if (numRows === 0) {
                             const rows = [{
                                 'msg': 'No Data Found'
@@ -187,10 +184,10 @@ const updateStaffCategory = (req, res) => {
             var staffCategoryPositionData = rows[1];
             const staffCategoryNames = staffCategoryData.map((row) => row.staffCategoryName);
             const staffCategoryPositionNumber = staffCategoryPositionData.map((row) => row.staffCategoryPosition);
-            console.log('???', staffCategoryName, staffCategoryPositionNumber)
+
             const isCategoryNameExists = staffCategoryNames.includes(staffCategoryName);
             const isCategoryPositionExists = staffCategoryPositionNumber.includes(staffCategoryPosition);
-            console.log('?>>.', isCategoryNameExists, isCategoryPositionExists);
+
             if (isCategoryNameExists) {
                 return res.status(400).send('CategoryName is Already Added Or No Change');
             } else if (isCategoryPositionExists) {

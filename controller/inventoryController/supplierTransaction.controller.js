@@ -187,9 +187,6 @@ const getDebitTransactionList = async (req, res) => {
                         console.error("An error occurred in SQL Queery", err);
                         return res.status(500).send('Database Error');;
                     } else {
-                        console.log(rows);
-                        console.log(numRows);
-                        console.log("Total Page :-", numPages);
                         if (numRows === 0) {
                             const rows = [{
                                 'msg': 'No Data Found'
@@ -376,9 +373,6 @@ const getCashTransactionList = async (req, res) => {
                         console.error("An error occurred in SQL Queery", err);
                         return res.status(500).send('Database Error');;
                     } else {
-                        console.log(rows);
-                        console.log(numRows);
-                        console.log("Total Page :-", numPages);
                         if (numRows === 0) {
                             const rows = [{
                                 'msg': 'No Data Found'

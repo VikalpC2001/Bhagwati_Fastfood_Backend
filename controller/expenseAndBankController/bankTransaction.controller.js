@@ -849,9 +849,6 @@ const exportExcelForBankTransactionById = (req, res) => {
 async function createPDF(res, datas, sumFooterArray, tableHeading) {
     try {
         // Create a new PDF document
-        // console.log(';;;;;;', datas);
-        // console.log('?????', sumFooterArray);
-        // console.log('?????', tableHeading);
         const doc = new jsPDF();
 
         // JSON data
@@ -1285,9 +1282,6 @@ const exportExcelForFundTransfer = (req, res) => {
 async function createPDFforFunds(res, datas, sumFooterArray, tableHeading) {
     try {
         // Create a new PDF document
-        // console.log(';;;;;;', datas);
-        // console.log('?????', sumFooterArray);
-        // console.log('?????', tableHeading);
         const doc = new jsPDF();
 
         // JSON data

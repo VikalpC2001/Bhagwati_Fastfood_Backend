@@ -102,9 +102,6 @@ const getCategoryList = async (req, res) => {
                         console.error("An error occurred in SQL Queery", err);
                         return res.status(500).send('Database Error');;
                     } else {
-                        console.log(rows);
-                        console.log(numRows);
-                        console.log("Total Page :-", numPages);
                         if (numRows === 0) {
                             const rows = [{
                                 'msg': 'No Data Found'
@@ -226,9 +223,6 @@ const updateStockOutCategory = async (req, res) => {
 async function createPDF(res, datas, sumFooterArray, tableHeading) {
     try {
         // Create a new PDF document
-        console.log(';;;;;;', datas);
-        console.log('?????', sumFooterArray);
-        console.log('?????', tableHeading);
         const doc = new jsPDF();
 
         // JSON data

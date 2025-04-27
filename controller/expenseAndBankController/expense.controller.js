@@ -300,7 +300,7 @@ const updateExpenseData = (req, res) => {
                 comment: req.body.comment ? req.body.comment.trim() : null,
                 transactionDate: new Date(req.body.transactionDate ? req.body.transactionDate : null).toString().slice(4, 15),
             }
-            console.log(data);
+
             if (!data.moneySourceId || !data.categoryId || !data.subcategoryId || !data.transactionAmount || !data.transactionDate) {
                 return res.status(400).send("Please Fill All The Fields");
             } else {
@@ -559,9 +559,6 @@ const exportExcelSheetForExpenseData = (req, res) => {
 async function createPDF(res, datas, sumFooterArray, tableHeading) {
     try {
         // Create a new PDF document
-        console.log(';;;;;;', datas);
-        console.log('?????', sumFooterArray);
-        console.log('?????', tableHeading);
         const doc = new jsPDF();
 
         // JSON data

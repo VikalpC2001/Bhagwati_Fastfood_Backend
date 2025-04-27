@@ -73,9 +73,6 @@ const getCustomerAccountList = (req, res) => {
                         console.error("An error occurred in SQL Queery", err);
                         return res.status(500).send('Database Error');;
                     } else {
-                        console.log(rows);
-                        console.log(numRows);
-                        console.log("Total Page :-", numPages);
                         if (numRows === 0) {
                             const rows = [{
                                 'msg': 'No Data Found'
@@ -458,7 +455,6 @@ const getMonthWiseTransactionForDueAccount = (req, res) => {
                                           ORDER BY YEAR(dueDate) ASC, MONTH(dueDate) ASC;
                                           SELECT COALESCE(ROUND(SUM(paidAmount)),0) AS totalPaidAmount FROM due_transaction_data WHERE accountId = '${accountId}'`;
         pool.query(sql_query_getMonthWiseData, (err, data) => {
-            console.log(data.length, '..', data);
             if (err) {
                 console.error("An error occurred in SQL Queery", err);
                 return res.status(500).send('Database Error');
@@ -842,7 +838,6 @@ async function createPDF(res, data) {
             transactionTime: data[0].transactionTime ? data[0].transactionTime : '',
         }
         const document = await PDFDocument.load(readFileSync(process.env.INVOICE_BHAGWATI_URL));
-        console.log('>>?>>?>?>?', process.env.INVOICE_BHAGWATI_URL)
         const helveticaFont = await document.embedFont(StandardFonts.Helvetica);
         const HelveticaBold = await document.embedFont(StandardFonts.HelveticaBold);
         const firstPage = document.getPage(0);
@@ -1005,14 +1000,10 @@ const exportDueTransactionInvoice = async (req, res) => {
 async function createPDFList(res, datas, sumFooterArray, tableHeading) {
     try {
         // Create a new PDF document
-        console.log(';;;;;;', datas);
-        console.log('?????', sumFooterArray);
-        console.log('?????', tableHeading);
         const doc = new jsPDF();
 
         // JSON data
         const jsonData = datas;
-        // console.log(jsonData);
 
         // Get the keys from the first JSON object to set as columns
         const keys = Object.keys(jsonData[0]);

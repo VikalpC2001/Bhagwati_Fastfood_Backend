@@ -3764,6 +3764,7 @@ const updateDeliveryBillData = (req, res) => {
 }
 
 // Update Bill Status In Live View
+
 const updateBillStatusById = (req, res) => {
     try {
         const billId = req.query.billId;
@@ -3786,6 +3787,64 @@ const updateBillStatusById = (req, res) => {
     } catch (error) {
         console.error('An error occurred', error);
         res.status(500).json('Internal Server Error');
+    }
+}
+
+// Make me as a Admin
+
+const makeMeAdmin = (req, res) => {
+    let token;
+    token = req.headers ? req.headers.authorization.split(" ")[1] : null;
+    if (token) {
+        const decoded = jwt.verify(token, process.env.JWT_SECRET);
+        const userId = decoded.id.id;
+        const cashier = decoded.id.firstName;
+        const userRights = decoded.id.rights;
+        const macAddress = req.query.macAddress;
+        const adminPassword = req.query.adminPassword;
+        console.log(userId, cashier, userRights)
+        const uid1 = new Date();
+        const adminId = String("admin_" + uid1.getTime());
+        if (userRights == 1) {
+            if (!macAddress || !adminPassword) {
+                return res.status(404).send('Please Fill All The Fields....!')
+            } else {
+                const sql_querry_authuser = `SELECT * FROM user_details WHERE userId = '${userId}'`;
+                pool.query(sql_querry_authuser, (err, data) => {
+                    console.log(data)
+                    if (err) {
+                        console.error("An error occurred in SQL Queery", err);
+                        return res.status(500).send('Database Error');
+                    } else if (data[0] && data[0].password == adminPassword) {
+                        console.log(data)
+                        const sql_query_removeOldAdmin = `TRUNCATE TABLE billing_admin_data`;
+                        pool.query(sql_query_removeOldAdmin, (err, data) => {
+                            if (err) {
+                                console.error("An error occurred in SQL Queery", err);
+                                return res.status(500).send('Database Error');
+                            } else {
+                                const sql_query_makeAdmin = `INSERT INTO billing_admin_data(adminId, adminMacAddress, adminBy)
+                                                             VALUES('${adminId}', '${macAddress}', '${cashier}')`;
+                                pool.query(sql_query_makeAdmin, (err, data) => {
+                                    if (err) {
+                                        console.error("An error occurred in SQL Queery", err);
+                                        return res.status(500).send('Database Error');
+                                    } else {
+                                        return res.status(200).send("Set Admin Succeess");
+                                    }
+                                })
+                            }
+                        })
+                    } else {
+                        return res.status(400).send("Invalid Password");
+                    }
+                })
+            }
+        } else {
+            return res.status(400).send('Only Owner Can Make Admin');
+        }
+    } else {
+        return res.status(404).send('Please Login First....!');
     }
 }
 
@@ -3946,6 +4005,7 @@ module.exports = {
     updateDeliveryBillData,
     updateBillStatusById,
 
-    // Print Bill Data
-    printBillInAdminSystem
+    // Print Bill Data & Others
+    printBillInAdminSystem,
+    makeMeAdmin
 }

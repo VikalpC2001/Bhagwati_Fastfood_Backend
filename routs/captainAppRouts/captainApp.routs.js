@@ -11,6 +11,8 @@ router.post('/updateSubTokenDataByIdForApp', protect, appController.updateSubTok
 router.get('/getSubTokensByBillIdForApp', protect, appController.getSubTokensByBillIdForApp);
 router.delete('/removeSubTokenDataByIdForApp', protect, appController.removeSubTokenDataByIdForApp);
 router.get('/isTableEmpty', protect, appController.isTableEmpty);
+router.get('/printTableBillForApp', protect, appController.printTableBillForApp);
+router.get('/findServerIpByApp', appController.findServerIpByApp);
 
 // Item App Routs
 

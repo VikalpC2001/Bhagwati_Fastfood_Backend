@@ -30,9 +30,6 @@ router.post('/addMultipleCustomerData', customerController.addMultipleCustomerDa
 router.post('/addCustomerData', customerController.addCustomerData);
 router.post('/updateCustomerData', customerController.updateCustomerData);
 
-// Bill No Test Routs
-router.post('/billNoTest', commentController.billNoTest);
-
 // Hotel Routs
 
 const hotelController = require("../../controller/billingController/hotel.controller.js");
@@ -86,8 +83,9 @@ router.post('/updatePickUpBillData', protect, billingController.updatePickUpBill
 router.post('/updateDeliveryBillData', protect, billingController.updateDeliveryBillData);
 router.get('/updateBillStatusById', protect, billingController.updateBillStatusById);
 
-// Print Bill Data
+// Print Bill Data & Others
 router.get('/printBillInAdminSystem', protect, billingController.printBillInAdminSystem);
+router.get('/makeMeAdmin', protect, billingController.makeMeAdmin);
 
 // Online Billing Routs
 

@@ -157,86 +157,9 @@ const updateComment = async (req, res) => {
     }
 }
 
-const billNoTest = (req, res) => {
-    try {
-        pool2.getConnection((err, connection) => {
-            const firmId = req.query.firmId;
-            if (err) {
-                console.error("Error getting database connection:", err);
-                return res.status(500).send('Database Error');
-            }
-
-            connection.beginTransaction((err) => {
-                if (err) {
-                    console.error("Error beginning transaction:", err);
-                    connection.release();
-                    return res.status(500).send('Database Error');
-                }
-
-                connection.query(`SELECT COALESCE(MAX(billNo),0) AS lastBillNo, COALESCE(MAX(tokenNo),0) AS tokenNo, DATE(creationDate) AS lastDate FROM billing_test_no WHERE firmed = '${firmId}' AND creationDate = (SELECT MAX(creationDate) FROM billing_test_no) FOR UPDATE;`, (err, result) => {
-                    if (err) {
-                        console.error("Error selecting last bill number:", err);
-                        connection.rollback(() => {
-                            connection.release();
-                            return res.status(500).send('Database Error');
-                        });
-                    } else {
-                        const lastBillNo = result && result[0] && result[0].lastBillNo ? result[0].lastBillNo : 0;
-                        const tokenNo = result && result[0] && result[0].tokenNo ? result[0].tokenNo : 0;
-                        const uid1 = new Date();
-
-                        const lastDate = new Date(result[0].lastDate);
-                        const currentDate = new Date();
-
-                        if (lastDate.toDateString() === currentDate.toDateString()) {
-                            nextTokenNo = tokenNo + 1;
-                        } else {
-                            nextTokenNo = 1;
-                        }
-
-                        const nextBillNo = lastBillNo + 1;
-                        const billId = String("bill_" + uid1.getTime() + '_' + nextBillNo);
-
-                        connection.query('INSERT INTO billing_test_no (billNo, id, firmed, tokenNo) VALUES (?,?,?,?)', [nextBillNo, billId, firmId, nextTokenNo], (err) => {
-                            if (err) {
-                                console.error("Error inserting new bill number:", err);
-                                connection.rollback(() => {
-                                    connection.release();
-                                    return res.status(500).send('Database Error');
-                                });
-                            } else {
-                                connection.commit((err) => {
-                                    if (err) {
-                                        console.error("Error committing transaction:", err);
-                                        connection.rollback(() => {
-                                            connection.release();
-                                            return res.status(500).send('Database Error');
-                                        });
-                                    } else {
-                                        connection.release();
-                                        return res.status(200).send('Bill Added Successfully');
-                                    }
-                                });
-                            }
-                        });
-                    }
-                });
-            });
-        });
-    } catch (error) {
-        console.error('An error occurred:', error);
-        res.status(500).send('Internal Server Error');
-    }
-};
-
-
-
-
-
 module.exports = {
     getComment,
     addComment,
     removeComment,
-    updateComment,
-    billNoTest
+    updateComment
 }

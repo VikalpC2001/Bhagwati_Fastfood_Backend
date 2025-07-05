@@ -1,8 +1,7 @@
-const pool = require('../../database');
-const pool2 = require('../../databasePool');
+const pool = require("../../database");
+const pool2 = require("../../databasePool");
 
 function getAddressValidation(addressDetails) {
-
     const addressCount = addressDetails.reduce((acc, curr) => {
         const address = curr.address.toLowerCase(); // Normalize address to lowercase
         acc[address] = (acc[address] || 0) + 1; // Increment count
@@ -14,49 +13,71 @@ function getAddressValidation(addressDetails) {
     return isAddressRepeated;
 }
 
-// Search Customer Data
+// Get Customer Statics Data
 
-const searchCustomerData = (req, res) => {
+const getCustomerStaticsForApp = (req, res) => {
     try {
-        const searchWord = req.query.searchWord;
-        var sql_queries_searchCustomer = `SELECT
-                                              bcd.customerId AS customerId,
-                                              bcd.customerName AS customerName,
-                                              bcd.customerMobileNumber AS mobileNo,
-                                              bcad.addressId AS addressId,
-                                              bcad.customerAddress AS address,
-                                              bcad.customerLocality AS locality
+        const customerId = req.query.customerId ? req.query.customerId : null;
+        var date = new Date(), y = date.getFullYear(), m = (date.getMonth());
+        var firstDay = new Date(y, m, 1).toString().slice(4, 15);
+        var lastDay = new Date(y, m + 1, 0).toString().slice(4, 15);
+
+        const data = {
+            startDate: (req.query.startDate ? req.query.startDate : '').slice(4, 15),
+            endDate: (req.query.endDate ? req.query.endDate : '').slice(4, 15)
+        }
+        if (!customerId) {
+            return res.status(404).send("customerId Not Found...!");
+        } else {
+            let sql_qury_getStaticsData = `SELECT
+                                            -- Order Counts
+                                            COUNT(CASE WHEN bd.billType = 'Pick Up' THEN 1 END) AS totalPickupOrders,
+                                            COUNT(CASE WHEN bd.billType = 'Delivery' THEN 1 END) AS totalDeliveryOrders,
+                                            COUNT(CASE WHEN bd.billType = 'Dine In' THEN 1 END) AS totalDineinOrders,
+                                            COUNT(CASE WHEN bd.billPayType = 'cash' THEN 1 END) AS totalCashOrders,
+                                            COUNT(CASE WHEN bd.billPayType = 'due' THEN 1 END) AS totalDueOrders,
+                                            COUNT(CASE WHEN bd.billPayType = 'online' THEN 1 END) AS totalOnlineOrders,
+                                            COUNT(CASE WHEN bd.billPayType = 'complimentary' THEN 1 END) AS totalComplimentaryOrders,
+                                            COUNT(CASE WHEN bd.billPayType = 'cancel' THEN 1 END) AS totalCancelOrders,
+                                            -- Order Sum
+                                            COALESCE(SUM(CASE WHEN bd.billType = 'Pick Up' THEN bd.settledAmount ELSE 0 END),0) AS totalPickupAmount,
+                                            COALESCE(SUM(CASE WHEN bd.billType = 'Delivery' THEN bd.settledAmount ELSE 0 END),0) AS totalDeliveryAmount,
+                                            COALESCE(SUM(CASE WHEN bd.billType = 'Dine In' THEN bd.settledAmount ELSE 0 END),0) AS totalDineinAmount,
+                                            COALESCE(SUM(CASE WHEN bd.billPayType = 'cash' THEN bd.settledAmount ELSE 0 END),0) AS totalCashAmount,
+                                            COALESCE(SUM(CASE WHEN bd.billPayType = 'due' THEN bd.settledAmount ELSE 0 END),0) AS totalDueAmount,
+                                            COALESCE(SUM(CASE WHEN bd.billPayType = 'online' THEN bd.settledAmount ELSE 0 END),0) AS totalOnlineAmount,
+                                            COALESCE(SUM(CASE WHEN bd.billPayType = 'complimentary' THEN bd.settledAmount ELSE 0 END),0) AS totalComplimentaryAmount,
+                                            COALESCE(SUM(CASE WHEN bd.billPayType = 'cancel' THEN bd.settledAmount ELSE 0 END),0) AS totalCancelAmount
                                           FROM
-                                              billing_customer_data AS bcd
-                                          LEFT JOIN billing_customerAddress_data AS bcad ON bcad.customerId = bcd.customerId
-                                          WHERE bcd.customerMobileNumber LIKE '%` + searchWord + `%'`;
-        pool.query(sql_queries_searchCustomer, (err, rows, fields) => {
-            if (err) {
-                console.error("An error occurred in SQL Queery", err);
-                return res.status(500).send('Database Error');;
-            } else {
-                if (searchWord) {
-                    return res.status(200).send(rows);
+                                              billing_billwisecustomer_data AS bwc
+                                          LEFT JOIN billing_data AS bd ON bd.billId = bwc.billId
+                                          WHERE bwc.customerId = '${customerId}'
+                                          AND bd.billDate BETWEEN STR_TO_DATE('${data.startDate ? data.startDate : firstDay}', '%b %d %Y') AND STR_TO_DATE('${data.endDate ? data.endDate : lastDay}', '%b %d %Y')`;
+            pool.query(sql_qury_getStaticsData, (err, data) => {
+                if (err) {
+                    console.error("An error occurred in SQL Queery", err);
+                    return res.status(500).send('Database Error');
                 } else {
-                    return res.status(200).send([]);
+                    return res.status(200).send(data[0]);
                 }
-            }
-        });
+            })
+        }
     } catch (error) {
         console.error('An error occurred', error);
         res.status(500).json('Internal Server Error');
     }
-};
+}
 
-// Get Customer Data
+// Get Customer Data For App
 
-const getCustomerList = (req, res) => {
+const getCustomerListForApp = (req, res) => {
     try {
         const page = req.query.page;
         const numPerPage = req.query.numPerPage;
         const skip = (page - 1) * numPerPage;
         const limit = skip + ',' + numPerPage;
-        sql_querry_getCountDetails = `SELECT count(*) as numRows FROM billing_customer_data`;
+        const searchWord = req.query.searchWord ? req.query.searchWord : '';
+        sql_querry_getCountDetails = `SELECT count(*) as numRows FROM billing_customer_data WHERE customerName LIKE '%` + searchWord + `%' OR customerMobileNumber LIKE '%` + searchWord + `%'`;
         pool.query(sql_querry_getCountDetails, (err, rows, fields) => {
             if (err) {
                 console.error("An error occurred in SQL Queery", err);
@@ -70,6 +91,7 @@ const getCustomerList = (req, res) => {
                                                 customerMobileNumber
                                               FROM 
                                                 billing_customer_data
+                                              WHERE customerName LIKE '%` + searchWord + `%' OR customerMobileNumber LIKE '%` + searchWord + `%'
                                               LIMIT ${limit}`;
                 pool.query(sql_query_getDetails, (err, rows, fields) => {
                     if (err) {
@@ -77,10 +99,7 @@ const getCustomerList = (req, res) => {
                         return res.status(500).send('Database Error');;
                     } else {
                         if (numRows === 0) {
-                            const rows = [{
-                                'msg': 'No Data Found'
-                            }]
-                            return res.status(200).send({ rows, numRows });
+                            return res.status(404).send('No Data Found');
                         } else {
                             return res.status(200).send({ rows, numRows });
                         }
@@ -94,9 +113,9 @@ const getCustomerList = (req, res) => {
     }
 }
 
-// Get Customer Details By Id
+// Get Customer Details By Id For App
 
-const getCustomerDetailsById = (req, res) => {
+const getCustomerDetailsByIdForApp = (req, res) => {
     try {
         const customerId = req.query.customerId ? req.query.customerId : null;
         if (!customerId) {
@@ -140,92 +159,9 @@ const getCustomerDetailsById = (req, res) => {
     }
 }
 
-// Add Multiple Customer Data API
+// Add Cusstomer Data For App
 
-const addMultipleCustomerData = (req, res) => {
-    try {
-        const uid1 = new Date();
-        const newCustometId = String("customer_" + uid1.getTime());
-        const newAddressId = String("addressId_" + uid1.getTime());
-        const data = {
-            mobileNo: req.body.mobileNo ? req.body.mobileNo : null,
-            name: req.body.name ? req.body.name : null,
-            address: req.body.address ? req.body.address : null,
-            locality: req.body.locality ? req.body.locality : null
-        }
-        if (!data.mobileNo) {
-            return res.status(404).send('Mobile Number Not Found..!');
-        }
-        let chk_sql_mobileNoExist = `SELECT customerId FROM billing_customer_data WHERE customerMobileNumber = '${data.mobileNo}'`;
-        pool.query(chk_sql_mobileNoExist, (err, no) => {
-            if (err) {
-                console.error("An error occurred in SQL Queery", err);
-                return res.status(500).send('Database Error');
-            } else {
-                const existCustomerId = no && no.length ? no[0].customerId : null;
-                if (existCustomerId) {
-                    if (data.address) {
-                        sql_query_chkAddress = `SELECT customerAddress FROM billing_customerAddress_data WHERE customerId = '${existCustomerId}' AND customerAddress = '${data.address}'`;
-                        pool.query(sql_query_chkAddress, (err, chkAdd) => {
-                            if (err) {
-                                console.error("An error occurred in SQL Queery", err);
-                                return res.status(500).send('Database Error');
-                            } else {
-                                if (chkAdd && chkAdd.length) {
-                                    return res.status(400).send('Address Already Exisy For This Customer Id');
-                                } else {
-                                    sql_query_addExistCustomerNewAddress = `INSERT INTO billing_customerAddress_data(addressId, customerId, customerAddress, customerLocality)
-                                                                            VALUES('${newAddressId}', '${existCustomerId}', TRIM('${data.address}'), ${data.locality ? `TRIM('${data.locality}')` : null})`;
-                                    pool.query(sql_query_addExistCustomerNewAddress, (err, newAdd) => {
-                                        if (err) {
-                                            console.error("An error occurred in SQL Queery", err);
-                                            return res.status(500).send('Database Error');
-                                        } else {
-                                            return res.status(200).send('Customer New Address Added Successfully');
-                                        }
-                                    })
-                                }
-                            }
-                        })
-                    } else {
-                        return res.status(200).send('Customer Added Successfully');
-                    }
-                } else {
-                    sql_query_addNewCustomer = `INSERT INTO billing_customer_data(customerId, customerName, customerMobileNumber, birthDate, anniversaryDate)
-                                                VALUES('${newCustometId}', ${data.name ? `TRIM('${data.name}')` : null}, '${data.mobileNo}', NULL, NULL)`;
-                    pool.query(sql_query_addNewCustomer, (err, customer) => {
-                        if (err) {
-                            console.error("An error occurred in SQL Queery", err);
-                            return res.status(500).send('Database Error');
-                        } else {
-                            if (data.address) {
-                                sql_query_addCustomerNewAddress = `INSERT INTO billing_customerAddress_data(addressId, customerId, customerAddress, customerLocality)
-                                                                   VALUES('${newAddressId}', '${newCustometId}', TRIM('${data.address}'), ${data.locality ? `TRIM('${data.locality}')` : null})`;
-                                pool.query(sql_query_addCustomerNewAddress, (err, adds) => {
-                                    if (err) {
-                                        console.error("An error occurred in SQL Queery", err);
-                                        return res.status(500).send('Database Error');
-                                    } else {
-                                        return res.status(200).send('Customer Added Successfully');
-                                    }
-                                })
-                            } else {
-                                return res.status(200).send('Customer Added Success Fully');
-                            }
-                        }
-                    })
-                }
-            }
-        })
-    } catch (error) {
-        console.error('An error occurred', error);
-        res.status(500).json('Internal Server Error');
-    }
-}
-
-// Add Cusstomer Data
-
-const addCustomerData = (req, res) => {
+const addCustomerDataForApp = (req, res) => {
     pool2.getConnection((err, connection) => {
         if (err) {
             console.log('Connection Error', err)
@@ -341,7 +277,7 @@ const addCustomerData = (req, res) => {
 
 // Remove Customer Data
 
-const removeCustomeData = (req, res) => {
+const removeCustomeDataForApp = (req, res) => {
     pool2.getConnection((err, connection) => {
         if (err) {
             console.log('Connection Error', err)
@@ -426,9 +362,9 @@ const removeCustomeData = (req, res) => {
     })
 }
 
-// Update Customer Data
+// Update Customer Data For App
 
-const updateCustomerData = (req, res) => {
+const updateCustomerDataForApp = (req, res) => {
     pool2.getConnection((err, connection) => {
         if (err) {
             console.log('Connection Error', err)
@@ -466,7 +402,7 @@ const updateCustomerData = (req, res) => {
                             if (result && result.length) {
                                 connection.rollback(() => {
                                     connection.release();
-                                    return res.status(400).send('Customer Mobile No Is Already Exist..!');
+                                    return res.status(400).send('Customer Mobile Number is Alredy Exist..!');
                                 })
                             } else {
                                 let sql_query_addCustomerDetails = `UPDATE
@@ -558,11 +494,11 @@ const updateCustomerData = (req, res) => {
 }
 
 module.exports = {
-    searchCustomerData,
-    addMultipleCustomerData,
-    addCustomerData,
-    removeCustomeData,
-    updateCustomerData,
-    getCustomerList,
-    getCustomerDetailsById
+    getCustomerStaticsForApp,
+    getCustomerListForApp,
+    getCustomerDetailsByIdForApp,
+    addCustomerDataForApp,
+    removeCustomeDataForApp,
+    updateCustomerDataForApp
+
 }

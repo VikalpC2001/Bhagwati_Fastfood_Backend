@@ -28,6 +28,7 @@ router.get('/getCustomerList', protect, customerController.getCustomerList);
 router.get('/getCustomerDetailsById', protect, customerController.getCustomerDetailsById);
 router.post('/addMultipleCustomerData', customerController.addMultipleCustomerData);
 router.post('/addCustomerData', customerController.addCustomerData);
+router.delete('/removeCustomeData', customerController.removeCustomeData);
 router.post('/updateCustomerData', customerController.updateCustomerData);
 
 // Hotel Routs
@@ -86,6 +87,7 @@ router.get('/updateBillStatusById', protect, billingController.updateBillStatusB
 // Print Bill Data & Others
 router.get('/printBillInAdminSystem', protect, billingController.printBillInAdminSystem);
 router.get('/makeMeAdmin', protect, billingController.makeMeAdmin);
+router.get('/getAdminServerId', protect, billingController.getAdminServerId);
 
 // Online Billing Routs
 
@@ -152,11 +154,12 @@ router.get('/exportPdfForDueBillTransactionData', protect, accountConntroller.ex
 
 const upiConntroller = require("../../controller/billingController/upi.controller.js");
 
-router.get('/getCustomerAccountList', protect, upiConntroller.getUPIList);
-router.post('/addCustomerAccount', protect, upiConntroller.addUPI);
-router.delete('/removeCustomerAccount', protect, upiConntroller.removeUPI);
-router.post('/updateCustomerAccount', protect, upiConntroller.updateUPI);
+router.get('/getUPIList', protect, upiConntroller.getUPIList);
+router.post('/addUPI', protect, upiConntroller.addUPI);
+router.delete('/removeUPI', protect, upiConntroller.removeUPI);
+router.post('/updateUPI', protect, upiConntroller.updateUPI);
 router.get('/ddlUPI', protect, upiConntroller.ddlUPI);
+router.get('/getUPITransactionById', protect, upiConntroller.getUPITransactionById);
 
 // Dine In Routs
 
@@ -174,6 +177,7 @@ router.post('/sattledBillDataByID', protect, dineInController.sattledBillDataByI
 router.post('/cancelBillDataByID', protect, dineInController.cancelBillDataByID);
 router.get('/moveTable', protect, dineInController.moveTable);
 router.get('/isTableEmpty', protect, dineInController.isTableEmpty);
+router.get('/sattledCancelTokenTable', protect, dineInController.sattledCancelTokenTable);
 
 // Dash Board Statics Routs
 

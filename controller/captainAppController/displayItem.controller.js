@@ -77,6 +77,35 @@ const getItemDataForApp = (req, res) => {
     }
 }
 
+// Get Comment Data
+
+const getCommentForApp = async (req, res) => {
+    try {
+        var sql_queries_getCategoryTable = `SELECT
+                                                bcd.commentId,
+                                                bcd.comment
+                                            FROM
+                                                billing_comment_data AS bcd
+                                            ORDER BY bcd.comment`;
+
+        pool.query(sql_queries_getCategoryTable, (err, rows, fields) => {
+            if (err) {
+                console.error("An error occurred in SQL Queery", err);
+                return res.status(500).send('Database Error');;
+            } else {
+                const data = rows.map((e) => {
+                    return e.comment
+                })
+                return res.status(200).send(data);
+            }
+        });
+    } catch (error) {
+        console.error('An error occurred', error);
+        res.status(500).json('Internal Server Error');
+    }
+}
+
 module.exports = {
-    getItemDataForApp
+    getItemDataForApp,
+    getCommentForApp
 }

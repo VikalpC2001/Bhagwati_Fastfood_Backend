@@ -113,7 +113,7 @@ const getBusinessReportDashBoard = (req, res) => {
             const debitAmtSum = data[0].filter(item => item.businessType === 'DEBIT').reduce((sum, item) => sum + item.businessAmt, 0);
             const onlineAmtSum = data[0].filter(item => item.businessType === 'ONLINE').reduce((sum, item) => sum + item.businessAmt, 0);
             const dueAmtSum = data[0].filter(item => item.businessType === 'DUE').reduce((sum, item) => sum + item.businessAmt, 0);
-            console.log(cashAmtSum, debitAmtSum, onlineAmtSum, dueAmtSum);
+
             const combinedData = {
                 incomeSourceData: data[0],
                 expenseData: data[1],
@@ -206,7 +206,6 @@ const getBusinessReportDashBoardwithNetProfit = (req, res) => {
             const totalExpense = data[1].reduce((total, expense) => total + expense.expenseAmt, 0);
             const netProfit = cashAmtSum + debitAmtSum - totalExpense ? cashAmtSum + debitAmtSum - totalExpense : 0
 
-            console.log(cashAmtSum, debitAmtSum, onlineAmtSum, dueAmtSum);
             const combinedData = {
                 incomeSourceData: data[0],
                 expenseData: data[1],
@@ -667,7 +666,6 @@ const exportExcelForBusinessReport = async (req, res) => {
             try {
                 const data = await workbook.xlsx.writeBuffer()
                 var fileName = new Date().toString().slice(4, 15) + ".xlsx";
-                console.log(">>>", fileName);
                 res.contentType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
                 res.type = 'blob';
                 res.send(data)
@@ -1237,7 +1235,6 @@ const exportExcelForBusinessReportNet = async (req, res) => {
             try {
                 const data = await workbook.xlsx.writeBuffer()
                 var fileName = new Date().toString().slice(4, 15) + ".xlsx";
-                console.log(">>>", fileName);
                 res.contentType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
                 res.type = 'blob';
                 res.send(data)

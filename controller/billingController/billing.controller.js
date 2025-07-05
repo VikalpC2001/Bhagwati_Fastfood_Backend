@@ -282,7 +282,7 @@ const getLiveViewByCategoryId = (req, res) => {
                                         const itemAddons = addonsData.filter(addon => addon.iwbId === item.iwbId);
                                         return {
                                             ...item,
-                                            addons: itemAddons.map(({ iwbId, ...rest }) => rest),
+                                            addons: Object.fromEntries(itemAddons.map(addon => [addon.addOnsId, addon])),
                                             addonPrice: itemAddons.reduce((sum, { price }) => sum + price, 0)
                                         };
                                     });
@@ -582,7 +582,7 @@ const getBillDataByToken = (req, res) => {
                                                 const itemAddons = addonsData.filter(addon => addon.iwbId === item.iwbId);
                                                 return {
                                                     ...item,
-                                                    addons: itemAddons.map(({ iwbId, ...rest }) => rest),
+                                                    addons: Object.fromEntries(itemAddons.map(addon => [addon.addOnsId, addon])),
                                                     addonPrice: itemAddons.reduce((sum, { price }) => sum + price, 0)
                                                 };
                                             });
@@ -775,11 +775,10 @@ const getBillDataById = (req, res) => {
                                     const itemAddons = addonsData.filter(addon => addon.iwbId === item.iwbId);
                                     return {
                                         ...item,
-                                        addons: itemAddons.map(({ iwbId, ...rest }) => rest),
+                                        addons: Object.fromEntries(itemAddons.map(addon => [addon.addOnsId, addon])),
                                         addonPrice: itemAddons.reduce((sum, { price }) => sum + price, 0)
                                     };
                                 });
-
                                 const json = {
                                     ...billData[0][0],
                                     itemData: newItemJson,
@@ -937,10 +936,11 @@ const addHotelBillData = (req, res) => {
                                                                 addBillWiseItemData.push(`('${uniqueId}', '${billId}', '${item.itemId}', ${item.qty}, '${item.unit}', ${item.itemPrice}, ${item.price}, ${item.comment ? `'${item.comment}'` : null}, 'Hotel', '${billData.billPayType}', '${billData.billStatus}', STR_TO_DATE('${currentDate}','%b %d %Y'))`);
 
                                                                 // Construct SQL_Add_2 for the addons
-                                                                if (item.addons && item.addons.length) {
-                                                                    item.addons.forEach((addon, addonIndex) => {
+                                                                const allAddons = item.addons ? Object.keys(item.addons) : []
+                                                                if (allAddons && allAddons.length) {
+                                                                    allAddons.forEach((addonId, addonIndex) => {
                                                                         let iwaId = `iwa_${Date.now() + addonIndex + index}_${index}`; // Unique ID for each addon
-                                                                        addItemWiseAddonData.push(`('${iwaId}', '${uniqueId}', '${addon.addOnsId}')`);
+                                                                        addItemWiseAddonData.push(`('${iwaId}', '${uniqueId}', '${addonId}')`);
                                                                     });
                                                                 }
                                                             });
@@ -1140,16 +1140,15 @@ const addPickUpBillData = (req, res) => {
 
                                                         // Construct SQL_Add_1 for the main item
                                                         addBillWiseItemData.push(`('${uniqueId}', '${billId}', '${item.itemId}', ${item.qty}, '${item.unit}', ${item.itemPrice}, ${item.price}, ${item.comment ? `'${item.comment}'` : null}, 'Pick Up', '${billData.billPayType}', '${billData.billStatus}', STR_TO_DATE('${currentDate}','%b %d %Y'))`);
-
                                                         // Construct SQL_Add_2 for the addons
-                                                        if (item.addons && item.addons.length) {
-                                                            item.addons.forEach((addon, addonIndex) => {
+                                                        const allAddons = item.addons ? Object.keys(item.addons) : []
+                                                        if (allAddons && allAddons.length) {
+                                                            allAddons.forEach((addonId, addonIndex) => {
                                                                 let iwaId = `iwa_${Date.now() + addonIndex + index}_${index}`; // Unique ID for each addon
-                                                                addItemWiseAddonData.push(`('${iwaId}', '${uniqueId}', '${addon.addOnsId}')`);
+                                                                addItemWiseAddonData.push(`('${iwaId}', '${uniqueId}', '${addonId}')`);
                                                             });
                                                         }
                                                     });
-
                                                     let sql_query_addItems = `INSERT INTO billing_billWiseItem_data(iwbId, billId, itemId, qty, unit, itemPrice, price, comment, billType, billPayType, billStatus, billDate)
                                                                               VALUES ${addBillWiseItemData.join(", ")}`;
                                                     connection.query(sql_query_addItems, (err) => {
@@ -1773,14 +1772,14 @@ const addDeliveryBillData = (req, res) => {
                                                         addBillWiseItemData.push(`('${uniqueId}', '${billId}', '${item.itemId}', ${item.qty}, '${item.unit}', ${item.itemPrice}, ${item.price}, ${item.comment ? `'${item.comment}'` : null}, 'Delivery', '${billData.billPayType}', '${billData.billStatus}', STR_TO_DATE('${currentDate}','%b %d %Y'))`);
 
                                                         // Construct SQL_Add_2 for the addons
-                                                        if (item.addons && item.addons.length) {
-                                                            item.addons.forEach((addon, addonIndex) => {
+                                                        const allAddons = item.addons ? Object.keys(item.addons) : []
+                                                        if (allAddons && allAddons.length) {
+                                                            allAddons.forEach((addonId, addonIndex) => {
                                                                 let iwaId = `iwa_${Date.now() + addonIndex + index}_${index}`; // Unique ID for each addon
-                                                                addItemWiseAddonData.push(`('${iwaId}', '${uniqueId}', '${addon.addOnsId}')`);
+                                                                addItemWiseAddonData.push(`('${iwaId}', '${uniqueId}', '${addonId}')`);
                                                             });
                                                         }
                                                     });
-
                                                     let sql_query_addItems = `INSERT INTO billing_billWiseItem_data(iwbId, billId, itemId, qty, unit, itemPrice, price, comment, billType, billPayType, billStatus, billDate)
                                                                               VALUES ${addBillWiseItemData.join(", ")}`;
                                                     connection.query(sql_query_addItems, (err) => {
@@ -2359,10 +2358,11 @@ const updateHotelBillData = (req, res) => {
                                                                     addBillWiseItemData.push(`('${uniqueId}', '${billData.billId}', '${item.itemId}', ${item.qty}, '${item.unit}', ${item.itemPrice}, ${item.price}, ${item.comment ? `'${item.comment}'` : null}, 'Hotel', '${billData.billPayType}', '${billData.billStatus}', STR_TO_DATE('${currentDate}','%b %d %Y'))`);
 
                                                                     // Construct SQL_Add_2 for the addons
-                                                                    if (item.addons && item.addons.length) {
-                                                                        item.addons.forEach((addon, addonIndex) => {
+                                                                    const allAddons = item.addons ? Object.keys(item.addons) : []
+                                                                    if (allAddons && allAddons.length) {
+                                                                        allAddons.forEach((addonId, addonIndex) => {
                                                                             let iwaId = `iwa_${Date.now() + addonIndex + index}_${index}`; // Unique ID for each addon
-                                                                            addItemWiseAddonData.push(`('${iwaId}', '${uniqueId}', '${addon.addOnsId}')`);
+                                                                            addItemWiseAddonData.push(`('${iwaId}', '${uniqueId}', '${addonId}')`);
                                                                         });
                                                                     }
                                                                 });
@@ -2594,10 +2594,11 @@ const updatePickUpBillData = (req, res) => {
                                                                     addBillWiseItemData.push(`('${uniqueId}', '${billData.billId}', '${item.itemId}', ${item.qty}, '${item.unit}', ${item.itemPrice}, ${item.price}, ${item.comment ? `'${item.comment}'` : null}, 'Pick Up', '${billData.billPayType}', '${billData.billStatus}', STR_TO_DATE('${currentDate}','%b %d %Y'))`);
 
                                                                     // Construct SQL_Add_2 for the addons
-                                                                    if (item.addons && item.addons.length) {
-                                                                        item.addons.forEach((addon, addonIndex) => {
+                                                                    const allAddons = item.addons ? Object.keys(item.addons) : []
+                                                                    if (allAddons && allAddons.length) {
+                                                                        allAddons.forEach((addonId, addonIndex) => {
                                                                             let iwaId = `iwa_${Date.now() + addonIndex + index}_${index}`; // Unique ID for each addon
-                                                                            addItemWiseAddonData.push(`('${iwaId}', '${uniqueId}', '${addon.addOnsId}')`);
+                                                                            addItemWiseAddonData.push(`('${iwaId}', '${uniqueId}', '${addonId}')`);
                                                                         });
                                                                     }
                                                                 });
@@ -3270,10 +3271,11 @@ const updateDeliveryBillData = (req, res) => {
                                                                     addBillWiseItemData.push(`('${uniqueId}', '${billData.billId}', '${item.itemId}', ${item.qty}, '${item.unit}', ${item.itemPrice}, ${item.price}, ${item.comment ? `'${item.comment}'` : null}, 'Delivery', '${billData.billPayType}', '${billData.billStatus}', STR_TO_DATE('${currentDate}','%b %d %Y'))`);
 
                                                                     // Construct SQL_Add_2 for the addons
-                                                                    if (item.addons && item.addons.length) {
-                                                                        item.addons.forEach((addon, addonIndex) => {
+                                                                    const allAddons = item.addons ? Object.keys(item.addons) : []
+                                                                    if (allAddons && allAddons.length) {
+                                                                        allAddons.forEach((addonId, addonIndex) => {
                                                                             let iwaId = `iwa_${Date.now() + addonIndex + index}_${index}`; // Unique ID for each addon
-                                                                            addItemWiseAddonData.push(`('${iwaId}', '${uniqueId}', '${addon.addOnsId}')`);
+                                                                            addItemWiseAddonData.push(`('${iwaId}', '${uniqueId}', '${addonId}')`);
                                                                         });
                                                                     }
                                                                 });
@@ -3793,58 +3795,82 @@ const updateBillStatusById = (req, res) => {
 // Make me as a Admin
 
 const makeMeAdmin = (req, res) => {
-    let token;
-    token = req.headers ? req.headers.authorization.split(" ")[1] : null;
-    if (token) {
-        const decoded = jwt.verify(token, process.env.JWT_SECRET);
-        const userId = decoded.id.id;
-        const cashier = decoded.id.firstName;
-        const userRights = decoded.id.rights;
-        const macAddress = req.query.macAddress;
-        const adminPassword = req.query.adminPassword;
-        console.log(userId, cashier, userRights)
-        const uid1 = new Date();
-        const adminId = String("admin_" + uid1.getTime());
-        if (userRights == 1) {
-            if (!macAddress || !adminPassword) {
-                return res.status(404).send('Please Fill All The Fields....!')
-            } else {
-                const sql_querry_authuser = `SELECT * FROM user_details WHERE userId = '${userId}'`;
-                pool.query(sql_querry_authuser, (err, data) => {
-                    console.log(data)
-                    if (err) {
-                        console.error("An error occurred in SQL Queery", err);
-                        return res.status(500).send('Database Error');
-                    } else if (data[0] && data[0].password == adminPassword) {
+    try {
+        let token;
+        token = req.headers ? req.headers.authorization.split(" ")[1] : null;
+        if (token) {
+            const decoded = jwt.verify(token, process.env.JWT_SECRET);
+            const userId = decoded.id.id;
+            const cashier = decoded.id.firstName;
+            const userRights = decoded.id.rights;
+            const macAddress = req.query.macAddress;
+            const adminPassword = req.query.adminPassword;
+            console.log(userId, cashier, userRights)
+            const uid1 = new Date();
+            const adminId = String("admin_" + uid1.getTime());
+            if (userRights == 1) {
+                if (!macAddress || !adminPassword) {
+                    return res.status(404).send('Please Fill All The Fields....!')
+                } else {
+                    const sql_querry_authuser = `SELECT * FROM user_details WHERE userId = '${userId}'`;
+                    pool.query(sql_querry_authuser, (err, data) => {
                         console.log(data)
-                        const sql_query_removeOldAdmin = `TRUNCATE TABLE billing_admin_data`;
-                        pool.query(sql_query_removeOldAdmin, (err, data) => {
-                            if (err) {
-                                console.error("An error occurred in SQL Queery", err);
-                                return res.status(500).send('Database Error');
-                            } else {
-                                const sql_query_makeAdmin = `INSERT INTO billing_admin_data(adminId, adminMacAddress, adminBy)
-                                                             VALUES('${adminId}', '${macAddress}', '${cashier}')`;
-                                pool.query(sql_query_makeAdmin, (err, data) => {
-                                    if (err) {
-                                        console.error("An error occurred in SQL Queery", err);
-                                        return res.status(500).send('Database Error');
-                                    } else {
-                                        return res.status(200).send("Set Admin Succeess");
-                                    }
-                                })
-                            }
-                        })
-                    } else {
-                        return res.status(400).send("Invalid Password");
-                    }
-                })
+                        if (err) {
+                            console.error("An error occurred in SQL Queery", err);
+                            return res.status(500).send('Database Error');
+                        } else if (data[0] && data[0].password == adminPassword) {
+                            console.log(data)
+                            const sql_query_removeOldAdmin = `TRUNCATE TABLE billing_admin_data`;
+                            pool.query(sql_query_removeOldAdmin, (err, data) => {
+                                if (err) {
+                                    console.error("An error occurred in SQL Queery", err);
+                                    return res.status(500).send('Database Error');
+                                } else {
+                                    const sql_query_makeAdmin = `INSERT INTO billing_admin_data(adminId, adminMacAddress, adminBy)
+                                                                 VALUES('${adminId}', '${macAddress}', '${cashier}')`;
+                                    pool.query(sql_query_makeAdmin, (err, data) => {
+                                        if (err) {
+                                            console.error("An error occurred in SQL Queery", err);
+                                            return res.status(500).send('Database Error');
+                                        } else {
+                                            return res.status(200).send("Set Admin Succeess");
+                                        }
+                                    })
+                                }
+                            })
+                        } else {
+                            return res.status(400).send("Invalid Password");
+                        }
+                    })
+                }
+            } else {
+                return res.status(400).send('Only Owner Can Make Admin');
             }
         } else {
-            return res.status(400).send('Only Owner Can Make Admin');
+            return res.status(404).send('Please Login First....!');
         }
-    } else {
-        return res.status(404).send('Please Login First....!');
+    } catch (error) {
+        console.error('An error occurred', error);
+        res.status(500).json('Internal Server Error');
+    }
+}
+
+// Get Admin Server ID
+
+const getAdminServerId = (req, res) => {
+    try {
+        let sql_query_getAdminId = `SELECT adminId, adminMacAddress, adminBy FROM billing_admin_data`;
+        pool.query(sql_query_getAdminId, (err, data) => {
+            if (err) {
+                console.error("An error occurred in SQL Queery", err);
+                return res.status(500).send('Database Error');
+            } else {
+                return res.status(200).send(data[0]);
+            }
+        })
+    } catch (error) {
+        console.error('An error occurred', error);
+        res.status(500).json('Internal Server Error');
     }
 }
 
@@ -4007,5 +4033,6 @@ module.exports = {
 
     // Print Bill Data & Others
     printBillInAdminSystem,
-    makeMeAdmin
+    makeMeAdmin,
+    getAdminServerId
 }

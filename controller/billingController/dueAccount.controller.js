@@ -297,8 +297,8 @@ const getDueStaticsById = (req, res) => {
                                       SELECT COALESCE(ROUND(SUM(paidAmount)),0) AS totalPaidAmount FROM due_transaction_data WHERE accountId = '${data.accountId}' AND transactionDate BETWEEN STR_TO_DATE('${data.startDate}', '%b %d %Y') AND STR_TO_DATE('${data.endDate}', '%b %d %Y');
                                       ${sql_querry_remainAmount}`;
         } else {
-            sql_querry_getDueCount = `SELECT COALESCE(ROUND(SUM(billAmount)),0) AS totalDueAmt FROM due_billAmount_data WHERE accountId = '${data.accountId}' AND dueDate BETWEEN STR_TO_DATE('${firstDay}', '%b %d %Y') AND STR_TO_DATE('${lastDay}', '%b %d %Y');
-                                      SELECT COALESCE(ROUND(SUM(paidAmount)),0) AS totalPaidAmount FROM due_transaction_data WHERE accountId = '${data.accountId}' AND transactionDate BETWEEN STR_TO_DATE('${firstDay}', '%b %d %Y') AND STR_TO_DATE('${lastDay}', '%b %d %Y');
+            sql_querry_getDueCount = `SELECT COALESCE(ROUND(SUM(billAmount)),0) AS totalDueAmt FROM due_billAmount_data WHERE accountId = '${data.accountId}';
+                                      SELECT COALESCE(ROUND(SUM(paidAmount)),0) AS totalPaidAmount FROM due_transaction_data WHERE accountId = '${data.accountId}';
                                       ${sql_querry_remainAmount}`;
         }
         pool.query(sql_querry_getDueCount, (err, data) => {
@@ -534,7 +534,7 @@ const getDueBillDataById = (req, res) => {
         if (data.startDate && data.endDate) {
             sql_querry_getCountDetails = `SELECT count(*) as numRows FROM due_billAmount_data WHERE accountId = '${data.accountId}' AND dueDate BETWEEN STR_TO_DATE('${data.startDate}', '%b %d %Y') AND STR_TO_DATE('${data.endDate}', '%b %d %Y')`;
         } else {
-            sql_querry_getCountDetails = `SELECT count(*) as numRows FROM due_billAmount_data WHERE accountId = '${data.accountId}' AND dueDate BETWEEN STR_TO_DATE('${firstDay}', '%b %d %Y') AND STR_TO_DATE('${lastDay}', '%b %d %Y')`;
+            sql_querry_getCountDetails = `SELECT count(*) as numRows FROM due_billAmount_data WHERE accountId = '${data.accountId}'`;
         }
         pool.query(sql_querry_getCountDetails, (err, rows, fields) => {
             if (err) {
@@ -553,7 +553,6 @@ const getDueBillDataById = (req, res) => {
                 } else {
                     sql_query_getDetails = `${sql_query_staticQuery}
                                             WHERE accountId = '${data.accountId}' 
-                                            AND dueDate BETWEEN STR_TO_DATE('${firstDay}', '%b %d %Y') AND STR_TO_DATE('${lastDay}', '%b %d %Y')
                                             ORDER BY due_billAmount_data.dueDate DESC, due_billAmount_data.creationDate DESC
                                             LIMIT ${limit}`;
                 }
@@ -604,7 +603,7 @@ const getDueDebitTransactionListById = (req, res) => {
         } if (data.searchInvoiceNumber) {
             sql_querry_getCountDetails = `SELECT count(*) as numRows FROM due_transaction_data WHERE accountId = '${data.accountId}' AND transactionId LIKE '%` + data.searchInvoiceNumber + `%'`;
         } else {
-            sql_querry_getCountDetails = `SELECT count(*) as numRows FROM due_transaction_data WHERE accountId = '${data.accountId}' AND transactionDate BETWEEN STR_TO_DATE('${firstDay}', '%b %d %Y') AND STR_TO_DATE('${lastDay}', '%b %d %Y')`;
+            sql_querry_getCountDetails = `SELECT count(*) as numRows FROM due_transaction_data WHERE accountId = '${data.accountId}'`;
         }
         pool.query(sql_querry_getCountDetails, (err, rows, fields) => {
             if (err) {
@@ -628,8 +627,7 @@ const getDueDebitTransactionListById = (req, res) => {
                                             LIMIT ${limit}`;
                 } else {
                     sql_query_getDetails = `${sql_query_staticQuery}
-                                            WHERE accountId = '${data.accountId}' 
-                                            AND transactionDate BETWEEN STR_TO_DATE('${firstDay}', '%b %d %Y') AND STR_TO_DATE('${lastDay}', '%b %d %Y')
+                                            WHERE accountId = '${data.accountId}'
                                             ORDER BY due_transaction_data.transactionDate DESC, due_transaction_data.creationDate DESC
                                             LIMIT ${limit}`;
                 }

@@ -253,10 +253,71 @@ const ddlUPI = (req, res) => {
     }
 }
 
+// Get UPI Transaction By ID
+
+const getUPITransactionById = (req, res) => {
+    try {
+        const page = req.query.page;
+        const numPerPage = req.query.numPerPage;
+        const skip = (page - 1) * numPerPage;
+        const limit = skip + ',' + numPerPage;
+        const upiId = req.query.upiId;
+        const startDate = (req.query.startDate ? req.query.startDate : '').slice(4, 15);
+        const endDate = (req.query.endDate ? req.query.endDate : '').slice(4, 15);
+        const currentDate = getCurrentDate();
+        if (!upiId) {
+            return res.status(404).send("Please Fill All The Fields...!");
+        } else {
+            let sql_querry_getCountDetails = `SELECT SUM(amount) as totalAmount, count(*) as numRows FROM billing_billWiseUpi_data 
+                                              WHERE onlineId = '${upiId}' AND onlineDate BETWEEN STR_TO_DATE('${startDate ? startDate : currentDate}','%b %d %Y') AND STR_TO_DATE('${endDate ? endDate : currentDate}','%b %d %Y')`;
+            pool.query(sql_querry_getCountDetails, (err, rows, fields) => {
+                if (err) {
+                    console.error("An error occurred in SQL Queery", err);
+                    return res.status(500).send('Database Error');
+                } else {
+                    const numRows = rows[0].numRows;
+                    const totalAmount = rows[0].totalAmount ? rows[0].totalAmount : 0;
+                    const numPages = Math.ceil(numRows / numPerPage);
+                    const sql_query_getDetails = `SELECT
+                                                      bwu.bwuId AS transactionId,
+                                                      bwu.onlineId AS onlineId,
+                                                      bwu.billId AS billId,
+                                                      bwu.amount AS amount,
+                                                      bd.billType AS billType,
+                                                      DATE_FORMAT(bwu.onlineDate, '%d-%m-%Y') AS onlineDate
+                                                  FROM
+                                                      billing_billWiseUpi_data AS bwu
+                                                  LEFT JOIN billing_data AS bd ON bd.billId = bwu.billId
+                                                  WHERE bwu.onlineId = '${upiId}'
+                                                  AND bwu.onlineDate BETWEEN STR_TO_DATE('${startDate ? startDate : currentDate}','%b %d %Y') AND STR_TO_DATE('${endDate ? endDate : currentDate}','%b %d %Y')
+                                                  ORDER BY bwu.onlineDate DESC
+                                                  LIMIT ${limit}`;
+                    pool.query(sql_query_getDetails, (err, rows, fields) => {
+                        if (err) {
+                            console.error("An error occurred in SQL Queery", err);
+                            return res.status(500).send('Database Error');;
+                        } else {
+                            if (numRows === 0) {
+                                return res.status(200).send({ rows, numRows, totalAmount });
+                            } else {
+                                return res.status(200).send({ rows, numRows, totalAmount });
+                            }
+                        }
+                    });
+                }
+            })
+        }
+    } catch (error) {
+        console.error('An error occurred', error);
+        res.status(500).json('Internal Server Error');
+    }
+}
+
 module.exports = {
     getUPIList,
     addUPI,
     removeUPI,
     updateUPI,
-    ddlUPI
+    ddlUPI,
+    getUPITransactionById
 }

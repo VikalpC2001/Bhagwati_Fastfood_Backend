@@ -287,8 +287,7 @@ const exportExcelForIncomeData = (req, res) => {
             { key: "creditAmt", width: 30 }
         ]
         //Looping through User data
-        const arr = rows
-        console.log(">>>", arr);
+        const arr = rows;
         let counter = 1;
         arr.forEach((user) => {
             user.s_no = counter;
@@ -327,7 +326,6 @@ const exportExcelForIncomeData = (req, res) => {
         try {
             const data = await workbook.xlsx.writeBuffer()
             var fileName = new Date().toString().slice(4, 15) + ".xlsx";
-            console.log(">>>", fileName);
             res.contentType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
             res.type = 'blob';
             res.send(data)

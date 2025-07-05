@@ -179,7 +179,7 @@ const getHoldBillDataById = (req, res) => {
                                     const itemAddons = addonsData.filter(addon => addon.iwbId === item.iwbId);
                                     return {
                                         ...item,
-                                        addons: itemAddons.map(({ iwbId, ...rest }) => rest),
+                                        addons: Object.fromEntries(itemAddons.map(addon => [addon.addOnsId, addon])),
                                         addonPrice: itemAddons.reduce((sum, { price }) => sum + price, 0)
                                     };
                                 });
@@ -321,10 +321,11 @@ const addHotelHoldBillData = (req, res) => {
                                                 addBillWiseItemData.push(`('${uniqueId}', '${holdId}', '${item.itemId}', ${item.qty}, '${item.unit}', ${item.itemPrice}, ${item.price}, ${item.comment ? `'${item.comment}'` : null})`);
 
                                                 // Construct SQL_Add_2 for the addons
-                                                if (item.addons && item.addons.length) {
-                                                    item.addons.forEach((addon, addonIndex) => {
+                                                const allAddons = item.addons ? Object.keys(item.addons) : []
+                                                if (allAddons && allAddons.length) {
+                                                    allAddons.forEach((addonId, addonIndex) => {
                                                         let iwaId = `iwa_${Date.now() + addonIndex + index}_${index}`; // Unique ID for each addon
-                                                        addItemWiseAddonData.push(`('${iwaId}', '${uniqueId}', '${addon.addOnsId}')`);
+                                                        addItemWiseAddonData.push(`('${iwaId}', '${uniqueId}', '${addonId}')`);
                                                     });
                                                 }
                                             });
@@ -476,10 +477,11 @@ const addPickUpHoldBillData = (req, res) => {
                                         addBillWiseItemData.push(`('${uniqueId}', '${holdId}', '${item.itemId}', ${item.qty}, '${item.unit}', ${item.itemPrice}, ${item.price}, ${item.comment ? `'${item.comment}'` : null})`);
 
                                         // Construct SQL_Add_2 for the addons
-                                        if (item.addons && item.addons && item.addons.length) {
-                                            item.addons.forEach((addon, addonIndex) => {
+                                        const allAddons = item.addons ? Object.keys(item.addons) : []
+                                        if (allAddons && allAddons.length) {
+                                            allAddons.forEach((addonId, addonIndex) => {
                                                 let iwaId = `iwa_${Date.now() + addonIndex + index}_${index}`; // Unique ID for each addon
-                                                addItemWiseAddonData.push(`('${iwaId}', '${uniqueId}', '${addon.addOnsId}')`);
+                                                addItemWiseAddonData.push(`('${iwaId}', '${uniqueId}', '${addonId}')`);
                                             });
                                         }
                                     });
@@ -1021,10 +1023,11 @@ const addDeliveryHoldBillData = (req, res) => {
                                         addBillWiseItemData.push(`('${uniqueId}', '${holdId}', '${item.itemId}', ${item.qty}, '${item.unit}', ${item.itemPrice}, ${item.price}, ${item.comment ? `'${item.comment}'` : null})`);
 
                                         // Construct SQL_Add_2 for the addons
-                                        if (item.addons && item.addons.length) {
-                                            item.addons.forEach((addon, addonIndex) => {
+                                        const allAddons = item.addons ? Object.keys(item.addons) : []
+                                        if (allAddons && allAddons.length) {
+                                            allAddons.forEach((addonId, addonIndex) => {
                                                 let iwaId = `iwa_${Date.now() + addonIndex + index}_${index}`; // Unique ID for each addon
-                                                addItemWiseAddonData.push(`('${iwaId}', '${uniqueId}', '${addon.addOnsId}')`);
+                                                addItemWiseAddonData.push(`('${iwaId}', '${uniqueId}', '${addonId}')`);
                                             });
                                         }
                                     });

@@ -601,7 +601,7 @@ const getItemSalesReport = (req, res) => {
     }
 }
 
-// Get Item Sell Report
+// Export Item Sell Report
 
 const exportPdfForItemSalesReport = (req, res) => {
     try {

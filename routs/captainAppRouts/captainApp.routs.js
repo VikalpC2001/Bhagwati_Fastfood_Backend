@@ -13,11 +13,13 @@ router.delete('/removeSubTokenDataByIdForApp', protect, appController.removeSubT
 router.get('/isTableEmpty', protect, appController.isTableEmpty);
 router.get('/printTableBillForApp', protect, appController.printTableBillForApp);
 router.get('/findServerIpByApp', appController.findServerIpByApp);
+router.get('/getSubTokenDataByIdForApp', protect, appController.getSubTokenDataByIdForApp);
 
 // Item App Routs
 
 const appItemController = require("../../controller/captainAppController/displayItem.controller.js");
 
 router.get('/getItemDataForApp', protect, appItemController.getItemDataForApp);
+router.get('/getCommentForApp', protect, appItemController.getCommentForApp);
 
 module.exports = router;

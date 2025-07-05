@@ -394,8 +394,7 @@ const exportExcelForMainCategoryData = (req, res) => {
                 { key: "categoryPercentage", width: 30 }
             ]
             //Looping through User data
-            const arr = rows
-            console.log(">>>", arr);
+            const arr = rows;
             let counter = 1;
             arr.forEach((user) => {
                 user.s_no = counter;
@@ -434,7 +433,6 @@ const exportExcelForMainCategoryData = (req, res) => {
             try {
                 const data = await workbook.xlsx.writeBuffer()
                 var fileName = new Date().toString().slice(4, 15) + ".xlsx";
-                console.log(">>>", fileName);
                 res.contentType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
                 res.type = 'blob';
                 res.send(data)

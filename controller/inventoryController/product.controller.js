@@ -1445,8 +1445,7 @@ const exportExcelSheetForProductTable = (req, res) => {
             { key: "lastUpdatedStockInDate", width: 15 }
         ];
         //Looping through User data
-        const arr = rows[0]
-        console.log(">>>", arr);
+        const arr = rows[0];
         let counter = 1;
         arr.forEach((user, index) => {
             user.s_no = counter;
@@ -1538,8 +1537,7 @@ const exportExcelSheetForProductTable = (req, res) => {
             { key: "lastUpdatedStockInDate", width: 15 }
         ];
         //Looping through User data
-        const arrstockIn = rows[1]
-        console.log(">>>", arr);
+        const arrstockIn = rows[1];
         let inStockcounter = 1;
         arrstockIn.forEach((user, index) => {
             user.s_no = inStockcounter;
@@ -1631,8 +1629,7 @@ const exportExcelSheetForProductTable = (req, res) => {
             { key: "lastUpdatedStockInDate", width: 15 }
         ];
         //Looping through User data
-        const arrstockLow = rows[2]
-        console.log(">>>", arr);
+        const arrstockLow = rows[2];
         let lowStockcounter = 1;
         arrstockLow.forEach((user, index) => {
             if (Object.values(user).some((value) => value !== null && value !== "")) {
@@ -1726,8 +1723,7 @@ const exportExcelSheetForProductTable = (req, res) => {
             { key: "lastUpdatedStockInDate", width: 15 }
         ];
         //Looping through User data
-        const arrstockOut = rows[3]
-        console.log(">>>", arr);
+        const arrstockOut = rows[3];
         let outStockcounter = 1;
         arrstockOut.forEach((user, index) => {
             user.s_no = outStockcounter;
@@ -1792,7 +1788,6 @@ const exportExcelSheetForProductTable = (req, res) => {
         try {
             const data = await workbook.xlsx.writeBuffer()
             var fileName = new Date().toString().slice(4, 15) + ".xlsx";
-            console.log(">>>", fileName);
             // res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
             // res.addHeader(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename="+ fileName)
             res.contentType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")

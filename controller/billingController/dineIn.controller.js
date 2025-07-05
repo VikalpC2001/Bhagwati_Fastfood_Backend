@@ -65,7 +65,7 @@ const getAllTableView = (req, res) => {
                                     billing_DineInTable_data AS dt
                                 LEFT JOIN billing_data AS bd on bd.billId = dt.billId
                                 LEFT JOIN billing_billWiseTableNo_data AS bwt ON bwt.billId = dt.billId
-                                ORDER BY dt.isFixed DESC, LPAD(dt.tableNo, 10, '0') ASC`;
+                                ORDER BY CAST(dt.tableNo AS UNSIGNED), dt.tableNo`;
         pool.query(sql_query_getDetails, (err, data) => {
             if (err) {
                 console.error("An error occurred in SQL Queery", err);
@@ -93,9 +93,9 @@ const getSubTokensByBillId = async (req, res) => {
                                               bst.tokenComment AS tokenComment,
                                               bwtn.assignCaptain AS captain,
                                               DATE_FORMAT(bst.subTokenDate, '%d/%m/%Y') AS subTokenDate,
-                                              DATE_FORMAT(bst.creationDate, '%h:%i %p') AS creatTime,
+                                              DATE_FORMAT(bst.creationDate, '%h:%i %p') AS createTime,
                                               bst.subTokenNumber AS subTokenNumber,
-                                              bst.tokenStaus AS tokenStaus,
+                                              bst.tokenStatus AS tokenStatus,
                                               iwst.iwbId AS iwbId,
                                               iwst.itemStatus AS kotItemStatus,
                                               COALESCE(bwi.itemId, bmk.itemId) AS itemId,
@@ -152,9 +152,9 @@ const getSubTokensByBillId = async (req, res) => {
                                 subTokenId: item.subTokenId,
                                 captain: item.captain,
                                 subTokenNumber: item.subTokenNumber,
-                                tokenStaus: item.tokenStaus,
+                                tokenStatus: item.tokenStatus,
                                 subTokenDate: item.subTokenDate,
-                                creatTime: item.creatTime,
+                                createTime: item.createTime,
                                 tokenComment: item.tokenComment,
                                 totalPrice: shouldIncludeInTotal ? item.price : 0, // Initialize totalPrice only if not cancelled
                                 items: [{
@@ -264,7 +264,7 @@ const addDineInOrder = (req, res) => {
                                                             return res.status(500).send('Database Error');
                                                         });
                                                     } else {
-                                                        let sql_query_addTokenNo = `INSERT INTO billing_subToken_data(subTokenId, captain, billId, subTokenNumber, tokenComment, subTokenDate, tokenStaus)
+                                                        let sql_query_addTokenNo = `INSERT INTO billing_subToken_data(subTokenId, captain, billId, subTokenNumber, tokenComment, subTokenDate, tokenStatus)
                                                                                     VALUES ('${subTokenId}', '${cashier}', '${existBillId}', ${nextSubTokenNo}, ${billData.billComment ? `'${billData.billComment}'` : null}, STR_TO_DATE('${currentDate}','%b %d %Y'), 'print');`;
                                                         connection.query(sql_query_addTokenNo, (err) => {
                                                             if (err) {
@@ -315,7 +315,7 @@ const addDineInOrder = (req, res) => {
                                                                                     } else {
                                                                                         const sendJson = {
                                                                                             ...billData,
-                                                                                            captain: billData.assignCaptain ? billData.assignCaptain : cashier,
+                                                                                            assignCaptain: billData.assignCaptain ? billData.assignCaptain : cashier,
                                                                                             tokenNo: nextSubTokenNo ? nextSubTokenNo : 0,
                                                                                             billDate: new Date(currentDate).toLocaleDateString('en-GB'),
                                                                                             billTime: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
@@ -438,8 +438,8 @@ const addDineInOrder = (req, res) => {
                                                                                 } else {
                                                                                     let sql_query_addTokenNo = `INSERT INTO billing_token_data(tokenId, billId, tokenNo, billType, billDate)
                                                                                                                 VALUES ('${tokenId}', '${billId}', ${nextTokenNo}, 'Dine In', STR_TO_DATE('${currentDate}','%b %d %Y'));
-                                                                                                                INSERT INTO billing_subToken_data(subTokenId, captain, billId, subTokenNumber, tokenComment, subTokenDate, tokenStaus)
-                                                                                                                VALUES ('${subTokenId}', '${cashier}', '${billId}', ${nextSubTokenNo}, ${billData.billComment ? `'${billData.billComment}'` : null}, STR_TO_DATE('${currentDate}','%b %d %Y'), 'running');`;
+                                                                                                                INSERT INTO billing_subToken_data(subTokenId, captain, billId, subTokenNumber, tokenComment, subTokenDate, tokenStatus)
+                                                                                                                VALUES ('${subTokenId}', '${cashier}', '${billId}', ${nextSubTokenNo}, ${billData.billComment ? `'${billData.billComment}'` : null}, STR_TO_DATE('${currentDate}','%b %d %Y'), 'print');`;
                                                                                     connection.query(sql_query_addTokenNo, (err) => {
                                                                                         if (err) {
                                                                                             console.error("Error inserting new Token & Sub Token number:", err);
@@ -499,7 +499,7 @@ const addDineInOrder = (req, res) => {
                                                                                                                         } else {
                                                                                                                             const sendJson = {
                                                                                                                                 ...billData,
-                                                                                                                                captain: billData.assignCaptain ? billData.assignCaptain : cashier,
+                                                                                                                                assignCaptain: billData.assignCaptain ? billData.assignCaptain : cashier,
                                                                                                                                 tokenNo: nextSubTokenNo ? nextSubTokenNo : 0,
                                                                                                                                 billDate: new Date(currentDate).toLocaleDateString('en-GB'),
                                                                                                                                 billTime: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
@@ -621,7 +621,7 @@ const removeSubTokenDataById = (req, res) => {
                                                         let sql_query_removeSubToken = `INSERT INTO billing_modifiedKot_data(modifiedId, iwbId, itemId, qty, unit, itemPrice, price, comment)
                                                                                         SELECT ${modifiedId}, iwbId, itemId, qty, unit, itemPrice, price, comment FROM billing_billWiseItem_data WHERE iwbId IN (SELECT COALESCE(billing_itemWiseSubToken_data.iwbId,NULL) FROM billing_itemWiseSubToken_data WHERE billing_itemWiseSubToken_data.subTokenId = '${subTokenId}');
                                                                                         UPDATE billing_itemWiseSubToken_data SET itemStatus = 'cancelled' WHERE billing_itemWiseSubToken_data.subTokenId = '${subTokenId}';
-                                                                                        UPDATE billing_subToken_data SET tokenStaus = 'cancelled', captain = '${cashier}' WHERE subTokenId = '${subTokenId}';
+                                                                                        UPDATE billing_subToken_data SET tokenStatus = 'cancelled', captain = '${cashier}' WHERE subTokenId = '${subTokenId}';
                                                                                         DELETE FROM billing_billWiseItem_data WHERE iwbId IN (SELECT COALESCE(billing_itemWiseSubToken_data.iwbId,NULL) FROM billing_itemWiseSubToken_data WHERE billing_itemWiseSubToken_data.subTokenId = '${subTokenId}')`;
                                                         connection.query(sql_query_removeSubToken, (err) => {
                                                             if (err) {
@@ -631,7 +631,7 @@ const removeSubTokenDataById = (req, res) => {
                                                                     return res.status(500).send('Database Error');
                                                                 });
                                                             } else {
-                                                                let sql_query_chkExistToken = `SELECT subTokenId, billId FROM billing_subToken_data WHERE billId = '${billId}' AND tokenStaus = 'print'`;
+                                                                let sql_query_chkExistToken = `SELECT subTokenId, billId FROM billing_subToken_data WHERE billId = '${billId}' AND tokenStatus = 'print'`;
                                                                 connection.query(sql_query_chkExistToken, (err, chkTkn) => {
                                                                     if (err) {
                                                                         console.error("Error Delete Sub Token Item Data:", err);
@@ -676,6 +676,7 @@ const removeSubTokenDataById = (req, res) => {
                                                                                             });
                                                                                         } else {
                                                                                             if (billInfo && billInfo.length) {
+                                                                                                console.log('222');
                                                                                                 let sql_querry_removeBillData = `DELETE FROM billing_data WHERE billId = '${billId}'`;
                                                                                                 connection.query(sql_querry_removeBillData, (err) => {
                                                                                                     if (err) {
@@ -990,7 +991,7 @@ const updateSubTokenDataById = (req, res) => {
                                                                                 const sendJson = {
                                                                                     ...billData,
                                                                                     itemsData: newItemsData,
-                                                                                    captain: billData.assignCaptain ? billData.assignCaptain : cashier,
+                                                                                    assignCaptain: billData.assignCaptain ? billData.assignCaptain : cashier,
                                                                                     billDate: new Date(currentDate).toLocaleDateString('en-GB'),
                                                                                     billTime: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
                                                                                 }
@@ -2360,6 +2361,93 @@ const isTableEmpty = (req, res) => {
     }
 }
 
+// Sattled Cancel Token Table
+
+const sattledCancelTokenTable = (req, res) => {
+    pool2.getConnection((err, connection) => {
+        if (err) {
+            console.error("Error getting database connection:", err);
+            return res.status(500).send('Database Error');
+        }
+        try {
+            connection.beginTransaction((err) => {
+                if (err) {
+                    console.error("Error beginning transaction:", err);
+                    connection.release();
+                    return res.status(500).send('Database Error');
+                } else {
+                    const billId = req.query.billId;
+                    let sql_query_chkIsFixed = `SELECT tableNo, isFixed FROM billing_DineInTable_data WHERE tableNo = (SELECT tableNo FROM billing_billWiseTableNo_data WHERE billId = '${billId}') AND billId = '${billId}'`;
+                    connection.query(sql_query_chkIsFixed, (err, chkExist) => {
+                        if (err) {
+                            console.error("Error check table is fixed or not:", err);
+                            connection.rollback(() => {
+                                connection.release();
+                                return res.status(500).send('Database Error');
+                            });
+                        } else {
+                            const isTableFixed = chkExist && chkExist.length ? chkExist[0].isFixed : true;
+                            const tableNo = chkExist && chkExist.length ? chkExist[0].tableNo : true;
+                            let sql_query_getBillInfo = `SELECT bd.billId AS billId FROM billing_data AS bd WHERE bd.billId = '${billId}' AND bd.billType = 'Dine In'`;
+                            connection.query(sql_query_getBillInfo, (err, billInfo) => {
+                                if (err) {
+                                    console.error("Error get billInfo :", err);
+                                    connection.rollback(() => {
+                                        connection.release();
+                                        return res.status(500).send('Database Error');
+                                    });
+                                } else {
+                                    if (billInfo && billInfo.length) {
+                                        let sql_query_sattledData = isTableFixed == true
+                                            ?
+                                            `UPDATE billing_DineInTable_data SET billId = null WHERE tableNo = '${tableNo}' AND billId = '${billId}';`
+                                            :
+                                            `DELETE FROM billing_DineInTable_data WHERE billId = '${billId}' AND tableNo = '${tableNo}';`;
+                                        connection.query(sql_query_sattledData, (err) => {
+                                            if (err) {
+                                                console.error("Error in sattled Data:", err);
+                                                connection.rollback(() => {
+                                                    connection.release();
+                                                    return res.status(500).send('Database Error');
+                                                });
+                                            } else {
+                                                connection.commit((err) => {
+                                                    if (err) {
+                                                        console.error("Error committing transaction:", err);
+                                                        connection.rollback(() => {
+                                                            connection.release();
+                                                            return res.status(500).send('Database Error');
+                                                        });
+                                                    } else {
+                                                        connection.release();
+                                                        req?.io?.emit('updateTableView');
+                                                        return res.status(200).send('Table Bill Cancel Success');
+                                                    }
+                                                });
+                                            }
+                                        });
+                                    } else {
+                                        connection.rollback(() => {
+                                            connection.release();
+                                            return res.status(404).send('billId Not Found...!');
+                                        })
+                                    }
+                                }
+                            })
+                        }
+                    })
+                }
+            })
+        } catch (error) {
+            console.error('An error occurred', error);
+            connection.rollback(() => {
+                connection.release();
+                return res.status(500).json('Internal Server Error');
+            })
+        }
+    })
+}
+
 module.exports = {
     getSubTokensByBillId,
     addDineInOrder,
@@ -2372,5 +2460,6 @@ module.exports = {
     sattledBillDataByID,
     moveTable,
     cancelBillDataByID,
-    isTableEmpty
+    isTableEmpty,
+    sattledCancelTokenTable
 }

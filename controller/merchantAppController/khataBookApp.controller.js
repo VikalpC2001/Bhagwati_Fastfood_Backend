@@ -408,7 +408,7 @@ const getCustomerTransactionData = (req, res) => {
                                                 UNION ALL
                                                 ${commonQueryForDebit}
                                               ) AS combined_data
-                                              WHERE transactionDate BETWEEN STR_TO_DATE('${data.startDate}','%b %d %Y') AND STR_TO_DATE('${data.endDate}','%b %d %Y') `
+                                              WHERE transactionDate BETWEEN STR_TO_DATE('${data.startDate}','%b %d %Y') AND STR_TO_DATE('${data.endDate}','%b %d %Y')`
             } else {
                 sql_querry_getCountdetails = `SELECT count(*) AS numRows FROM (
                                                 ${commonQueryForCredit}

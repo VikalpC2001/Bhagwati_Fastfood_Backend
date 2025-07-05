@@ -226,8 +226,7 @@ const exportExcelSheetForStockin = (req, res) => {
             { key: "stockInDate", width: 10 }
         ];
         //Looping through User data
-        const arr = rows
-        console.log(">>>", arr);
+        const arr = rows;
         let counter = 1;
         arr.forEach((user, index) => {
             user.s_no = counter;
@@ -264,7 +263,6 @@ const exportExcelSheetForStockin = (req, res) => {
         try {
             const data = await workbook.xlsx.writeBuffer()
             var fileName = new Date().toString().slice(4, 15) + ".xlsx";
-            console.log(">>>", fileName);
             // res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
             // res.addHeader(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename="+ fileName)
             res.contentType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")

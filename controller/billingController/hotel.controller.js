@@ -717,7 +717,6 @@ const getMonthWiseTransactionForHotel = (req, res) => {
                     return dateB - dateA;
                 });
                 const resulst = addStartAndEndDates(result);
-                console.log(resulst);
                 const rows = resulst.slice(startIndex, endIndex);
                 const numRows = arr.length
                 if (numRows != 0) {

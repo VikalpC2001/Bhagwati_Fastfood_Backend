@@ -21,6 +21,7 @@ router.get('/getEmployeeMonthlySalaryByIdForApp', protect, staffAppController.ge
 router.get('/getLeaveDataByIdForApp', protect, staffAppController.getLeaveDataByIdForApp);
 router.get('/getStaffCategoryWithEmployeeNumberForApp', protect, staffAppController.getStaffCategoryWithEmployeeNumberForApp);
 router.get('/getAllPaymentStatisticsCountByIdForApp', protect, staffAppController.getAllPaymentStatisticsCountByIdForApp);
+router.get('/getEmployeeStatisticsByCategoryIdForApp', protect, staffAppController.getEmployeeStatisticsByCategoryIdForApp);
 
 // Bank App Routs
 
@@ -68,6 +69,47 @@ router.post('/updateCustomerTransactionData', protect, khataBookAppController.up
 const analysisAppController = require("../../controller/merchantAppController/analysisApp.controller.js");
 
 router.get('/getThreeCategorDashBoardDataForApp', protect, analysisAppController.getThreeCategorDashBoardDataForApp);
+
+// UPI Data For App
+
+const upiAppController = require("../../controller/merchantAppController/upiApp.controller.js");
+
+router.get('/getUPIListForApp', protect, upiAppController.getUPIListForApp);
+router.get('/getUPITransactionByIdForApp', protect, upiAppController.getUPITransactionByIdForApp);
+
+// Business Report For App
+
+const businessAppController = require("../../controller/merchantAppController/businessApp.controller.js");
+
+router.get('/getBusinessReportDashBoardwithNetProfitForApp', protect, businessAppController.getBusinessReportDashBoardwithNetProfitForApp);
+
+// Sales Analysis For App
+
+const salesAnalysisAppController = require("../../controller/merchantAppController/salesAnalysisApp.controller.js");
+
+router.get('/getSubCategoryListForApp', protect, salesAnalysisAppController.getSubCategoryListForApp);
+router.get('/getItemSalesReportForApp', protect, salesAnalysisAppController.getItemSalesReportForApp);
+router.get('/exportPdfForItemSalesReportForApp', protect, salesAnalysisAppController.exportPdfForItemSalesReportForApp);
+
+// Hotel Data For App
+
+const hotelAppController = require("../../controller/merchantAppController/hotelApp.controller.js");
+
+router.get('/getHotelListForApp', protect, hotelAppController.getHotelListForApp);
+router.get('/getHotelStaticsDataForApp', protect, hotelAppController.getHotelStaticsDataForApp);
+router.get('/getHotelDataByIdForApp', protect, hotelAppController.getHotelDataByIdForApp);
+router.get('/getHotelMonthWiseDataForApp', protect, hotelAppController.getHotelMonthWiseDataForApp);
+
+// Customet Data For App
+
+const customerAppController = require("../../controller/merchantAppController/customerApp.controller.js");
+
+router.get('/getCustomerStaticsForApp', protect, customerAppController.getCustomerStaticsForApp);
+router.get('/getCustomerListForApp', protect, customerAppController.getCustomerListForApp);
+router.get('/getCustomerDetailsByIdForApp', protect, customerAppController.getCustomerDetailsByIdForApp);
+router.post('/addCustomerDataForApp', protect, customerAppController.addCustomerDataForApp);
+router.delete('/removeCustomeDataForApp', protect, customerAppController.removeCustomeDataForApp);
+router.post('/updateCustomerDataForApp', protect, customerAppController.updateCustomerDataForApp);
 
 
 module.exports = router;

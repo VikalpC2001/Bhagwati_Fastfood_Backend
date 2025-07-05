@@ -1011,8 +1011,6 @@ const updateStockOutTransaction = async (req, res) => {
                                         });
                                         return string;
                                     }
-
-                                    console.log(">>>>>>>><<<<<<<<<", editFields());
                                     const sql_querry_addPreviousData = `INSERT INTO inventory_modified_history  (
                                                                                                 stockOutId,
                                                                                                 userId,
@@ -1214,8 +1212,6 @@ const updateStockOutTransaction = async (req, res) => {
                                             });
                                             return string;
                                         }
-
-                                        console.log(">>>>>>>><<<<<<<<<", editFields());
                                         const sql_querry_addPreviousData = `INSERT INTO inventory_modified_history  (
                                                                                                 stockOutId,
                                                                                                 userId,
@@ -1264,8 +1260,6 @@ const updateStockOutTransaction = async (req, res) => {
                                     });
                                     return string;
                                 }
-
-                                console.log(">>>>>>>><<<<<<<<<", editFields());
                                 const sql_querry_addPreviousData = `INSERT INTO inventory_modified_history  (
                                                                                                 stockOutId,
                                                                                                 userId,
@@ -1277,7 +1271,6 @@ const updateStockOutTransaction = async (req, res) => {
                                                                                                 updatedDateTime
                                                                                             )
                                                                                             VALUES ${editFields()}`;
-                                console.log(">>.....", sql_querry_addPreviousData);
                                 pool.query(sql_querry_addPreviousData, (err, data) => {
                                     if (err) {
                                         console.error("An error occurred in SQL Queery", err);

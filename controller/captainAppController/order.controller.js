@@ -187,7 +187,9 @@ const addDineInOrderByApp = (req, res) => {
                                                                                                     }
                                                                                                     connection.release();
                                                                                                     req?.io?.emit('updateTableView');
-                                                                                                    req?.io?.emit(`print_Kot_${adminMacAddress}`, sendJson);
+                                                                                                    if (billData.isPrintKOT) {
+                                                                                                        req?.io?.emit(`print_Kot_${adminMacAddress}`, sendJson);
+                                                                                                    }
                                                                                                     return res.status(200).send(sendJson);
                                                                                                 }
                                                                                             });
@@ -256,7 +258,6 @@ const addDineInOrderByApp = (req, res) => {
                                                                                         const lastTokenNo = result && result[1] && result[1][0].lastTokenNo ? result[1][0].lastTokenNo : 0;
                                                                                         const lastSubTokenNo = result && result[2] && result[2][0].lastSubTokenNo ? result[2][0].lastSubTokenNo : 0;
                                                                                         const firmId = result && result[3] && result[3][0].firmId ? result[3][0].firmId : 'B';
-                                                                                        console.log('..//', firmId);
 
                                                                                         const nextBillNo = lastBillNo + 1;
                                                                                         const nextTokenNo = lastTokenNo + 1;
@@ -375,7 +376,9 @@ const addDineInOrderByApp = (req, res) => {
                                                                                                                                         }
                                                                                                                                         connection.release();
                                                                                                                                         req?.io?.emit('updateTableView');
-                                                                                                                                        req?.io?.emit(`print_Kot_${adminMacAddress}`, sendJson);
+                                                                                                                                        if (billData.isPrintKOT) {
+                                                                                                                                            req?.io?.emit(`print_Kot_${adminMacAddress}`, sendJson);
+                                                                                                                                        }
                                                                                                                                         return res.status(200).send(sendJson);
                                                                                                                                     }
                                                                                                                                 });
@@ -692,6 +695,7 @@ const updateSubTokenDataByIdForApp = (req, res) => {
                         const cashier = decoded.id.firstName;
                         const currentDate = getCurrentDate();
                         const billData = req.body;
+                        console.log("gggg", billData);
                         if (!billData.subTokenId || !billData.billId || !billData.subTokenNumber || !billData.settledAmount || !billData.subTotal || !billData.itemsData.length) {
                             connection.rollback(() => {
                                 connection.release();
@@ -906,13 +910,17 @@ const updateSubTokenDataByIdForApp = (req, res) => {
                                                                                             const sendJson = {
                                                                                                 ...billData,
                                                                                                 itemsData: newItemsData,
+                                                                                                tokenNo: billData.subTokenNumber ? billData.subTokenNumber : 'NA',
                                                                                                 assignCaptain: billData.assignCaptain ? billData.assignCaptain : cashier,
                                                                                                 billDate: new Date(currentDate).toLocaleDateString('en-GB'),
-                                                                                                billTime: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+                                                                                                billTime: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+                                                                                                isEdit: true
                                                                                             }
                                                                                             connection.release();
                                                                                             req?.io?.emit('updateTableView');
-                                                                                            req?.io?.emit(`print_Kot_${adminMacAddress}`, sendJson);
+                                                                                            if (billData.isPrintKOT) {
+                                                                                                req?.io?.emit(`print_Kot_${adminMacAddress}`, sendJson);
+                                                                                            }
                                                                                             return res.status(201).send(sendJson);
                                                                                         }
                                                                                     });
@@ -1088,15 +1096,17 @@ const removeSubTokenDataByIdForApp = (req, res) => {
                                                                                     const tokenData = tknJson && tknJson.length ? tknJson : [];
                                                                                     const tokenJson = {
                                                                                         subTokenId: tokenData ? tokenData[0].subTokenId : '',
-                                                                                        captain: tokenData ? tokenData[0].captain : '',
+                                                                                        assignCaptain: tokenData ? tokenData[0].captain : '',
                                                                                         tableNo: tokenData ? tokenData[0].tableNo : '',
-                                                                                        subTokenNumber: tokenData ? tokenData[0].subTokenNumber : '',
+                                                                                        billType: 'Dine In',
+                                                                                        tokenNo: tokenData ? tokenData[0].subTokenNumber : '',
                                                                                         tokenStatus: tokenData ? tokenData[0].tokenStatus : '',
-                                                                                        subTokenDate: tokenData ? tokenData[0].subTokenDate : '',
-                                                                                        createTime: tokenData ? tokenData[0].createTime : '',
+                                                                                        billDate: tokenData ? tokenData[0].subTokenDate : '',
+                                                                                        billTime: tokenData ? tokenData[0].createTime : '',
                                                                                         tokenComment: tokenData ? tokenData[0].tokenComment : '',
                                                                                         totalPrice: tokenData.reduce((sum, item) => sum + item.price, 0),
-                                                                                        items: tokenData ? tokenData.map(item => ({
+                                                                                        isDelete: true,
+                                                                                        itemsData: tokenData ? tokenData.map(item => ({
                                                                                             iwbId: item.iwbId,
                                                                                             itemId: item.itemId,
                                                                                             inputCode: item.inputCode,
@@ -1344,13 +1354,21 @@ const printTableBillForApp = (req, res) => {
                                       WHERE billId = '${billId}'`;
         let sql_query_getSubTokens = `SELECT subTokenNumber FROM billing_subToken_data WHERE billId = '${billId}'`;
         let sql_query_getAdminId = `SELECT adminMacAddress FROM billing_admin_data`;
+        let sql_query_getDefaultUPI = `SELECT 
+                                        onlineId AS defaultOnlineId, 
+                                        holderName AS defaultHolderName, 
+                                        upiId AS defaultUpiId 
+                                      FROM 
+                                        billing_onlineUPI_data 
+                                      WHERE isDefault = 1`;
 
         const sql_query_getBillData = `${sql_query_getBillingData};
                                        ${sql_query_getBillwiseItem};
                                        ${sql_query_getFirmData};
                                        ${sql_query_getCustomerInfo};
                                        ${sql_query_getTableData};
-                                       ${sql_query_getSubTokens};`;
+                                       ${sql_query_getSubTokens};
+                                       ${sql_query_getDefaultUPI}`;
 
         let sql_query_updateTableStatus = `UPDATE billing_data SET billStatus = 'print' WHERE billId = '${billId}'`;
         pool.query(sql_query_updateTableStatus, (err, raw) => {
@@ -1377,6 +1395,12 @@ const printTableBillForApp = (req, res) => {
                                         ...({ customerDetails: billData && billData[3][0] ? billData[3][0] : '' }),
                                         ...({ tableInfo: billData[4][0] }),
                                         subTokens: billData[5].map(item => item.subTokenNumber).sort((a, b) => a - b).join(", "),
+                                        tableNo: billData[4][0].tableNo ? billData[4][0].tableNo : 0,
+                                        upiJson: {
+                                            "onlineId": billData && billData[6] ? billData[6][0].defaultOnlineId : '',
+                                            "holderName": billData && billData[6] ? billData[6][0].defaultHolderName : '',
+                                            "upiId": billData && billData[6] ? billData[6][0].defaultUpiId : '',
+                                        }
                                     }
                                     req?.io?.emit('updateTableView');
                                     req?.io?.emit(`print_Bill_${adminMacAddress}`, json);

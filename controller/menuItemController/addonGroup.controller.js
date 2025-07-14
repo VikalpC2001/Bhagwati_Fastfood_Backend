@@ -1,7 +1,6 @@
 const { query } = require('express');
 const pool = require('../../database');
 const jwt = require("jsonwebtoken");
-const { removeFineTransaction } = require('../staffController/salary.controller');
 
 // Get addons List
 

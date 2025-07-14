@@ -350,7 +350,7 @@ const addHotelHoldBillData = (req, res) => {
                                                                 return res.status(500).send('Database Error');
                                                             });
                                                         } else {
-                                                            let holdCount = count && count[0] ? count[0].holdNo : 0;
+                                                            let holdCount = count && count[0] ? addItemWiseAddonData.length ? count[0][0].holdNo : count[0].holdNo : 0;
                                                             connection.commit((err) => {
                                                                 if (err) {
                                                                     console.error("Error committing transaction:", err);
@@ -506,7 +506,7 @@ const addPickUpHoldBillData = (req, res) => {
                                                         return res.status(500).send('Database Error');
                                                     });
                                                 } else {
-                                                    let holdCount = count && count[0] ? count[0].holdNo : 0;
+                                                    let holdCount = count && count[0] ? addItemWiseAddonData.length ? count[0][0].holdNo : count[0].holdNo : 0;
                                                     const customerData = holdData.customerDetails;
                                                     if (customerData && customerData.customerId && customerData.addressId) {
                                                         let sql_query_addAddressRelation = `INSERT INTO hold_billWiseCustomer_data(bwcId, holdId, customerId, addressId, mobileNo, customerName, address, locality)
@@ -1052,7 +1052,7 @@ const addDeliveryHoldBillData = (req, res) => {
                                                         return res.status(500).send('Database Error');
                                                     });
                                                 } else {
-                                                    let holdCount = count && count[0] ? count[0].holdNo : 0;
+                                                    let holdCount = count && count[0] ? addItemWiseAddonData.length ? count[0][0].holdNo : count[0].holdNo : 0;
                                                     const customerData = holdData.customerDetails;
                                                     if (customerData && customerData.customerId && customerData.addressId) {
                                                         let sql_query_addAddressRelation = `INSERT INTO hold_billWiseCustomer_data(bwcId, holdId, customerId, addressId, mobileNo, customerName, address, locality)

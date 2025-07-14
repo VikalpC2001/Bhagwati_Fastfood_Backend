@@ -229,7 +229,8 @@ const ddlUPI = (req, res) => {
                                           holderName,
                                           holderNumber,
                                           upiId,
-                                          isOfficial
+                                          isOfficial,
+                                          isDefault
                                       FROM
                                           billing_onlineUPI_data`;
         pool.query(sql_query_getDetails, (err, rows, fields) => {

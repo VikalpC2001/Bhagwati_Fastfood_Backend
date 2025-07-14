@@ -126,14 +126,45 @@ const getLiveViewByCategoryId = (req, res) => {
     try {
         const currentDate = getCurrentDate();
         const billCategory = req.query.billCategory ? req.query.billCategory : null;
+        const page = req.query.page;
+        const numPerPage = req.query.numPerPage;
+        const skip = (page - 1) * numPerPage;
+        const limit = skip + ',' + numPerPage;
+        const searchWord = req.query.searchWord ? req.query.searchWord : '';
         if (billCategory) {
-            sql_query_chkBillExist = `SELECT billId, billType FROM billing_data 
-                                      WHERE billId IN (SELECT COALESCE(billId,NULL) FROM billing_data WHERE billType = '${billCategory}' AND billDate = STR_TO_DATE('${currentDate}','%b %d %Y'))
-                                      ORDER BY billing_data.billCreationDate DESC`;
+            sql_query_chkBillExist = `SELECT bd.billId, bd.billType FROM billing_data AS bd
+                                          LEFT JOIN billing_token_data AS btd ON btd.billId = bd.billId
+                                          WHERE
+                                              CONCAT(
+                                                  CASE bd.billType
+                                                      WHEN 'Pick Up' THEN 'P'
+                                                      WHEN 'Delivery' THEN 'D'
+                                                      WHEN 'Hotel' THEN 'H'
+                                                      WHEN 'Dine In' THEN 'R'
+                                                      ELSE ''
+                                                  END,
+                                                  btd.tokenNo
+                                              ) LIKE '%` + searchWord + `%'
+                                              AND bd.billType = '${billCategory}' AND bd.billDate = STR_TO_DATE('${currentDate}', '%b %d %Y')
+                                          ORDER BY bd.billCreationDate DESC
+                                          LIMIT ${limit}`;
         } else {
-            sql_query_chkBillExist = `SELECT billId, billType FROM billing_data 
-                                      WHERE billId IN (SELECT COALESCE(billId,NULL) FROM billing_data WHERE billDate = STR_TO_DATE('${currentDate}','%b %d %Y'))
-                                      ORDER BY billing_data.billCreationDate DESC`;
+            sql_query_chkBillExist = `SELECT bd.billId, bd.billType FROM billing_data AS bd
+                                          LEFT JOIN billing_token_data AS btd ON btd.billId = bd.billId
+                                          WHERE
+                                              CONCAT(
+                                                  CASE bd.billType
+                                                      WHEN 'Pick Up' THEN 'P'
+                                                      WHEN 'Delivery' THEN 'D'
+                                                      WHEN 'Hotel' THEN 'H'
+                                                      WHEN 'Dine In' THEN 'R'
+                                                      ELSE ''
+                                                  END,
+                                                  btd.tokenNo
+                                              ) LIKE '%` + searchWord + `%'
+                                              AND bd.billDate = STR_TO_DATE('${currentDate}', '%b %d %Y')
+                                          ORDER BY bd.billCreationDate DESC
+                                          LIMIT ${limit}`;
         }
         pool.query(sql_query_chkBillExist, (err, bills) => {
             if (err) {

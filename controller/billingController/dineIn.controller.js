@@ -1190,21 +1190,13 @@ const printTableBill = (req, res) => {
                                         billing_billWiseTableNo_data
                                       WHERE billId = '${billId}'`;
         let sql_query_getSubTokens = `SELECT subTokenNumber FROM billing_subToken_data WHERE billId = '${billId}'`;
-        let sql_query_getDefaultUPI = `SELECT 
-                                        onlineId AS defaultOnlineId, 
-                                        holderName AS defaultHolderName, 
-                                        upiId AS defaultUpiId 
-                                      FROM 
-                                        billing_onlineUPI_data 
-                                      WHERE isDefault = 1`;
 
         const sql_query_getBillData = `${sql_query_getBillingData};
                                        ${sql_query_getBillwiseItem};
                                        ${sql_query_getFirmData};
                                        ${sql_query_getCustomerInfo};
                                        ${sql_query_getTableData};
-                                       ${sql_query_getSubTokens};
-                                       ${sql_query_getDefaultUPI}`;
+                                       ${sql_query_getSubTokens}`;
 
         let sql_query_updateTableStatus = `UPDATE billing_data SET billStatus = 'print' WHERE billId = '${billId}'`;
         pool.query(sql_query_updateTableStatus, (err, raw) => {
@@ -1224,12 +1216,7 @@ const printTableBill = (req, res) => {
                             ...({ customerDetails: billData && billData[3][0] ? billData[3][0] : '' }),
                             ...({ tableInfo: billData[4][0] }),
                             subTokens: billData[5].map(item => item.subTokenNumber).sort((a, b) => a - b).join(", "),
-                            tableNo: billData[4][0].tableNo ? billData[4][0].tableNo : 0,
-                            upiJson: {
-                                "onlineId": billData && billData[6] ? billData[6][0].defaultOnlineId : '',
-                                "holderName": billData && billData[6] ? billData[6][0].defaultHolderName : '',
-                                "upiId": billData && billData[6] ? billData[6][0].defaultUpiId : '',
-                            }
+                            tableNo: billData[4][0].tableNo ? billData[4][0].tableNo : 0
                         }
                         req?.io?.emit('updateTableView');
                         return res.status(200).send(json);

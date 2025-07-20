@@ -768,8 +768,8 @@ const updateStockOutTransaction = async (req, res) => {
                     console.error("An error occurred in SQL Queery", err);
                     return res.status(500).send('Database Error');
                 }
-                const remainStock = remaindata[0][0].remainingStock;
-                const previousQty = remaindata[1][0].productQty;
+                const remainStock = remaindata[0][0].remainingStock ? remaindata[0][0].remainingStock : 0;
+                const previousQty = remaindata[1][0].productQty ? remaindata[1][0].productQty : 0;
                 console.log("./././", remainStock + previousQty);
                 const remainIngUpdateStock = remainStock + previousQty;
                 if (remainIngUpdateStock < productQty) {
@@ -1022,7 +1022,6 @@ const updateStockOutTransaction = async (req, res) => {
                                                                                                 updatedDateTime
                                                                                             )
                                                                                             VALUES ${editFields()}`;
-                                    console.log(">>.....", sql_querry_addPreviousData);
                                     pool.query(sql_querry_addPreviousData, (err, data) => {
                                         if (err) {
                                             console.error("An error occurred in SQL Queery", err);

@@ -917,7 +917,6 @@ const addEmployeedetails = (req, res) => {
                             deleteFile(filePath);
                             return res.status(500).send('Database Error');
                         }
-                        console.log('><><>', data.maxLeave);
                         sql_query_addSalaryhistory = `INSERT INTO leave_history_data(
                                                                                     employeeId,
                                                                                     numberOfLeave,

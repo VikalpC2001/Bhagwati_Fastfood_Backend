@@ -58,7 +58,7 @@ const getBillingStaticsData = (req, res) => {
                                     WHERE billType = 'Delivery' AND billDate = STR_TO_DATE('${currentDate}','%b %d %Y');
                                     -- Dine In
                                      SELECT
-                                         COALESCE(SUM(CASE WHEN billPayType = 'cash' THEN settledAmount ELSE 0 END), 0) AS cashAmt,
+                                         COALESCE(SUM(CASE WHEN billPayType = 'cash' AND billStatus IN ('print','complete') THEN settledAmount ELSE 0 END), 0) AS cashAmt,
                                          COALESCE(SUM(CASE WHEN billPayType = 'due' THEN settledAmount ELSE 0 END), 0) AS dueAmt,
                                          COALESCE(SUM(CASE WHEN billPayType = 'online' THEN settledAmount ELSE 0 END), 0) AS onlineAmt,
                                          COALESCE(SUM(CASE WHEN billPayType = 'complimentary' THEN settledAmount ELSE 0 END), 0) AS complimentaryAmt,
@@ -146,25 +146,28 @@ const getLiveViewByCategoryId = (req, res) => {
                                                   btd.tokenNo
                                               ) LIKE '%` + searchWord + `%'
                                               AND bd.billType = '${billCategory}' AND bd.billDate = STR_TO_DATE('${currentDate}', '%b %d %Y')
+                                              AND (bd.billType != 'Dine In' OR bd.billStatus IN ('print', 'complete', 'Cancel'))
                                           ORDER BY bd.billCreationDate DESC
                                           LIMIT ${limit}`;
         } else {
-            sql_query_chkBillExist = `SELECT bd.billId, bd.billType FROM billing_data AS bd
-                                          LEFT JOIN billing_token_data AS btd ON btd.billId = bd.billId
-                                          WHERE
-                                              CONCAT(
-                                                  CASE bd.billType
-                                                      WHEN 'Pick Up' THEN 'P'
-                                                      WHEN 'Delivery' THEN 'D'
-                                                      WHEN 'Hotel' THEN 'H'
-                                                      WHEN 'Dine In' THEN 'R'
-                                                      ELSE ''
-                                                  END,
-                                                  btd.tokenNo
-                                              ) LIKE '%` + searchWord + `%'
-                                              AND bd.billDate = STR_TO_DATE('${currentDate}', '%b %d %Y')
-                                          ORDER BY bd.billCreationDate DESC
-                                          LIMIT ${limit}`;
+            sql_query_chkBillExist = `SELECT bd.billId, bd.billType
+                                      FROM billing_data AS bd
+                                      LEFT JOIN billing_token_data AS btd ON btd.billId = bd.billId
+                                      WHERE
+                                          CONCAT(
+                                              CASE bd.billType
+                                                  WHEN 'Pick Up' THEN 'P'
+                                                  WHEN 'Delivery' THEN 'D'
+                                                  WHEN 'Hotel' THEN 'H'
+                                                  WHEN 'Dine In' THEN 'R'
+                                                  ELSE ''
+                                              END,
+                                              btd.tokenNo
+                                          ) LIKE '%${searchWord}%'
+                                          AND bd.billDate = STR_TO_DATE('${currentDate}', '%b %d %Y')
+                                          AND (bd.billType != 'Dine In' OR bd.billStatus IN ('print', 'complete', 'Cancel'))
+                                      ORDER BY bd.billCreationDate DESC
+                                      LIMIT ${limit}`;
         }
         pool.query(sql_query_chkBillExist, (err, bills) => {
             if (err) {
@@ -207,7 +210,7 @@ const getLiveViewByCategoryId = (req, res) => {
                                                             SEC_TO_TIME(
                                                                 TIMESTAMPDIFF(
                                                                     SECOND,
-                                                                    bd.billCreationDate,
+                                                                    IF(bd.billType = 'Dine In', bwtn.printTime, bd.billCreationDate),
                                                                     NOW()
                                                                 )
                                                             ) AS timeDifference,
@@ -219,6 +222,7 @@ const getLiveViewByCategoryId = (req, res) => {
                                                         LEFT JOIN billing_Complimentary_data AS bcd ON bcd.billId = bd.billId
                                                         LEFT JOIN billing_token_data AS btd ON btd.billId = bd.billId
                                                         LEFT JOIN billing_firm_data AS bfd ON bfd.firmId = bd.firmId
+                                                        LEFT JOIN billing_billWiseTableNo_data AS bwtn ON bwtn.billId = bd.billId
                                                         LEFT JOIN billing_billWiseUpi_data AS bwu ON bwu.billId = bd.billId
                                                         LEFT JOIN due_billAmount_data AS dba ON dba.billId = bd.billId
                                                         LEFT JOIN due_account_data AS dad ON dad.accountId = dba.accountId

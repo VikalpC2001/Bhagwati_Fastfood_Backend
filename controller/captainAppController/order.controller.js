@@ -316,8 +316,8 @@ const addDineInOrderByApp = (req, res) => {
                                                                                                             return res.status(500).send('Database Error');
                                                                                                         });
                                                                                                     } else {
-                                                                                                        let sql_query_addBillWiseTable = `INSERT INTO billing_billWiseTableNo_data(bwtId, billId, tableNo, assignCaptain)
-                                                                                                                                          VALUES('${bwtId}', '${billId}', '${billData.tableNo}', '${billData.assignCaptain ? billData.assignCaptain : cashier}')`;
+                                                                                                        let sql_query_addBillWiseTable = `INSERT INTO billing_billWiseTableNo_data(bwtId, billId, tableNo, assignCaptain, printTime)
+                                                                                                                                          VALUES('${bwtId}', '${billId}', '${billData.tableNo}', '${billData.assignCaptain ? billData.assignCaptain : cashier}', NOW())`;
                                                                                                         connection.query(sql_query_addBillWiseTable, (err) => {
                                                                                                             if (err) {
                                                                                                                 console.error("Error inserting Bill Wise Table Data:", err);
@@ -1347,7 +1347,6 @@ const printTableBillForApp = (req, res) => {
                                         billing_billWiseTableNo_data
                                       WHERE billId = '${billId}'`;
         let sql_query_getSubTokens = `SELECT subTokenNumber FROM billing_subToken_data WHERE billId = '${billId}'`;
-        let sql_query_getAdminId = `SELECT adminMacAddress FROM billing_admin_data`;
 
         const sql_query_getBillData = `${sql_query_getBillingData};
                                        ${sql_query_getBillwiseItem};
@@ -1356,7 +1355,9 @@ const printTableBillForApp = (req, res) => {
                                        ${sql_query_getTableData};
                                        ${sql_query_getSubTokens}`;
 
-        let sql_query_updateTableStatus = `UPDATE billing_data SET billStatus = 'print' WHERE billId = '${billId}'`;
+        const sql_query_updateTableStatus = `UPDATE billing_data SET billStatus = 'print' WHERE billId = '${billId}'`;
+        const sql_query_updatePrintDateTime = `UPDATE billing_billWiseTableNo_data SET printTime = NOW() WHERE billId = '${billId}'`;
+        const sql_query_getAdminId = `SELECT adminMacAddress FROM billing_admin_data`;
         pool.query(sql_query_updateTableStatus, (err, raw) => {
             if (err) {
                 console.error("An error occurred in SQL Queery", err);
@@ -1367,28 +1368,35 @@ const printTableBillForApp = (req, res) => {
                         console.error("An error occurred in SQL Queery", err);
                         return res.status(500).send('Database Error');
                     } else {
-                        pool.query(sql_query_getAdminId, (err, macId) => {
+                        pool.query(sql_query_updatePrintDateTime, (err, time) => {
                             if (err) {
                                 console.error("An error occurred in SQL Queery", err);
                                 return res.status(500).send('Database Error');
                             } else {
-                                if (macId && macId.length) {
-                                    const adminMacAddress = macId[0].adminMacAddress;
-                                    const json = {
-                                        ...billData[0][0],
-                                        itemsData: billData && billData[1] ? billData[1] : [],
-                                        firmData: billData && billData[2] ? billData[2][0] : [],
-                                        ...({ customerDetails: billData && billData[3][0] ? billData[3][0] : '' }),
-                                        ...({ tableInfo: billData[4][0] }),
-                                        subTokens: billData[5].map(item => item.subTokenNumber).sort((a, b) => a - b).join(", "),
-                                        tableNo: billData[4][0].tableNo ? billData[4][0].tableNo : 0
+                                pool.query(sql_query_getAdminId, (err, macId) => {
+                                    if (err) {
+                                        console.error("An error occurred in SQL Queery", err);
+                                        return res.status(500).send('Database Error');
+                                    } else {
+                                        if (macId && macId.length) {
+                                            const adminMacAddress = macId[0].adminMacAddress;
+                                            const json = {
+                                                ...billData[0][0],
+                                                itemsData: billData && billData[1] ? billData[1] : [],
+                                                firmData: billData && billData[2] ? billData[2][0] : [],
+                                                ...({ customerDetails: billData && billData[3][0] ? billData[3][0] : '' }),
+                                                ...({ tableInfo: billData[4][0] }),
+                                                subTokens: billData[5].map(item => item.subTokenNumber).sort((a, b) => a - b).join(", "),
+                                                tableNo: billData[4][0].tableNo ? billData[4][0].tableNo : 0
+                                            }
+                                            req?.io?.emit('updateTableView');
+                                            req?.io?.emit(`print_Bill_${adminMacAddress}`, json);
+                                            return res.status(200).send(json);
+                                        } else {
+                                            return res.status(404).send('Main Server Not Found');
+                                        }
                                     }
-                                    req?.io?.emit('updateTableView');
-                                    req?.io?.emit(`print_Bill_${adminMacAddress}`, json);
-                                    return res.status(200).send(json);
-                                } else {
-                                    return res.status(404).send('Main Server Not Found');
-                                }
+                                })
                             }
                         })
                     }

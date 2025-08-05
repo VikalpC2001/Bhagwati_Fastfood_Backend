@@ -49,23 +49,35 @@ function compareJson(json1, json2) {
 
 const getAllTableView = (req, res) => {
     try {
-        sql_query_getDetails = `SELECT
-                                    dt.tableId,
-                                    dt.tableNo,
-                                    dt.billId,
-                                    bwt.assignCaptain,
-                                    CASE 
-                                    	WHEN dt.billId IS NULL THEN  'blank'
-                                        ELSE bd.billStatus
-                                	END AS tableStatus,
-                                	dt.isFixed,
-                                    COALESCE(bd.totalAmount,0) AS billAmt,
-                                    TIMESTAMPDIFF(MINUTE, bd.billCreationDate, NOW()) AS tableStartTime
-                                FROM
-                                    billing_DineInTable_data AS dt
-                                LEFT JOIN billing_data AS bd on bd.billId = dt.billId
-                                LEFT JOIN billing_billWiseTableNo_data AS bwt ON bwt.billId = dt.billId
-                                ORDER BY CAST(dt.tableNo AS UNSIGNED), dt.tableNo`;
+        const sql_query_getDetails = `SELECT
+                                          dt.tableId,
+                                          dt.tableNo,
+                                          dt.billId,
+                                          bwt.assignCaptain,
+                                          CASE 
+                                              WHEN dt.billId IS NULL THEN 'blank'
+                                              ELSE bd.billStatus
+                                          END AS tableStatus,
+                                          dt.isFixed,
+                                          COALESCE(bd.totalAmount, 0) AS billAmt,
+                                          TIMESTAMPDIFF(MINUTE, bd.billCreationDate, NOW()) AS tableStartTime,
+                                          IF(bd.billStatus = 'print',
+                                                CONCAT(
+                                                    'upi://pay?pa=', upi.upiId,
+                                                    '&pn=', upi.holderName,
+                                                    '&tn=Restaurent Bill&am=',
+                                                    COALESCE(bd.totalAmount, 0)
+                                                ),
+                                                NULL
+                                            ) 
+                                          AS upiLink
+                                      FROM
+                                          billing_DineInTable_data AS dt
+                                      LEFT JOIN billing_data AS bd ON bd.billId = dt.billId
+                                      LEFT JOIN billing_billWiseTableNo_data AS bwt ON bwt.billId = dt.billId
+                                      -- Join the default row from UPI table (adjust WHERE clause if necessary)
+                                      LEFT JOIN billing_onlineUPI_data AS upi ON upi.isDefault = 1
+                                      ORDER BY CAST(dt.tableNo AS UNSIGNED), dt.tableNo`;
         pool.query(sql_query_getDetails, (err, data) => {
             if (err) {
                 console.error("An error occurred in SQL Queery", err);
@@ -450,8 +462,8 @@ const addDineInOrder = (req, res) => {
                                                                                                 return res.status(500).send('Database Error');
                                                                                             });
                                                                                         } else {
-                                                                                            let sql_query_addBillWiseTable = `INSERT INTO billing_billWiseTableNo_data(bwtId, billId, tableNo, assignCaptain)
-                                                                                                                              VALUES('${bwtId}', '${billId}', '${billData.tableNo}', '${billData.assignCaptain ? billData.assignCaptain : cashier}')`;
+                                                                                            let sql_query_addBillWiseTable = `INSERT INTO billing_billWiseTableNo_data(bwtId, billId, tableNo, assignCaptain, printTime)
+                                                                                                                              VALUES('${bwtId}', '${billId}', '${billData.tableNo}', '${billData.assignCaptain ? billData.assignCaptain : cashier}', NOW())`;
                                                                                             connection.query(sql_query_addBillWiseTable, (err) => {
                                                                                                 if (err) {
                                                                                                     console.error("Error inserting Bill Wise Table Data:", err);
@@ -1199,29 +1211,37 @@ const printTableBill = (req, res) => {
                                        ${sql_query_getSubTokens}`;
 
         let sql_query_updateTableStatus = `UPDATE billing_data SET billStatus = 'print' WHERE billId = '${billId}'`;
+        let sql_query_updatePrintDateTime = `UPDATE billing_billWiseTableNo_data SET printTime = NOW() WHERE billId = '${billId}'`;
         pool.query(sql_query_updateTableStatus, (err, raw) => {
             if (err) {
                 console.error("An error occurred in SQL Queery", err);
                 return res.status(500).send('Database Error');
             } else {
-                pool.query(sql_query_getBillData, (err, billData) => {
+                pool.query(sql_query_updatePrintDateTime, (err, time) => {
                     if (err) {
                         console.error("An error occurred in SQL Queery", err);
                         return res.status(500).send('Database Error');
                     } else {
-                        const json = {
-                            ...billData[0][0],
-                            itemsData: billData && billData[1] ? billData[1] : [],
-                            firmData: billData && billData[2] ? billData[2][0] : [],
-                            ...({ customerDetails: billData && billData[3][0] ? billData[3][0] : '' }),
-                            ...({ tableInfo: billData[4][0] }),
-                            subTokens: billData[5].map(item => item.subTokenNumber).sort((a, b) => a - b).join(", "),
-                            tableNo: billData[4][0].tableNo ? billData[4][0].tableNo : 0
-                        }
-                        req?.io?.emit('updateTableView');
-                        return res.status(200).send(json);
+                        pool.query(sql_query_getBillData, (err, billData) => {
+                            if (err) {
+                                console.error("An error occurred in SQL Queery", err);
+                                return res.status(500).send('Database Error');
+                            } else {
+                                const json = {
+                                    ...billData[0][0],
+                                    itemsData: billData && billData[1] ? billData[1] : [],
+                                    firmData: billData && billData[2] ? billData[2][0] : [],
+                                    ...({ customerDetails: billData && billData[3][0] ? billData[3][0] : '' }),
+                                    ...({ tableInfo: billData[4][0] }),
+                                    subTokens: billData[5].map(item => item.subTokenNumber).sort((a, b) => a - b).join(", "),
+                                    tableNo: billData[4][0].tableNo ? billData[4][0].tableNo : 0
+                                }
+                                req?.io?.emit('updateTableView');
+                                return res.status(200).send(json);
+                            }
+                        });
                     }
-                });
+                })
             }
         })
     } catch (error) {
@@ -1986,7 +2006,7 @@ const sattledBillDataByID = (req, res) => {
 
                         const currentDate = getCurrentDate();
                         const billData = req.body;
-                        console.log('><><>', billData);
+
                         if (!billData.billId || !billData.settledAmount || !billData.billPayType || !billData.billStatus || !billData.tableNo) {
                             connection.rollback(() => {
                                 connection.release();

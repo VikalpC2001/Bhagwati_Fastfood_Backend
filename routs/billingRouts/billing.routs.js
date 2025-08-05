@@ -185,4 +185,11 @@ const dashBoardController = require("../../controller/billingController/dashBoar
 
 router.get('/getThreeCategorDashBoardData', protect, dashBoardController.getThreeCategorDashBoardData);
 
+// Settlement Routs
+
+const settlementController = require("../../controller/billingController/settlement.controller.js");
+
+router.get('/getSettlementDataByFirm', protect, settlementController.getSettlementDataByFirm);
+router.post('/addSettleDataByFirm', protect, settlementController.addSettleDataByFirm);
+
 module.exports = router;

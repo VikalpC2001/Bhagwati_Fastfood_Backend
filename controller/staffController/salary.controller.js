@@ -1656,7 +1656,6 @@ const addAmountOfSFA = (req, res) => {
                                             //     return string;
 
                                             // }
-                                            // console.log('><><><', sallaryWiseAllAdvanceId());
                                             sql_query_addDetail = `INSERT INTO staff_salary_data(
                                                                     salaryId,
                                                                     remainSalaryId,

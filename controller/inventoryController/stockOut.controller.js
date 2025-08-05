@@ -1573,7 +1573,7 @@ const exportCategoryWisedProductUsedData = (req, res) => {
 
         const abs = rows[6];
         const headerName = rows[6][0];
-        console.log("><><>", Object.keys(headerName).map(key => key.toUpperCase()));
+
         const headersName = Object.keys(headerName).map(key => key.toUpperCase());
         // Create the headers row
         const headersRow = headersName;
@@ -1693,8 +1693,7 @@ const exportCategoryWisedProductUsedData = (req, res) => {
 
         const absPrice = rows[14];
         const headerNamePrice = rows[14][0];
-        console.log(rows[14]);
-        // console.log("><><>", Object.keys(headerNamePrice).map(key => key.toUpperCase()));
+
         const headersNamePrice = Object.keys(headerNamePrice).map(key => key.toUpperCase());
         // Create the headers row
         const headersRowPrice = headersNamePrice;

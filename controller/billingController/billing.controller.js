@@ -134,7 +134,10 @@ const getLiveViewByCategoryId = (req, res) => {
         if (billCategory) {
             sql_query_chkBillExist = `SELECT bd.billId, bd.billType FROM billing_data AS bd
                                           LEFT JOIN billing_token_data AS btd ON btd.billId = bd.billId
-                                          WHERE
+                                          LEFT JOIN billing_billwisecustomer_data AS bwc ON bwc.billId = bd.billId
+                                          LEFT JOIN billing_hotelInfo_data AS bhi ON bhi.billId = bd.billId
+                                          LEFT JOIN billing_hotel_data AS bhd ON bhd.hotelId = bhi.hotelId
+                                          WHERE (
                                               CONCAT(
                                                   CASE bd.billType
                                                       WHEN 'Pick Up' THEN 'P'
@@ -145,25 +148,39 @@ const getLiveViewByCategoryId = (req, res) => {
                                                   END,
                                                   btd.tokenNo
                                               ) LIKE '%` + searchWord + `%'
+                                              OR bwc.mobileNo LIKE '%` + searchWord + `%'
+                                              OR bwc.customerName LIKE '%` + searchWord + `%'
+                                              OR bwc.address LIKE '%` + searchWord + `%'
+                                              OR bhd.hotelName LIKE '%` + searchWord + `%'
+                                              OR bhi.roomNo LIKE '%` + searchWord + `%'
+                                          )
                                               AND bd.billType = '${billCategory}' AND bd.billDate = STR_TO_DATE('${currentDate}', '%b %d %Y')
                                               AND (bd.billType != 'Dine In' OR bd.billStatus IN ('print', 'complete', 'Cancel'))
                                           ORDER BY bd.billCreationDate DESC
                                           LIMIT ${limit}`;
         } else {
-            sql_query_chkBillExist = `SELECT bd.billId, bd.billType
-                                      FROM billing_data AS bd
+            sql_query_chkBillExist = `SELECT bd.billId, bd.billType FROM billing_data AS bd
                                       LEFT JOIN billing_token_data AS btd ON btd.billId = bd.billId
-                                      WHERE
-                                          CONCAT(
-                                              CASE bd.billType
-                                                  WHEN 'Pick Up' THEN 'P'
-                                                  WHEN 'Delivery' THEN 'D'
-                                                  WHEN 'Hotel' THEN 'H'
-                                                  WHEN 'Dine In' THEN 'R'
-                                                  ELSE ''
-                                              END,
-                                              btd.tokenNo
-                                          ) LIKE '%${searchWord}%'
+                                      LEFT JOIN billing_billwisecustomer_data AS bwc ON bwc.billId = bd.billId
+                                      LEFT JOIN billing_hotelInfo_data AS bhi ON bhi.billId = bd.billId
+                                      LEFT JOIN billing_hotel_data AS bhd ON bhd.hotelId = bhi.hotelId
+                                      WHERE (
+                                              CONCAT(
+                                                  CASE bd.billType
+                                                      WHEN 'Pick Up' THEN 'P'
+                                                      WHEN 'Delivery' THEN 'D'
+                                                      WHEN 'Hotel' THEN 'H'
+                                                      WHEN 'Dine In' THEN 'R'
+                                                      ELSE ''
+                                                  END,
+                                                  btd.tokenNo
+                                              ) LIKE '%` + searchWord + `%'
+                                              OR bwc.mobileNo LIKE '%` + searchWord + `%'
+                                              OR bwc.customerName LIKE '%` + searchWord + `%'
+                                              OR bwc.address LIKE '%` + searchWord + `%'
+                                              OR bhd.hotelName LIKE '%` + searchWord + `%'
+                                              OR bhi.roomNo LIKE '%` + searchWord + `%'
+                                          )
                                           AND bd.billDate = STR_TO_DATE('${currentDate}', '%b %d %Y')
                                           AND (bd.billType != 'Dine In' OR bd.billStatus IN ('print', 'complete', 'Cancel'))
                                       ORDER BY bd.billCreationDate DESC
@@ -368,6 +385,7 @@ const getRecentBillData = (req, res) => {
                                                 bd.billId AS billId, 
                                                 bd.billNumber AS billNumber,
                                                 bd.settledAmount AS totalAmount,
+                                                bd.billPayType AS billPayType,
                                                 bd.billStatus AS billStatus,
                                                 CASE
                                                     WHEN bd.billType = 'Hotel' THEN CONCAT('H',btd.tokenNo)

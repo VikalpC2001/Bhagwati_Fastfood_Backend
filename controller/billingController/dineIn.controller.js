@@ -50,23 +50,23 @@ function compareJson(json1, json2) {
 const getAllTableView = (req, res) => {
     try {
         const sql_query_getDetails = `SELECT
-                                          dt.tableId,
-                                          dt.tableNo,
-                                          dt.billId,
-                                          bwt.assignCaptain,
+                                          dt.tableId AS tableId,
+                                          dt.tableNo AS tableNo,
+                                          dt.billId AS billId,
+                                          bwt.assignCaptain AS assignCaptain,
                                           CASE 
                                               WHEN dt.billId IS NULL THEN 'blank'
                                               ELSE bd.billStatus
                                           END AS tableStatus,
                                           dt.isFixed,
-                                          COALESCE(bd.totalAmount, 0) AS billAmt,
+                                          COALESCE(bd.settledAmount, 0) AS billAmt,
                                           TIMESTAMPDIFF(MINUTE, bd.billCreationDate, NOW()) AS tableStartTime,
                                           IF(bd.billStatus = 'print',
                                                 CONCAT(
                                                     'upi://pay?pa=', upi.upiId,
                                                     '&pn=', upi.holderName,
                                                     '&tn=Restaurent Bill&am=',
-                                                    COALESCE(bd.totalAmount, 0)
+                                                    COALESCE(bd.settledAmount, 0)
                                                 ),
                                                 NULL
                                             ) 

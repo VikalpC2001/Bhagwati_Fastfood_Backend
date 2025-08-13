@@ -164,16 +164,7 @@ const updateAddOnsGroupData = async (req, res) => {
 
 const assignAddonGroup = async (req, res) => {
     try {
-        const data = {
-            "groupId": "Group_1737194523978",
-            "addonItemsArray": [
-                {
-                    "uwpId": 630,
-                    "itemName": "Masala Toast (NO)",
-                    "status": 1
-                }
-            ]
-        }
+        const data = req.body;
         if (!data.groupId || !data.addonItemsArray.length) {
             return res.status(404).send('Please Fill all the Fields....!')
         } else {

@@ -1,28 +1,37 @@
 const pool = require('../../database');
+const jwt = require('jsonwebtoken');
 
 // Get Bank Dash Board Data
 
 const getBankDashboardData = (req, res) => {
     try {
-        sql_queries_getBankDetails = `SELECT
-                                        bd.bankId,
-                                        bd.bankDisplayName,
-                                        bd.availableBalance + COALESCE(SUM(dtd.debitAmount),0) - COALESCE(SUM(ctd.creditAmount),0) AS availableBalance,
-                                        bd.bankIconName
-                                     FROM
-                                        bank_data AS bd
-                                        LEFT JOIN credit_transaction_data AS ctd ON ctd.toId = bd.bankId AND ctd.creditDate > CURDATE()
-                                        LEFT JOIN debit_transaction_data AS dtd ON dtd.fromId = bd.bankId AND dtd.debitDate > CURDATE()
-                                        WHERE bd.isActive = 1
-                                        GROUP BY bd.bankId
-                                        ORDER BY bankDisplayName ASC`;
-        pool.query(sql_queries_getBankDetails, (err, data) => {
-            if (err) {
-                console.error("An error occurred in SQL Queery", err);
-                return res.status(500).send('Database Error');
-            }
-            return res.status(200).send(data);
-        })
+        let token;
+        token = req.headers ? req.headers.authorization.split(" ")[1] : null;
+        if (token) {
+            const decoded = jwt.verify(token, process.env.JWT_SECRET);
+            const rights = decoded.id.rights;
+            sql_queries_getBankDetails = `SELECT
+                                             bd.bankId,
+                                             bd.bankDisplayName,
+                                             bd.availableBalance + COALESCE(SUM(dtd.debitAmount),0) - COALESCE(SUM(ctd.creditAmount),0) AS availableBalance,
+                                             bd.bankIconName
+                                          FROM
+                                             bank_data AS bd
+                                          LEFT JOIN credit_transaction_data AS ctd ON ctd.toId = bd.bankId AND ctd.creditDate > CURDATE()
+                                          LEFT JOIN debit_transaction_data AS dtd ON dtd.fromId = bd.bankId AND dtd.debitDate > CURDATE()
+                                          WHERE bd.isActive = 1
+                                          GROUP BY bd.bankId
+                                          ORDER BY bankDisplayName ASC`;
+            pool.query(sql_queries_getBankDetails, (err, data) => {
+                if (err) {
+                    console.error("An error occurred in SQL Queery", err);
+                    return res.status(500).send('Database Error');
+                }
+                return res.status(200).send(data);
+            })
+        } else {
+            return res.status(404).send('Please Login First...!');
+        }
     } catch (error) {
         console.error('An error occurred', error);
         res.status(500).send('Internal Server Error');

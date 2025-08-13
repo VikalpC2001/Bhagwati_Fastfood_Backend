@@ -17,7 +17,7 @@ const getUserDetails = async (req, res) => {
                 const numPerPage = req.query.numPerPage;
                 const skip = (page - 1) * numPerPage;
                 const limit = skip + ',' + numPerPage;
-                sql_querry_getdetails = `SELECT count(*) as numRows FROM user_details  WHERE user_details.userId NOT IN ('${userId}')`;
+                sql_querry_getdetails = `SELECT count(*) as numRows FROM user_details`;
                 pool.query(sql_querry_getdetails, (err, rows, fields) => {
                     if (err) {
                         console.error("An error occurred in SQL Queery", err);
@@ -27,7 +27,6 @@ const getUserDetails = async (req, res) => {
                         const numPages = Math.ceil(numRows / numPerPage);
                         pool.query(`SELECT userId, CONCAT(userFirstName,' ',userLastName) AS userFullName, userGender, userName, password, emailAddress, user_rights.rightsName FROM user_details
                                     INNER JOIN user_rights ON user_rights.rightsId = user_details.userRights
-                                    WHERE user_details.userId NOT IN ('${userId}')
                                     ORDER BY user_rights.positionNumber LIMIT ` + limit, (err, rows, fields) => {
                             if (err) {
                                 console.error("An error occurred in SQL Queery", err);
@@ -300,6 +299,53 @@ const ddlUsersList = (req, res) => {
     }
 }
 
+// Authenticate Password
+
+const chkPassword = (req, res) => {
+    try {
+        let token;
+        token = req.headers.authorization ? req.headers.authorization.split(" ")[1] : null;
+        if (token) {
+            const decoded = jwt.verify(token, process.env.JWT_SECRET);
+            const userRights = decoded.id.rights;
+            const userId = decoded.id.id;
+            console.log(userRights);
+            if (userRights == 1) {
+                const userPassword = req.body.userPassword ? req.body.userPassword : null;
+                if (!userPassword) {
+                    return res.status(404).send('Plese Enter Password...!');
+                } else {
+                    sql_querry_getUserPassword = `SELECT password AS chkPassword FROM user_details WHERE userId = '${userId}'`;
+                    pool.query(sql_querry_getUserPassword, (err, pass) => {
+                        if (err) {
+                            console.error("An error occurd in SQL Queery", err);
+                            return res.status(500).send('Database Error');
+                        } else {
+                            const chkPass = pass && pass[0].chkPassword ? pass[0].chkPassword : null;
+                            if (chkPass) {
+                                if (chkPass == userPassword) {
+                                    return res.status(200).send('Password Match Successfully');
+                                } else {
+                                    return res.status(404).send('Wrong Credential');
+                                }
+                            } else {
+                                return res.status(404).send('Password Not Found In Database');
+                            }
+                        }
+                    })
+                }
+            } else {
+                return res.status(400).send('Unauthorised Person');
+            }
+        } else {
+            res.status(401).send("Please Login Firest.....!");
+        }
+    } catch (error) {
+        console.error('An error occurd', error);
+        res.status(500).json('Internal Server Error');
+    }
+}
+
 module.exports = {
     authUser,
     getUserDetails,
@@ -308,5 +354,6 @@ module.exports = {
     removeUserDetails,
     updateUserDetails,
     fillUserDetails,
-    ddlUsersList
+    ddlUsersList,
+    chkPassword
 }

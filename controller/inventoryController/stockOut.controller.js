@@ -1489,9 +1489,6 @@ const exportCategoryWisedProductUsedData = (req, res) => {
         startDate: req && req.query.startDate ? (req.query.startDate).slice(4, 15) : firstDay,
         endDate: req && req.query.endDate ? (req.query.endDate).slice(4, 15) : lastDay,
     }
-
-    console.log(">/>/>/>/>", data.startDate, data.endDate);
-
     sql_queries_getdetails = `-- Generate dynamic columns for the pivot table
                             SET @sql = NULL;
                             SELECT GROUP_CONCAT(

@@ -187,10 +187,17 @@ const getSubTokensByBillId = async (req, res) => {
                         }
                         return acc;
                     }, []);
+                    const cleanedData = result.map(token => {
+                        const filteredItems = token.items.filter(item =>
+                            Object.values(item).some(v => v !== null)
+                        );
 
-                    return res.status(200).send(result);
-
-                    // return res.status(200).send(result);
+                        return {
+                            ...token,
+                            items: filteredItems.length ? filteredItems : [{ itemName: "Item deleted from bill.", unit: "", qty: "" }]
+                        };
+                    });
+                    return res.status(200).send(cleanedData);
                 }
             });
         }

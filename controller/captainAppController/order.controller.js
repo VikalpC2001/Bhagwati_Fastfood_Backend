@@ -187,7 +187,7 @@ const addDineInOrderByApp = (req, res) => {
                                                                                                     }
                                                                                                     connection.release();
                                                                                                     req?.io?.emit('updateTableView');
-                                                                                                    req?.io?.emit(`print_Kot_${adminMacAddress}`, sendJson);
+                                                                                                    billData.isPrintKOT ? req?.io?.emit(`print_Kot_${adminMacAddress}`, sendJson) : "";
                                                                                                     return res.status(200).send(sendJson);
                                                                                                 }
                                                                                             });
@@ -374,7 +374,7 @@ const addDineInOrderByApp = (req, res) => {
                                                                                                                                         }
                                                                                                                                         connection.release();
                                                                                                                                         req?.io?.emit('updateTableView');
-                                                                                                                                        req?.io?.emit(`print_Kot_${adminMacAddress}`, sendJson);
+                                                                                                                                        billData.isPrintKOT ? req?.io?.emit(`print_Kot_${adminMacAddress}`, sendJson) : "";
                                                                                                                                         return res.status(200).send(sendJson);
                                                                                                                                     }
                                                                                                                                 });
@@ -884,28 +884,46 @@ const updateSubTokenDataByIdForApp = (req, res) => {
                                                                                             const addedJson = createJson(added, 'new');
                                                                                             const removeJson = createJson(removed, 'cancelled');
                                                                                             const modifyJson = createJson(modifiedNewJson, 'modified');
-                                                                                            const existItemData = createJson(billData.itemsData)
-                                                                                            const mergedJson = [...addedJson, ...removeJson, ...modifyJson];
+                                                                                            // const existItemData = createJson(billData.itemsData)
+                                                                                            // const mergedJson = [...addedJson, ...removeJson, ...modifyJson];
 
-                                                                                            const newMergeJson = (json1, json2) => {
-                                                                                                json1.forEach(item1 => {
-                                                                                                    const index = json2.findIndex(item2 => item2.itemId === item1.itemId && item2.unit === item1.unit);
+                                                                                            // const newMergeJson = (json1, json2) => {
+                                                                                            //     json1.forEach(item1 => {
+                                                                                            //         const index = json2.findIndex(item2 => item2.itemId === item1.itemId && item2.unit === item1.unit);
 
-                                                                                                    if (index !== -1) {
-                                                                                                        // If a match is found, replace the object in json2 with the one from json1
-                                                                                                        json2[index] = item1;
-                                                                                                    } else {
-                                                                                                        // If no match is found, push the object from json1 to json2
-                                                                                                        json2.push(item1);
-                                                                                                    }
-                                                                                                });
-                                                                                                return json2;
-                                                                                            };
-                                                                                            const newItemsData = newMergeJson(mergedJson, existItemData);
+                                                                                            //         if (index !== -1) {
+                                                                                            //             // If a match is found, replace the object in json2 with the one from json1
+                                                                                            //             json2[index] = item1;
+                                                                                            //         } else {
+                                                                                            //             // If no match is found, push the object from json1 to json2
+                                                                                            //             json2.push(item1);
+                                                                                            //         }
+                                                                                            //     });
+                                                                                            //     return json2;
+                                                                                            // };
+                                                                                            // const newItemsData = newMergeJson(mergedJson, existItemData);
 
-                                                                                            const sendJson = {
+                                                                                            const newAddJson = {
                                                                                                 ...billData,
-                                                                                                itemsData: newItemsData,
+                                                                                                itemsData: addedJson,
+                                                                                                tokenNo: billData.subTokenNumber ? billData.subTokenNumber : 'NA',
+                                                                                                assignCaptain: billData.assignCaptain ? billData.assignCaptain : cashier,
+                                                                                                billDate: new Date(currentDate).toLocaleDateString('en-GB'),
+                                                                                                billTime: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+                                                                                                isEdit: true
+                                                                                            }
+                                                                                            const newRemoveJson = {
+                                                                                                ...billData,
+                                                                                                itemsData: removeJson,
+                                                                                                tokenNo: billData.subTokenNumber ? billData.subTokenNumber : 'NA',
+                                                                                                assignCaptain: billData.assignCaptain ? billData.assignCaptain : cashier,
+                                                                                                billDate: new Date(currentDate).toLocaleDateString('en-GB'),
+                                                                                                billTime: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+                                                                                                isEdit: true
+                                                                                            }
+                                                                                            const newModifiedJson = {
+                                                                                                ...billData,
+                                                                                                itemsData: modifyJson,
                                                                                                 tokenNo: billData.subTokenNumber ? billData.subTokenNumber : 'NA',
                                                                                                 assignCaptain: billData.assignCaptain ? billData.assignCaptain : cashier,
                                                                                                 billDate: new Date(currentDate).toLocaleDateString('en-GB'),
@@ -914,8 +932,10 @@ const updateSubTokenDataByIdForApp = (req, res) => {
                                                                                             }
                                                                                             connection.release();
                                                                                             req?.io?.emit('updateTableView');
-                                                                                            req?.io?.emit(`print_Kot_${adminMacAddress}`, sendJson);
-                                                                                            return res.status(201).send(sendJson);
+                                                                                            billData.isPrintKOT && addedJson.length ? req?.io?.emit(`print_Kot_${adminMacAddress}`, newAddJson) : "";
+                                                                                            billData.isPrintKOT && removeJson.length ? req?.io?.emit(`print_Kot_${adminMacAddress}`, newRemoveJson) : "";
+                                                                                            billData.isPrintKOT && modifyJson.length ? req?.io?.emit(`print_Kot_${adminMacAddress}`, newModifiedJson) : "";
+                                                                                            return res.status(201).send("Success");
                                                                                         }
                                                                                     });
                                                                                 }

@@ -36,6 +36,9 @@ function getCategory(input) {
 const getBillingStaticsData = (req, res) => {
     try {
         const currentDate = getCurrentDate();
+        const startDate = (req.query.startDate ? req.query.startDate : '').slice(4, 15);
+        const endDate = (req.query.endDate ? req.query.endDate : '').slice(4, 15);
+        console.log(startDate, endDate);
         let sql_queries_getStatics = `-- Pick Up
                                      SELECT
                                          COALESCE(SUM(CASE WHEN billPayType = 'cash' THEN settledAmount ELSE 0 END), 0) AS cashAmt,
@@ -45,7 +48,7 @@ const getBillingStaticsData = (req, res) => {
                                          COALESCE(SUM(CASE WHEN billPayType = 'cancel' THEN settledAmount ELSE 0 END), 0) AS cancleAmt,
                                          COALESCE(SUM(totalDiscount),0) AS discountAmt
                                      FROM billing_data
-                                     WHERE billType = 'Pick Up' AND billDate = STR_TO_DATE('${currentDate}','%b %d %Y');
+                                     WHERE billType = 'Pick Up' AND billDate BETWEEN STR_TO_DATE('${startDate ? startDate : currentDate}', '%b %d %Y') AND STR_TO_DATE('${endDate ? endDate : currentDate}', '%b %d %Y');
                                      -- Delivery
                                      SELECT
                                         COALESCE(SUM(CASE WHEN billPayType = 'cash' THEN settledAmount ELSE 0 END), 0) AS cashAmt,
@@ -55,7 +58,7 @@ const getBillingStaticsData = (req, res) => {
                                         COALESCE(SUM(CASE WHEN billPayType = 'cancel' THEN settledAmount ELSE 0 END), 0) AS cancleAmt,
                                         COALESCE(SUM(totalDiscount),0) AS discountAmt
                                     FROM billing_data
-                                    WHERE billType = 'Delivery' AND billDate = STR_TO_DATE('${currentDate}','%b %d %Y');
+                                    WHERE billType = 'Delivery' AND billDate BETWEEN STR_TO_DATE('${startDate ? startDate : currentDate}', '%b %d %Y') AND STR_TO_DATE('${endDate ? endDate : currentDate}', '%b %d %Y');
                                     -- Dine In
                                      SELECT
                                          COALESCE(SUM(CASE WHEN billPayType = 'cash' AND billStatus IN ('print','complete') THEN settledAmount ELSE 0 END), 0) AS cashAmt,
@@ -65,7 +68,7 @@ const getBillingStaticsData = (req, res) => {
                                          COALESCE(SUM(CASE WHEN billPayType = 'cancel' THEN settledAmount ELSE 0 END), 0) AS cancleAmt,
                                          COALESCE(SUM(totalDiscount),0) AS discountAmt
                                      FROM billing_data
-                                     WHERE billType = 'Dine In' AND billDate = STR_TO_DATE('${currentDate}','%b %d %Y');
+                                     WHERE billType = 'Dine In' AND billDate BETWEEN STR_TO_DATE('${startDate ? startDate : currentDate}', '%b %d %Y') AND STR_TO_DATE('${endDate ? endDate : currentDate}', '%b %d %Y');
                                      -- Hotel
                                      SELECT
                                          COALESCE(SUM(CASE WHEN billPayType = 'cash' AND billStatus != 'cancel' THEN settledAmount ELSE 0 END), 0) AS cashAmt,
@@ -73,28 +76,30 @@ const getBillingStaticsData = (req, res) => {
                                          COALESCE(SUM(CASE WHEN billStatus = 'cancel' THEN settledAmount ELSE 0 END), 0) AS cancleAmt,
                                          COALESCE(SUM(totalDiscount),0) AS discountAmt
                                      FROM billing_data
-                                     WHERE billType = 'Hotel' AND billDate = STR_TO_DATE('${currentDate}','%b %d %Y');
+                                     WHERE billType = 'Hotel' AND billDate BETWEEN STR_TO_DATE('${startDate ? startDate : currentDate}', '%b %d %Y') AND STR_TO_DATE('${endDate ? endDate : currentDate}', '%b %d %Y');
                                      -- UPI Data
                                      SELECT
-                                         oud.onlineId AS onlineId,
-                                         oud.holderName AS holderName,
-                                         oud.holderNumber AS holderNumber,
-                                         oud.upiId AS upiId,
-                                         ROUND(IFNULL(SUM(CASE WHEN bwu.onlineDate = STR_TO_DATE('${currentDate}','%b %d %Y') THEN bwu.amount ELSE 0 END), 0)) AS upiAmt,
-                                         oud.isOfficial AS isOfficial
-                                     FROM
-                                         billing_onlineUPI_data AS oud
+                                         oud.onlineId,
+                                         oud.holderName,
+                                         oud.holderNumber,
+                                         oud.upiId,
+                                         ROUND(IFNULL(SUM(bwu.amount), 0)) AS upiAmt,
+                                         oud.isOfficial
+                                     FROM billing_onlineUPI_data AS oud
                                      LEFT JOIN billing_billWiseUpi_data AS bwu ON bwu.onlineId = oud.onlineId
-                                     GROUP BY oud.onlineId ORDER BY upiAmt ASC;
+                                     AND bwu.onlineDate BETWEEN STR_TO_DATE('${startDate ? startDate : currentDate}', '%b %d %Y') AND STR_TO_DATE('${endDate ? endDate : currentDate}', '%b %d %Y')
+                                     GROUP BY oud.onlineId
+                                     ORDER BY upiAmt ASC;
                                      -- Due Bill Data
                                      SELECT
                                          dad.accountId,
                                          dad.customerName,
                                          dad.customerNumber,
-                                         ROUND(IFNULL(SUM(CASE WHEN dba.dueDate = STR_TO_DATE('${currentDate}','%b %d %Y') THEN dba.billAmount ELSE 0 END), 0)) AS dueAmt
-                                     FROM
-                                         due_account_data AS dad
+                                         ROUND(IFNULL(SUM(dba.billAmount), 0)) AS dueAmt
+                                     FROM due_account_data AS dad
                                      LEFT JOIN due_billAmount_data AS dba ON dba.accountId = dad.accountId
+                                     AND dba.billId IS NOT NULL
+                                     AND dba.dueDate BETWEEN STR_TO_DATE('${startDate ? startDate : currentDate}', '%b %d %Y') AND STR_TO_DATE('${endDate ? endDate : currentDate}', '%b %d %Y') 
                                      GROUP BY dad.accountId
                                      HAVING dueAmt != 0
                                      ORDER BY dueAmt ASC`;
@@ -385,7 +390,11 @@ const getRecentBillData = (req, res) => {
                                                 bd.billId AS billId, 
                                                 bd.billNumber AS billNumber,
                                                 bd.settledAmount AS totalAmount,
-                                                bd.billPayType AS billPayType,
+                                                CASE
+                                                    WHEN bd.billPayType = 'Complimentary' THEN 'Comp'
+                                                    WHEN bd.billPayType = 'CancelToken' THEN '❌ Token'
+                                                    ELSE bd.billPayType
+                                                END AS billPayType,
                                                 bd.billStatus AS billStatus,
                                                 CASE
                                                     WHEN bd.billType = 'Hotel' THEN CONCAT('H',btd.tokenNo)

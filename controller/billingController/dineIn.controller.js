@@ -339,7 +339,8 @@ const addDineInOrder = (req, res) => {
                                                                                             assignCaptain: billData.assignCaptain ? billData.assignCaptain : cashier,
                                                                                             tokenNo: nextSubTokenNo ? nextSubTokenNo : 0,
                                                                                             billDate: new Date(currentDate).toLocaleDateString('en-GB'),
-                                                                                            billTime: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+                                                                                            billTime: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+                                                                                            isRunning: true
                                                                                         }
                                                                                         connection.release();
                                                                                         req?.io?.emit('updateTableView');

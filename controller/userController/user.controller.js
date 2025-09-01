@@ -309,8 +309,7 @@ const chkPassword = (req, res) => {
             const decoded = jwt.verify(token, process.env.JWT_SECRET);
             const userRights = decoded.id.rights;
             const userId = decoded.id.id;
-            console.log(userRights);
-            if (userRights == 1) {
+            if (userRights == 1 || userRights == 2) {
                 const userPassword = req.body.userPassword ? req.body.userPassword : null;
                 if (!userPassword) {
                     return res.status(404).send('Plese Enter Password...!');

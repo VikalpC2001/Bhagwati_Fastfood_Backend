@@ -3944,14 +3944,18 @@ const printBillInAdminSystem = (req, res) => {
         if (!billId) {
             return res.status(404).send('billId Not Found');
         } else {
-            let sql_query_chkBillExist = `SELECT billId, billType FROM billing_data WHERE billId = '${billId}'`;
+            let sql_query_chkBillExist = `SELECT billId, billType, billPayType FROM billing_data WHERE billId = '${billId}';
+                                          SELECT adminMacAddress FROM billing_admin_data`;
             pool.query(sql_query_chkBillExist, (err, bill) => {
                 if (err) {
                     console.error("An error occurred in SQL Queery", err);
                     return res.status(500).send('Database Error');
                 } else {
                     if (bill && bill.length) {
-                        const billType = bill[0].billType;
+                        const billType = bill[0][0].billType;
+                        const billPayType = bill[0][0].billPayType;
+                        const adminMacAddress = bill[1][0].adminMacAddress;
+                        console.log(billType, billPayType)
                         let sql_query_getBillingData = `SELECT 
                                                             bd.billId AS billId, 
                                                             bd.billNumber AS billNumber,
@@ -3963,10 +3967,12 @@ const printBillInAdminSystem = (req, res) => {
                                                                 WHEN bd.billType = 'Dine In' THEN CONCAT('R',btd.tokenNo)
                                                                 ELSE NULL
                                                             END AS tokenNo,
-                                                            CASE
-                                                                WHEN bd.billPayType = 'online' THEN bwu.onlineId
-                                                                ELSE NULL
-                                                            END AS otherId,
+                                                            bwu.onlineId AS onlineId,
+                                                            boud.holderName AS holderName,
+                                                            boud.upiId AS upiId,
+                                                            dba.accountId AS typeId,
+                                                            dad.customerName AS typeName,
+                                                            dba.dueNote AS dueNote,
                                                             bd.firmId AS firmId, 
                                                             bd.cashier AS cashier, 
                                                             bd.menuStatus AS menuStatus, 
@@ -3988,6 +3994,9 @@ const printBillInAdminSystem = (req, res) => {
                                                         LEFT JOIN billing_token_data AS btd ON btd.billId = bd.billId
                                                         LEFT JOIN billing_firm_data AS bfd ON bfd.firmId = bd.firmId
                                                         LEFT JOIN billing_billWiseUpi_data AS bwu ON bwu.billId = bd.billId
+                                                        LEFT JOIN billing_onlineUPI_data AS boud ON boud.onlineId = bwu.onlineId
+                                                        LEFT JOIN due_billAmount_data AS dba ON dba.billId = bd.billId
+                                                        LEFT JOIN due_account_data AS dad ON dad.accountId = dba.accountId
                                                         WHERE bd.billId = '${billId}'`;
                         let sql_query_getBillwiseItem = `SELECT
                                                              bwid.iwbId AS iwbId,
@@ -4003,6 +4012,16 @@ const printBillInAdminSystem = (req, res) => {
                                                              billing_billWiseItem_data AS bwid
                                                          INNER JOIN item_menuList_data AS imd ON imd.itemId = bwid.itemId
                                                          WHERE bwid.billId = '${billId}'`;
+                        let sql_query_getItemWiseAddons = `SELECT
+                                                               iwad.iwaId,
+                                                               iwad.iwbId,
+                                                               iwad.addOnsId,
+                                                               iad.addonsName,
+                                                               iad.price
+                                                           FROM
+                                                               billing_itemWiseAddon_data AS iwad
+                                                           LEFT JOIN item_addons_data AS iad ON iad.addonsId = iwad.addOnsId
+                                                           WHERE iwad.iwbId IN(SELECT COALESCE(bwid.iwbId, NULL) FROM billing_billWiseItem_data AS bwid WHERE bwid.billId = '${billId}')`;
                         let sql_query_getCustomerInfo = `SELECT
                                                              bwcd.bwcId AS bwcId,
                                                              bwcd.customerId AS customerId,
@@ -4039,25 +4058,56 @@ const printBillInAdminSystem = (req, res) => {
                                                      FROM 
                                                         billing_firm_data 
                                                      WHERE 
-                                                        firmId = (SELECT firmId FROM billing_data WHERE billId = '${billId}')`
+                                                        firmId = (SELECT firmId FROM billing_data WHERE billId = '${billId}')`;
+                        let sql_query_getTableData = `SELECT
+                                                        tableNo,
+                                                        assignCaptain
+                                                      FROM
+                                                        billing_billWiseTableNo_data
+                                                      WHERE billId = '${billId}'`;
+                        let sql_querry_getSubTokens = `SELECT subTokenNumber FROM billing_subToken_data WHERE billId = '${billId}'`;
+
                         const sql_query_getBillData = `${sql_query_getBillingData};
                                                        ${sql_query_getBillwiseItem};
                                                        ${sql_query_getFirmData};
+                                                       ${sql_query_getItemWiseAddons};
                                                        ${billType == 'Hotel' ? sql_query_getHotelInfo + ';' : ''}
-                                                       ${billType == 'Pick Up' || billType == 'Delivery' ? sql_query_getCustomerInfo : ''}`;
+                                                       ${['Pick Up', 'Delivery', 'Dine In'].includes(billType) ? sql_query_getCustomerInfo + ';' : ''}
+                                                       ${billType == 'Dine In' ? sql_query_getTableData + ';' + sql_querry_getSubTokens : ''}`;
                         pool.query(sql_query_getBillData, (err, billData) => {
                             if (err) {
                                 console.error("An error occurred in SQL Queery", err);
                                 return res.status(500).send('Database Error'); t
                             } else {
+                                const itemsData = billData && billData[1] ? billData[1] : [];
+                                const addonsData = billData && billData[3] ? billData[3] : [];
+
+                                const newItemJson = itemsData.map(item => {
+                                    const itemAddons = addonsData.filter(addon => addon.iwbId === item.iwbId);
+                                    return {
+                                        ...item,
+                                        addons: Object.fromEntries(itemAddons.map(addon => [addon.addOnsId, addon])),
+                                        addonPrice: itemAddons.reduce((sum, { price }) => sum + price, 0)
+                                    };
+                                });
                                 const json = {
                                     ...billData[0][0],
-                                    itemsData: billData && billData[1] ? billData[1] : [],
+                                    itemsData: newItemJson,
                                     firmData: billData && billData[2] ? billData[2][0] : [],
-                                    ...(billType === 'Hotel' ? { hotelDetails: billData[3][0] } : ''),
-                                    ...(billType == 'Pick Up' || billType == 'Delivery' ? { customerDetails: billData && billData[3][0] ? billData[3][0] : '' } : '')
+                                    ...(billType === 'Hotel' ? { hotelDetails: billData[4][0] } : ''),
+                                    ...(['Pick Up', 'Delivery', 'Dine In'].includes(billType) ? { customerDetails: billData && billData[4][0] ? billData[4][0] : '' } : ''),
+                                    ...(billType === 'Dine In' ? { tableInfo: billData[5][0] } : ''),
+                                    subTokens: billData && billData[5] && billData[6].length ? billData[6].map(item => item.subTokenNumber).sort((a, b) => a - b).join(", ") : null,
+                                    ...(['due', 'online'].includes(billPayType) ?
+                                        billPayType == 'due' ?
+                                            { "payInfo": { "accountId": billData[0][0].typeId, "customerName": billData[0][0].typeName } }
+                                            :
+                                            billPayType == 'online' ?
+                                                { "upiJson": { "onlineId": billData[0][0].onlineId, "holderName": billData[0][0].holderName, "upiId": billData[0][0].upiId } }
+                                                : ''
+                                        : '')
                                 }
-                                req?.io?.emit('print_Bill_86ee97442104adc27e74ce61fa4b57f158995292e9ab484bd618a75394ecc535', json);
+                                req?.io?.emit(`print_Bill_${adminMacAddress}`, json);
                                 return res.status(200).send(json);
                             }
                         })
@@ -4072,7 +4122,6 @@ const printBillInAdminSystem = (req, res) => {
         res.status(500).json('Internal Server Error');
     }
 }
-
 
 module.exports = {
     // Get Bill Data

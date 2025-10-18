@@ -1,5 +1,18 @@
+const { on } = require('nodemon');
 const pool = require('../../database');
 const jwt = require("jsonwebtoken");
+
+// Get Date Function 4 Hour
+
+function getCurrentDate() {
+    const now = new Date();
+    const hours = now.getHours();
+
+    if (hours <= 4) { // If it's 4 AM or later, increment the date
+        now.setDate(now.getDate() - 1);
+    }
+    return now.toDateString().slice(4, 15);
+}
 
 // Get Due Customer UPI
 
@@ -9,7 +22,10 @@ const getUPIList = (req, res) => {
         const numPerPage = req.query.numPerPage;
         const skip = (page - 1) * numPerPage;
         const limit = skip + ',' + numPerPage;
-        sql_querry_getCountDetails = `SELECT count(*) as numRows FROM billing_onlineUPI_data`;
+        const searchWord = req.query.searchWord ? req.query.searchWord : '';
+        sql_querry_getCountDetails = `SELECT count(*) as numRows FROM billing_onlineUPI_data
+                                      WHERE holderName LIKE '%` + searchWord + `%' 
+                                      OR holderNumber LIKE '%` + searchWord + `%'`;
         pool.query(sql_querry_getCountDetails, (err, rows, fields) => {
             if (err) {
                 console.error("An error occurred in SQL Queery", err);
@@ -22,9 +38,12 @@ const getUPIList = (req, res) => {
                                                 holderName,
                                                 holderNumber,
                                                 upiId,
-                                                isOfficial
+                                                isOfficial,
+                                                isDefault
                                               FROM 
                                                 billing_onlineUPI_data
+                                              WHERE holderName LIKE '%` + searchWord + `%' 
+                                              OR holderNumber LIKE '%` + searchWord + `%' 
                                               LIMIT ${limit}`;
                 pool.query(sql_query_getDetails, (err, rows, fields) => {
                     if (err) {
@@ -87,8 +106,8 @@ const addUPI = async (req, res) => {
                             } else if (oldData && oldData[2].length > 0) {
                                 return res.status(400).send('UPI ID is Already In Use');
                             } else {
-                                const sql_querry_addCategory = `INSERT INTO billing_onlineUPI_data (onlineId, holderName, holderNumber, upiId, isOfficial)  
-                                                                VALUES ('${onlineId}','${data.holderName}', '${data.holderNumber}', '${data.upiId}', ${data.isOfficial})`;
+                                const sql_querry_addCategory = `INSERT INTO billing_onlineUPI_data (onlineId, holderName, holderNumber, upiId, isOfficial, isDefault)  
+                                                                VALUES ('${onlineId}','${data.holderName}', '${data.holderNumber}', '${data.upiId}', ${data.isOfficial ? data.isOfficial : false}, 0)`;
                                 pool.query(sql_querry_addCategory, (err, data) => {
                                     if (err) {
                                         console.error("An error occurred in SQL Queery", err);
@@ -285,7 +304,10 @@ const getUPITransactionById = (req, res) => {
                                                       bwu.billId AS billId,
                                                       bwu.amount AS amount,
                                                       bd.billType AS billType,
-                                                      DATE_FORMAT(bwu.onlineDate, '%d-%m-%Y') AS onlineDate
+                                                      bd.cashier AS casheir,
+                                                      DATE_FORMAT(bwu.onlineDate, '%W') AS onlineDay,
+                                                      DATE_FORMAT(bwu.onlineDate, '%D %M %Y') AS onlineDate,
+                                                      DATE_FORMAT(bwu.creationDate, '%r') AS onlineTime
                                                   FROM
                                                       billing_billWiseUpi_data AS bwu
                                                   LEFT JOIN billing_data AS bd ON bd.billId = bwu.billId
@@ -296,15 +318,88 @@ const getUPITransactionById = (req, res) => {
                     pool.query(sql_query_getDetails, (err, rows, fields) => {
                         if (err) {
                             console.error("An error occurred in SQL Queery", err);
-                            return res.status(500).send('Database Error');;
+                            return res.status(500).send('Database Error');
                         } else {
                             if (numRows === 0) {
-                                return res.status(200).send({ rows, numRows, totalAmount });
+                                const rows = [{
+                                    'msg': 'No Data Found'
+                                }]
+                                return res.status(200).send({ rows, numRows });
                             } else {
                                 return res.status(200).send({ rows, numRows, totalAmount });
                             }
                         }
                     });
+                }
+            })
+        }
+    } catch (error) {
+        console.error('An error occurred', error);
+        res.status(500).json('Internal Server Error');
+    }
+}
+
+// Get UPI Statics By Id
+
+const getUPIStaticsById = (req, res) => {
+    try {
+        const onlineId = req.query.onlineId;
+        const currentDate = getCurrentDate();
+        const startDate = (req.query.startDate ? req.query.startDate : '').slice(4, 15);
+        const endDate = (req.query.endDate ? req.query.endDate : '').slice(4, 15);
+
+        if (!onlineId) {
+            return res.status(404).send("onlineId Not Found...!");
+        } else {
+            const sql_query_getstatics = `SELECT
+                                              SUM(CASE WHEN DATE(onlineDate) = CURDATE() 
+                                                       THEN amount ELSE 0 END) AS todayOnline,
+                                              SUM(CASE WHEN YEAR(onlineDate) = YEAR(CURDATE())
+                                                        AND MONTH(onlineDate) = MONTH(CURDATE())
+                                                       THEN amount ELSE 0 END) AS currentMonthOnline,
+                                              SUM(CASE WHEN YEAR(onlineDate) = YEAR(CURDATE() - INTERVAL 1 MONTH)
+                                                        AND MONTH(onlineDate) = MONTH(CURDATE() - INTERVAL 1 MONTH)
+                                                       THEN amount ELSE 0 END) AS previousMonthOnline,
+                                              SUM(CASE WHEN onlineDate BETWEEN STR_TO_DATE('${startDate ? startDate : currentDate}', '%b %d %Y')
+                                                                         AND STR_TO_DATE('${endDate ? endDate : currentDate}', '%b %d %Y')
+                                                       THEN amount ELSE 0 END) AS customRangeOnline
+                                          FROM billing_billWiseUpi_data
+                                          WHERE billing_billWiseUpi_data.onlineId = '${onlineId}';`
+            pool.query(sql_query_getstatics, (err, data) => {
+                if (err) {
+                    console.error("An error occurred in SQL Queery", err);
+                    return res.status(500).send('Database Error');
+                } else {
+                    return res.status(200).send(data[0]);
+                }
+            })
+        }
+    } catch (error) {
+        console.error('An error occurred', error);
+        res.status(500).json('Internal Server Error');
+    }
+}
+
+// Set as Default Upi
+
+const setDefaultUPI = (req, res) => {
+    try {
+        const onlineId = req.query.onlineId ? req.query.onlineId : null;
+
+        if (!onlineId) {
+            return res.status(404).send("onlineId Not Found...!");
+        } else {
+            const sql_query_getstatics = `UPDATE billing_onlineUPI_data
+                                          SET isDefault = CASE 
+                                                             WHEN onlineId = '${onlineId}' THEN 1 
+                                                             ELSE 0 
+                                                          END`;
+            pool.query(sql_query_getstatics, (err, data) => {
+                if (err) {
+                    console.error("An error occurred in SQL Queery", err);
+                    return res.status(500).send('Database Error');
+                } else {
+                    return res.status(200).send("Default Set Success");
                 }
             })
         }
@@ -320,5 +415,7 @@ module.exports = {
     removeUPI,
     updateUPI,
     ddlUPI,
-    getUPITransactionById
+    getUPITransactionById,
+    getUPIStaticsById,
+    setDefaultUPI
 }

@@ -1428,15 +1428,21 @@ const getMonthWiseTransactionForBankById = (req, res) => {
         // Calculate the start and end indices for the current page
         let startIndex = (page - 1) * numPerPage;
         let endIndex = startIndex + numPerPage;
-        let sql_query_getMonthWiseData = `SELECT
-                                              SUM(creditAmount) AS amount,
-                                              SUM(creditAmount) AS amt,
-                                              CONCAT(MONTHNAME(creditDate), '-', YEAR(creditDate)) AS date
-                                          FROM
-                                              credit_transaction_data
-                                          WHERE toId = '${bankId}'
-                                          GROUP BY YEAR(creditDate), MONTH(creditDate)
-                                          ORDER BY YEAR(creditDate) ASC, MONTH(creditDate) ASC;
+        let sql_query_getMonthWiseData = `SELECT 
+                                            CONCAT(MONTHNAME(c.creditDate), '-', YEAR(c.creditDate)) AS date,
+                                            SUM(c.creditAmount) AS amount,
+                                            SUM(c.creditAmount) AS amt,
+                                            (
+                                              SELECT IFNULL(SUM(d.debitAmount), 0)
+                                              FROM debit_transaction_data d
+                                              WHERE MONTH(d.debitDate) = MONTH(c.creditDate)
+                                                AND YEAR(d.debitDate) = YEAR(c.creditDate)
+                                                AND d.fromId = '${bankId}'
+                                            ) AS debitAmt
+                                          FROM credit_transaction_data c
+                                          WHERE c.toId = '${bankId}'
+                                          GROUP BY YEAR(c.creditDate), MONTH(c.creditDate)
+                                          ORDER BY YEAR(c.creditDate), MONTH(c.creditDate);
                                           SELECT SUM(debitAmount) AS debitAmt FROM debit_transaction_data WHERE fromId = '${bankId}'`;
         pool.query(sql_query_getMonthWiseData, (err, data) => {
             if (err) {
@@ -1459,7 +1465,6 @@ const getMonthWiseTransactionForBankById = (req, res) => {
                 });
                 const rows = result.slice(startIndex, endIndex);
                 const numRows = arr.length
-                console.log(startIndex, endIndex);
                 if (numRows != 0) {
                     return res.status(200).send({ rows, numRows });
                 } else {

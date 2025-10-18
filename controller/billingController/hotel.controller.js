@@ -229,7 +229,6 @@ const updateHotelData = (req, res) => {
             discountType: req.body.discountType ? req.body.discountType : null,
             discount: req.body.discount ? req.body.discount : 0,
         }
-        console.log('mummm', data.discountType, data.discountType == 'none' ? 0 : data.discount);
         if (!data.hotelId || !data.hotelName || !data.hotelMobileNo || !data.payType || !data.discountType) {
             return res.status(404).send('Please Fill All The Fields....!');
         } else {

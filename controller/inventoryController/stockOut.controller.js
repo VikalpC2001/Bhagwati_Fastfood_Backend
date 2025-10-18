@@ -151,7 +151,6 @@ const getCategoryWiseUsedByProduct = (req, res) => {
                                               iscd.stockOutCategoryId = so.stockOutCategory
                                             ORDER BY so.usedQty DESC`
         }
-        console.log(">>>><<??", sql_queries_getCategoryUsed);
         pool.query(sql_queries_getCategoryUsed, (err, data) => {
             if (err) {
                 console.error("An error occurred in SQL Queery", err);
@@ -252,7 +251,6 @@ const exportExcelSheetForStockout = (req, res) => {
         ]
         //Looping through User data
         const arr = rows
-        console.log(">>>", arr);
         let counter = 1;
         arr.forEach((user) => {
             user.s_no = counter;
@@ -293,7 +291,6 @@ const exportExcelSheetForStockout = (req, res) => {
         try {
             const data = await workbook.xlsx.writeBuffer()
             var fileName = new Date().toString().slice(4, 15) + ".xlsx";
-            console.log(">>>", fileName);
             // res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
             // res.addHeader(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename="+ fileName)
             res.contentType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
@@ -376,7 +373,7 @@ const addStockOutDetails = async (req, res) => {
                         }
                         const orignalStockInData = Object.values(JSON.parse(JSON.stringify(data)));
                         const stockInData = Object.values(JSON.parse(JSON.stringify(data)));
-                        console.log(">>>", Object.values(JSON.parse(JSON.stringify(data))));
+
                         const stockOutData = [
                             { productId: req.body.productId, stockOutQuantity: req.body.productQty }
                         ];

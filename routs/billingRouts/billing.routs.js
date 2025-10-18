@@ -15,6 +15,7 @@ router.get('/ddlBillCategory', protect, categoryController.ddlBillCategory);
 const commentController = require("../../controller/billingController/comment.controller.js");
 
 router.get('/getComment', protect, commentController.getComment);
+router.get('/getCommentData', protect, commentController.getCommentData);
 router.post('/addComment', protect, commentController.addComment);
 router.delete('/removeComment', protect, commentController.removeComment);
 router.post('/updateComment', protect, commentController.updateComment);
@@ -56,11 +57,17 @@ router.get('/exportPdfHotelBillData', protect, hotelController.exportPdfHotelBil
 const firmController = require("../../controller/billingController/firm.controller.js");
 
 router.get('/getFirmData', protect, firmController.getFirmData);
+router.get('/getFirmDataById', protect, firmController.getFirmDataById);
 router.post('/addFirmData', protect, firmController.addFirmData);
 router.delete('/removeFirmData', protect, firmController.removeFirmData);
 router.post('/updateFirmData', protect, firmController.updateFirmData);
 router.get('/ddlFirmData', protect, firmController.ddlFirmData);
-router.get('/getTaxReportByFirmId', firmController.getTaxReportByFirmId);
+router.get('/getTaxReportByFirmId', protect, firmController.getTaxReportByFirmId);
+router.get('/getBillDataByFirmId', protect, firmController.getBillDataByFirmId);
+router.get('/getCancelBillDataByFirmId', protect, firmController.getCancelBillDataByFirmId);
+router.get('/getComplimentaryBillDataByFirmId', protect, firmController.getComplimentaryBillDataByFirmId);
+router.get('/getMonthWiseBillDataByFirmId', protect, firmController.getMonthWiseBillDataByFirmId);
+router.get('/getStaticsDataByFirmId', protect, firmController.getStaticsDataByFirmId);
 
 // Billing Routs
 
@@ -160,6 +167,8 @@ router.delete('/removeUPI', protect, upiConntroller.removeUPI);
 router.post('/updateUPI', protect, upiConntroller.updateUPI);
 router.get('/ddlUPI', protect, upiConntroller.ddlUPI);
 router.get('/getUPITransactionById', protect, upiConntroller.getUPITransactionById);
+router.get('/getUPIStaticsById', protect, upiConntroller.getUPIStaticsById);
+router.get('/setDefaultUPI', protect, upiConntroller.setDefaultUPI);
 
 // Dine In Routs
 

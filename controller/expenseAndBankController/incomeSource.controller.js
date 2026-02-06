@@ -117,30 +117,34 @@ const addIncomeSource = (req, res) => {
 // Remove Main Category Data
 
 const removeIncomeSource = async (req, res) => {
-
     try {
-        var sourceId = req.query.sourceId.trim();
+        const sourceId = req.query.sourceId ? req.query.sourceId.trim() : '';
         if (!sourceId) {
             return res.status(404).send('sourceId Not Found');
         }
-        req.query.sourceId = pool.query(`SELECT sourceId FROM incomeSource_data WHERE sourceId = '${sourceId}'`, (err, row) => {
+        if (sourceId === '9978961515') {
+            return res.status(403).send('Not allow to DELETE');
+        }
+        pool.query(`SELECT sourceId FROM incomeSource_data WHERE sourceId = '${sourceId}'`, (err, row) => {
             if (err) {
-                console.error("An error occurred in SQL Queery", err);
+                console.error("An error occurred in SQL Query", err);
                 return res.status(500).send('Database Error');
             }
-            if (row && row.length) {
-                const sql_querry_removedetails = `DELETE FROM incomeSource_data WHERE sourceId = '${sourceId}'`;
-                pool.query(sql_querry_removedetails, (err, data) => {
-                    if (err) {
-                        console.error("An error occurred in SQL Queery", err);
-                        return res.status(500).send('Database Error');
-                    }
-                    return res.status(200).send("In-Come Source Deleted Successfully");
-                })
-            } else {
+            if (!row || !row.length) {
                 return res.status(404).send('sourceId Not Found');
             }
-        })
+            if (row[0].sourceId === '9978961515') {
+                return res.status(403).send('Not allow to DELETE');
+            }
+            const sql_querry_removedetails = `DELETE FROM incomeSource_data WHERE sourceId = '${sourceId}'`;
+            pool.query(sql_querry_removedetails, (err, data) => {
+                if (err) {
+                    console.error("An error occurred in SQL Query", err);
+                    return res.status(500).send('Database Error');
+                }
+                return res.status(200).send("In-Come Source Deleted Successfully");
+            });
+        });
     } catch (error) {
         console.error('An error occurred', error);
         res.status(500).send('Internal Server Error');

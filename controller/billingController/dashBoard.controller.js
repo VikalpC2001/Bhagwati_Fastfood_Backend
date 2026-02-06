@@ -2,6 +2,18 @@ const pool = require('../../database');
 const { jsPDF } = require('jspdf');
 require('jspdf-autotable');
 
+// Get Date Function 4 Hour
+
+function getCurrentDate() {
+    const now = new Date();
+    const hours = now.getHours();
+
+    if (hours <= 4) { // If it's 4 AM or later, increment the date
+        now.setDate(now.getDate() - 1);
+    }
+    return now.toDateString().slice(4, 15);
+}
+
 // Get Category List
 
 const getThreeCategorDashBoardData = (req, res) => {
@@ -81,6 +93,63 @@ const getThreeCategorDashBoardData = (req, res) => {
     }
 }
 
+// Get All orders
+
+const getAllOrdersData = (req, res) => {
+    try {
+        const billType = req.query.billType;
+        const billDate = (req.query.billDate ? req.query.billDate : '').slice(4, 15);
+        const currentDate = getCurrentDate();
+        if (!billType) {
+            return res.status(404).send('Bill Type Not Found');
+        } else {
+            let sql_query_getRecentBill = `SELECT 
+                                                bd.billId AS billId, 
+                                                CASE
+                                                    WHEN bd.billType = 'Hotel' THEN CONCAT('H',btd.tokenNo)
+                                                    WHEN bd.billType = 'Pick Up' THEN CONCAT('P',btd.tokenNo)
+                                                    WHEN bd.billType = 'Delivery' THEN CONCAT('D',btd.tokenNo)
+                                                    WHEN bd.billType = 'Dine In' THEN CONCAT('R',btd.tokenNo)
+                                                ELSE NULL
+                                                END AS tokenNo,
+                                                bd.cashier AS cashier,
+                                                bd.menuStatus AS menuStatus,
+                                                CASE
+                                                    WHEN bd.billPayType = 'Complimentary' THEN 'Comp'
+                                                    WHEN bd.billPayType = 'CancelToken' THEN '❌ Token'
+                                                    ELSE bd.billPayType
+                                                END AS billPayType,
+                                                bd.totalAmount AS totalAmount,
+                                                bd.settledAmount AS settledAmount,
+                                                bd.billStatus AS billStatus,
+                                                DATE_FORMAT(bd.billDate,'%d/%m/%Y') AS billDate,
+                                                DATE_FORMAT(bd.billCreationDate,'%h:%i %p') AS billCreationDate
+                                           FROM billing_data AS bd
+                                           LEFT JOIN billing_token_data AS btd ON btd.billId = bd.billId
+                                           WHERE bd.billType = '${billType}' 
+                                           ${billType == 'Dine In' ? `AND bd.billStatus NOT IN ('running','print')` : ''} 
+                                           AND bd.billDate = STR_TO_DATE('${billDate ? billDate : currentDate}','%b %d %Y')
+                                           ORDER BY btd.tokenNo DESC`;
+            pool.query(sql_query_getRecentBill, (err, data) => {
+                if (err) {
+                    console.error("An error occurred in SQL Queery", err);
+                    return res.status(500).send('Database Error');
+                } else {
+                    if (data && data.length) {
+                        return res.status(200).send(data);
+                    } else {
+                        return res.status(404).send('No Data Found');
+                    }
+                }
+            })
+        }
+    } catch (error) {
+        console.error('An error occurred', error);
+        res.status(500).json('Internal Server Error');
+    }
+}
+
 module.exports = {
-    getThreeCategorDashBoardData
+    getThreeCategorDashBoardData,
+    getAllOrdersData
 }

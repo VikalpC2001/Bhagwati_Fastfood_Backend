@@ -1077,103 +1077,6 @@ const exportHotelTransactionInvoice = async (req, res) => {
 
 // Export Hotel Data PDF
 
-const exportPdfHotelBillData = (req, res) => {
-    try {
-        var date = new Date(), y = date.getFullYear(), m = (date.getMonth());
-        var firstDay = new Date(y, m, 1).toString().slice(4, 15);
-        var lastDay = new Date(y, m + 1, 0).toString().slice(4, 15);
-
-        const data = {
-            hotelId: req.query.hotelId ? req.query.hotelId : null,
-            payType: req.query.payType ? req.query.payType : null,
-            startDate: (req.query.startDate ? req.query.startDate : '').slice(4, 15),
-            endDate: (req.query.endDate ? req.query.endDate : '').slice(4, 15)
-        }
-        let commaonQuery = `SELECT hotelName FROM billing_hotel_data WHERE hotelId = '${data.hotelId}';
-                            SELECT 
-                                bod.billNumber AS "Bill No",
-                                bod.billPayType AS "Pay",
-                                FORMAT(bod.totalAmount,2) AS "Bill Amt",
-                                FORMAT(bod.totalDiscount,2) AS "Discount",
-                                FORMAT(bod.settledAmount,2) AS "Settle Amt",
-                                bod.billStatus AS "Status",
-                                CONCAT(DATE_FORMAT(bod.billDate,'%d-%m-%Y'),' ',DATE_FORMAT(bod.billCreationDate,'%h:%i %p')) AS "Date"
-                            FROM billing_Official_data AS bod
-                            LEFT JOIN billing_hotelInfo_data AS hif ON bod.billId = hif.billId`;
-
-        if (data.payType && data.payType != 'cancel' && data.startDate && data.endDate) {
-            sql_query_getDetails = `${commaonQuery}
-                                    WHERE hif.hotelId = '${data.hotelId}'
-                                    AND bod.billPayType = '${data.payType}'
-                                    AND bod.billDate BETWEEN STR_TO_DATE('${data.startDate}','%b %d %Y') AND STR_TO_DATE('${data.endDate}','%b %d %Y')
-                                    ORDER BY bod.billNumber DESC, bod.billDate DESC`;
-        } else if (data.payType && data.payType == 'cancel' && data.startDate && data.endDate) {
-            sql_query_getDetails = `${commaonQuery}
-                                    WHERE hif.hotelId = '${data.hotelId}'
-                                    AND bod.billStatus = '${data.payType}'
-                                    AND bod.billDate BETWEEN STR_TO_DATE('${data.startDate}','%b %d %Y') AND STR_TO_DATE('${data.endDate}','%b %d %Y')
-                                    ORDER BY bod.billNumber DESC, bod.billDate DESC`;
-        } else if (data.startDate && data.endDate) {
-            sql_query_getDetails = `${commaonQuery}
-                                    WHERE hif.hotelId = '${data.hotelId}'
-                                    AND bod.billDate BETWEEN STR_TO_DATE('${data.startDate}','%b %d %Y') AND STR_TO_DATE('${data.endDate}','%b %d %Y')
-                                    ORDER BY bod.billNumber DESC, bod.billDate DESC`;
-        } else if (data.payType && data.payType == 'cancel') {
-            sql_query_getDetails = `${commaonQuery}
-                                    WHERE hif.hotelId = '${data.hotelId}'
-                                    AND bod.billStatus = '${data.payType}'
-                                    AND bod.billDate BETWEEN STR_TO_DATE('${firstDay}','%b %d %Y') AND STR_TO_DATE('${lastDay}','%b %d %Y')
-                                    ORDER BY bod.billNumber DESC, bod.billDate DESC`;
-        } else if (data.payType) {
-            sql_query_getDetails = `${commaonQuery}
-                                    WHERE hif.hotelId = '${data.hotelId}'
-                                    AND bod.billPayType = '${data.payType}'
-                                    AND bod.billDate BETWEEN STR_TO_DATE('${firstDay}','%b %d %Y') AND STR_TO_DATE('${lastDay}','%b %d %Y')
-                                    ORDER BY bod.billNumber DESC, bod.billDate DESC`;
-        } else {
-            sql_query_getDetails = `${commaonQuery}
-                                    WHERE hif.hotelId = '${data.hotelId}'
-                                    AND bod.billDate BETWEEN STR_TO_DATE('${firstDay}','%b %d %Y') AND STR_TO_DATE('${lastDay}','%b %d %Y')
-                                    ORDER BY bod.billNumber DESC, bod.billDate DESC`;
-        }
-        pool.query(sql_query_getDetails, (err, rows) => {
-            if (err) {
-                console.error("An error occurred in SQL Queery", err);
-                return res.status(500).send('Database Error');
-            } else if (rows && rows[1].length <= 0) {
-                return res.status(400).send('No Data Found');
-            }
-            const abc = Object.values(JSON.parse(JSON.stringify(rows[1])));
-            const totalSettle = abc.reduce((total, item) => total + Number(item['Settle Amt'].replace(/,/g, '') || 0), 0);
-            const totalDiscount = abc.reduce((total, item) => total + Number(item['Discount'].replace(/,/g, '') || 0), 0);
-            const totalBillAmt = abc.reduce((total, item) => total + Number(item['Bill Amt'].replace(/,/g, '') || 0), 0);
-            const sumFooterArray = ['Total', '', '',
-                parseFloat(totalBillAmt).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 }),
-                parseFloat(totalDiscount).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 }),
-                parseFloat(totalSettle).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
-            ];
-
-            let tableHeading = rows && rows[0].length ? rows[0][0].hotelName + ' (' + (data.startDate ? data.startDate : firstDay) + ' To ' + (data.endDate ? data.endDate : lastDay) + ')' : 'NA';
-
-
-            createBillPDF(res, abc, sumFooterArray, tableHeading)
-                .then(() => {
-                    console.log('PDF created successfully');
-                    res.status(200);
-                })
-                .catch((err) => {
-                    console.log(err);
-                    res.status(500).send('Error creating PDF');
-                });
-        });
-    } catch (error) {
-        console.error('An error occurred', error);
-        res.status(500).json('Internal Server Error');
-    }
-}
-
-// Export Hotel Data PDF
-
 const exportPdfHotelBillDataById = (req, res) => {
     try {
         var date = new Date(), y = date.getFullYear(), m = (date.getMonth());
@@ -1186,41 +1089,20 @@ const exportPdfHotelBillDataById = (req, res) => {
             startDate: (req.query.startDate ? req.query.startDate : '').slice(4, 15),
             endDate: (req.query.endDate ? req.query.endDate : '').slice(4, 15)
         }
-        const commanTransactionQuarry = `SELECT hotelName FROM billing_hotel_data WHERE hotelId = '${data.hotelId}';
-                                         SELECT 
-                                            CONCAT(DATE_FORMAT(bod.billDate,'%d-%m-%Y'),' ',DATE_FORMAT(bod.billCreationDate,'%h:%i %p')) AS Date,
-                                            FORMAT(bod.settledAmount,2) AS Amount,
-                                            CONCAT('Bill No : ',bod.billNumber) AS "Bill Number",
-                                            CONCAT('Room No : ',hif.roomNo) AS "Room Number"
-                                         FROM billing_Official_data AS bod
-                                         LEFT JOIN billing_hotelInfo_data AS hif ON bod.billId = hif.billId`;
-        if (data.payType && data.startDate && data.endDate) {
-            sql_query_getDetails = `${commanTransactionQuarry}
-                                    WHERE hif.hotelId = '${data.hotelId}'
-                                    AND bod.billPayType = '${data.payType}'
-                                    AND bod.billStatus != 'Cancel' 
-                                    AND bod.billDate BETWEEN STR_TO_DATE('${data.startDate}','%b %d %Y') AND STR_TO_DATE('${data.endDate}','%b %d %Y')
-                                    ORDER BY bod.billDate ASC, bod.billCreationDate ASC`;
-        } else if (data.startDate && data.endDate) {
-            sql_query_getDetails = `${commanTransactionQuarry}
-                                    WHERE hif.hotelId = '${data.hotelId}'
-                                    AND bod.billStatus != 'Cancel'
-                                    AND bod.billDate BETWEEN STR_TO_DATE('${data.startDate}','%b %d %Y') AND STR_TO_DATE('${data.endDate}','%b %d %Y')
-                                    ORDER BY bod.billDate ASC, bod.billCreationDate ASC`;
-        } else if (data.payType) {
-            sql_query_getDetails = `${commanTransactionQuarry}
-                                    WHERE hif.hotelId = '${data.hotelId}'
-                                    AND bod.billPayType = '${data.payType}'
-                                    AND bod.billStatus != 'Cancel'
-                                    AND bod.billDate BETWEEN STR_TO_DATE('${firstDay}','%b %d %Y') AND STR_TO_DATE('${lastDay}','%b %d %Y')
-                                    ORDER BY bod.billDate ASC, bod.billCreationDate ASC`;
-        } else {
-            sql_query_getDetails = `${commanTransactionQuarry}
-                                    WHERE hif.hotelId = '${data.hotelId}'
-                                    AND bod.billStatus != 'Cancel'
-                                    AND bod.billDate BETWEEN STR_TO_DATE('${firstDay}','%b %d %Y') AND STR_TO_DATE('${lastDay}','%b %d %Y')
-                                    ORDER BY bod.billDate ASC, bod.billCreationDate ASC`;
-        }
+        const sql_query_getDetails = `SELECT hotelName FROM billing_hotel_data WHERE hotelId = '${data.hotelId}';
+                                      SELECT 
+                                         CONCAT(DATE_FORMAT(bod.billDate,'%d-%m-%Y'),' ',DATE_FORMAT(bod.billCreationDate,'%h:%i %p')) AS Date,
+                                         FORMAT(bod.settledAmount,2) AS Amount,
+                                         CONCAT('Bill No : ',bod.billNumber) AS "Bill Number",
+                                         bod.billPayType AS "Payment Type",
+                                         CONCAT('Room No : ',hif.roomNo) AS "Room Number"
+                                      FROM billing_Official_data AS bod
+                                      LEFT JOIN billing_hotelInfo_data AS hif ON bod.billId = hif.billId
+                                      WHERE hif.hotelId = '${data.hotelId}'
+                                      ${data.payType ? `AND bod.billPayType = '${data.payType}'` : ''}
+                                      AND bod.billStatus != 'Cancel' 
+                                      AND bod.billDate BETWEEN STR_TO_DATE('${data.startDate ? data.startDate : firstDay}','%b %d %Y') AND STR_TO_DATE('${data.endDate ? data.endDate : lastDay}','%b %d %Y')
+                                      ORDER BY bod.billDate ASC, bod.billCreationDate ASC`;
         pool.query(sql_query_getDetails, (err, rows) => {
             if (err) {
                 console.error("An error occurred in SQL Queery", err);
@@ -1233,7 +1115,6 @@ const exportPdfHotelBillDataById = (req, res) => {
             const sumFooterArray = ['Total', '', parseFloat(grandTotal).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })];
 
             let tableHeading = rows && rows[0].length ? rows[0][0].hotelName + ' (' + (data.startDate ? data.startDate : firstDay) + ' To ' + (data.endDate ? data.endDate : lastDay) + ')' : 'NA';
-
 
             createBillPDF(res, abc, sumFooterArray, tableHeading)
                 .then(() => {
@@ -1265,6 +1146,5 @@ module.exports = {
     removeHotelTransactionById,
     getMonthWiseTransactionForHotel,
     getHotelTransactionListById,
-    exportHotelTransactionInvoice,
-    exportPdfHotelBillData
+    exportHotelTransactionInvoice
 }

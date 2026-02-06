@@ -1,10 +1,23 @@
 const pool = require('../../database');
+const pool2 = require('../../databasePool');
 const jwt = require("jsonwebtoken");
 const excelJS = require("exceljs");
 const fs = require('fs');
 const { jsPDF } = require('jspdf');
 const { start } = require('repl');
 require('jspdf-autotable');
+
+// Get Date Function 4 Hour
+
+function getCurrentDate() {
+    const now = new Date();
+    const hours = now.getHours();
+
+    if (hours <= 4) { // If it's 4 AM or later, increment the date
+        now.setDate(now.getDate() - 1);
+    }
+    return now.toDateString().slice(4, 15);
+}
 
 // Get Business Report Dashboard
 
@@ -229,10 +242,18 @@ const getBusinessReportDashBoardwithNetProfit = (req, res) => {
 // Add Business Report
 
 const addBusinessReport = (req, res) => {
-    try {
-        let token;
-        token = req.headers.authorization.split(" ")[1];
-        if (token) {
+    pool2.getConnection((err, connection) => {
+        if (err) {
+            console.error("Error getting database connection:", err);
+            return res.status(500).send('Database Error');
+        }
+        try {
+            let token;
+            token = req.headers && req.headers.authorization ? req.headers.authorization.split(" ")[1] : null;
+            if (!token) {
+                connection.release();
+                return res.status(401).send("Please Login First.....!");
+            }
             const decoded = jwt.verify(token, process.env.JWT_SECRET);
             const userId = decoded.id.id;
             const staticWalletId = process.env.STATIC_WALLETID;
@@ -246,47 +267,146 @@ const addBusinessReport = (req, res) => {
                 openingBalanceComment: req.body.openingBalanceComment,
                 closingBalance: req.body.closingBalance ? req.body.closingBalance : 0,
                 reportDate: req.body.reportDate ? new Date(req.body.reportDate).toString().slice(4, 15) : null,
-            }
-            console.log(businessReport, data.openingBalanceAmt, data.closingBalance, data.reportDate);
+            };
             if (!businessReport || !data.reportDate) {
+                connection.release();
                 return res.status(400).send("Please Fill All The Fields");
+            }
 
-            } else {
-                const keys = Object.keys(businessReport);
-                let addBRdata = keys.map((item, index) => {
-                    let uniqueId = `BRID_${Date.now() + index}`; // Generating a unique ID using current timestamp
-                    return `('${uniqueId}', '${item}', ${businessReport[item] ? businessReport[item] : 0} , STR_TO_DATE('${data.reportDate}','%b %d %Y'))`;
-                }).join(', ');
+            connection.beginTransaction((err) => {
+                if (err) {
+                    console.error("Error beginning transaction:", err);
+                    connection.release();
+                    return res.status(500).send('Database Error');
+                }
 
-                businessReport[keys[1]] = pool.query(`SELECT businessCategoryId FROM business_report_data WHERE businessDate = STR_TO_DATE('${data.reportDate}','%b %d %Y')`, function (err, row) {
+                // Validate: all firms with isSettlement=TRUE must be settled for today
+                const sql_query_validateSettlement = `SELECT 
+                                                         CASE 
+                                                             WHEN COUNT(*) = 0 THEN TRUE
+                                                             ELSE FALSE
+                                                         END AS isValid
+                                                     FROM billing_firm_data bfd
+                                                     WHERE bfd.isSettlement = TRUE
+                                                     AND NOT EXISTS (
+                                                         SELECT 1 FROM billing_settlement_data bsd
+                                                         WHERE bsd.firmId = bfd.firmId
+                                                         AND bsd.settleDate = CURDATE()
+                                                     )`;
+                connection.query(sql_query_validateSettlement, (err, validateResult) => {
                     if (err) {
-                        console.error("An error occurred in SQL Queery", err);
-                        return res.status(500).send('Database Error');
+                        console.error("Error validating settlement:", err);
+                        connection.rollback(() => {
+                            connection.release();
+                            return res.status(500).send('Database Error');
+                        });
                     }
-                    if (row && row.length) {
-                        return res.status(400).send(`Business is Already Added On Date ${data.reportDate}`);
-                    } else {
+                    const isValid = validateResult && validateResult.length && validateResult[0].isValid;
+                    if (!isValid) {
+                        connection.rollback(() => {
+                            connection.release();
+                            return res.status(400).send("First settle firm");
+                        });
+                    }
+
+                    // Check if business report already exists for this date
+                    const sql_query_chkReportExist = `SELECT businessCategoryId FROM business_report_data WHERE businessDate = STR_TO_DATE('${data.reportDate}','%b %d %Y')`;
+                    connection.query(sql_query_chkReportExist, (err, row) => {
+                        if (err) {
+                            console.error("An error occurred in SQL Query", err);
+                            connection.rollback(() => {
+                                connection.release();
+                                return res.status(500).send('Database Error');
+                            });
+                        }
+                        if (row && row.length) {
+                            connection.rollback(() => {
+                                connection.release();
+                                return res.status(400).send(`Business is Already Added On Date ${data.reportDate}`);
+                            });
+                        }
+
+                        const keys = Object.keys(businessReport);
+                        let addBRdata = keys.map((item, index) => {
+                            let uniqueId = `BRID_${Date.now() + index}`;
+                            return `('${uniqueId}', '${item}', ${businessReport[item] ? businessReport[item] : 0} , STR_TO_DATE('${data.reportDate}','%b %d %Y'))`;
+                        }).join(', ');
+
                         const sql_querry_addDetails = `INSERT INTO balance_data (balanceId, balanceAmount, balanceComment, balanceDate)
                                                        VALUES('${balanceId}', ${data.openingBalanceAmt}, ${data.openingBalanceComment ? `'${data.openingBalanceComment}'` : null}, STR_TO_DATE('${data.reportDate}','%b %d %Y'));
                                                        INSERT INTO business_report_data (brId, businessCategoryId, businessAmount, businessDate)
                                                        VALUES ${addBRdata}`;
-                        pool.query(sql_querry_addDetails, (err, result) => {
+                        connection.query(sql_querry_addDetails, (err, result) => {
                             if (err) {
-                                console.error("An error occurred in SQL Queery", err);
-                                return res.status(500).send('Database Error');
+                                console.error("An error occurred in SQL Query", err);
+                                connection.rollback(() => {
+                                    connection.release();
+                                    return res.status(500).send('Database Error');
+                                });
+                                return;
                             }
-                            return res.status(200).send("Business Report Added Successfully");
-                        })
-                    }
-                })
-            }
-        } else {
-            res.status(401).send("Please Login Firest.....!");
+                            // Get totalCash for reportDate (same transaction, same connection)
+                            const sql_getIncomeForDate = `SELECT bcd.businessCategoryId, bcd.businessName, bcd.businessType, COALESCE(SUM(brd.businessAmount),0) AS businessAmt FROM business_category_data AS bcd
+                                                          LEFT JOIN business_report_data AS brd ON brd.businessCategoryId = bcd.businessCategoryId AND brd.businessDate = STR_TO_DATE('${data.reportDate}','%b %d %Y')
+                                                          GROUP BY bcd.businessCategoryId ORDER BY bcd.businessName ASC`;
+                            connection.query(sql_getIncomeForDate, (err, incomeRows) => {
+                                if (err) {
+                                    console.error("Error fetching income for totalCash", err);
+                                    connection.rollback(() => {
+                                        connection.release();
+                                        return res.status(500).send('Database Error');
+                                    });
+                                    return;
+                                }
+                                const cashAmtSum = (incomeRows || []).filter(item => item.businessType === 'CASH').reduce((sum, item) => sum + (item.businessAmt || 0), 0);
+                                const onlineAmtSum = (incomeRows || []).filter(item => item.businessType === 'ONLINE').reduce((sum, item) => sum + (item.businessAmt || 0), 0);
+                                const dueAmtSum = (incomeRows || []).filter(item => item.businessType === 'DUE').reduce((sum, item) => sum + (item.businessAmt || 0), 0);
+                                const totalCash = cashAmtSum - (onlineAmtSum + dueAmtSum);
+
+                                const uid2 = new Date();
+                                const creditId = String("credit_" + uid2.getTime());
+                                const transactionId = String("transaction_" + (uid2.getTime() + 1));
+                                const autoTransactionId = String("autoTransaction_" + (uid2.getTime() + 2));
+                                const sql_addCredit = `INSERT INTO credit_transaction_data (creditId, userId, transactionId, fromId, toId, creditAmount, creditComment, creditDate)
+                                                       VALUES ('${creditId}', '${userId}', '${transactionId}', '9978961515', '${staticWalletId}', ${totalCash}, 'Auto Credit By Business Report', STR_TO_DATE('${data.reportDate}','%b %d %Y'));
+                                                       UPDATE bank_data SET availableBalance = availableBalance + ${totalCash} WHERE bankId = '${staticWalletId}';
+                                                       INSERT INTO business_autoTrasactionId_data(autoTransactionId, transactionId, transactionAmount, autoTransactionDate)
+                                                       VALUES ('${autoTransactionId}', '${transactionId}', ${totalCash}, STR_TO_DATE('${data.reportDate}','%b %d %Y'))`;
+                                connection.query(sql_addCredit, (errCredit) => {
+                                    if (errCredit) {
+                                        console.error("Error adding cash credit", errCredit);
+                                        connection.rollback(() => {
+                                            connection.release();
+                                            return res.status(500).send('Database Error');
+                                        });
+                                        return;
+                                    }
+                                    connection.commit((err) => {
+                                        if (err) {
+                                            console.error("Error committing transaction:", err);
+                                            connection.rollback(() => {
+                                                connection.release();
+                                                return res.status(500).send('Database Error');
+                                            });
+                                            return;
+                                        }
+                                        connection.release();
+                                        return res.status(200).send("Business Report Added Successfully");
+                                    });
+                                });
+                            });
+                        });
+                    });
+                });
+            });
+        } catch (error) {
+            console.error('An error occurred', error);
+            connection.rollback(() => {
+                connection.release();
+                return res.status(500).json('Internal Server Error');
+            });
         }
-    } catch (error) {
-        console.error('An error occurred', error);
-        res.status(500).send('Internal Server Error');
-    }
+    });
 }
 
 // Remove Business Report
@@ -303,40 +423,16 @@ const removeBusinessReport = (req, res) => {
                 return res.status(500).send('Database Error');
             }
             if (row && row.length) {
-                const sql_querry_getTransactionType = `SELECT transactionId, transactionType, transactionValue FROM transactionId_with_date WHERE transactionDate = STR_TO_DATE('${brDate}','%b %d %Y')`;
-                pool.query(sql_querry_getTransactionType, (err, result) => {
+                const sql_querry_removedetails = `DELETE FROM business_report_data WHERE businessDate = STR_TO_DATE('${brDate}','%b %d %Y');
+                                                  DELETE FROM balance_data WHERE balanceDate =  STR_TO_DATE('${brDate}','%b %d %Y')`;
+
+                pool.query(sql_querry_removedetails, (err, data) => {
                     if (err) {
                         console.error("An error occurred in SQL Queery", err);
                         return res.status(500).send('Database Error');
                     }
-                    const transactionId = result && result[0] ? result[0].transactionId : null;
-                    const transactionType = result && result[0] ? result[0].transactionType : null;
-                    const transactionValue = result && result[0] ? result[0].transactionValue : 0;
-                    if (transactionType == 'CREDIT') {
-                        sql_querry_removedetails = `UPDATE bank_data SET availableBalance = availableBalance - ${transactionValue} WHERE bankId = '${process.env.STATIC_WALLETID}';
-                                                    DELETE FROM credit_transaction_data WHERE transactionId = '${transactionId}';
-                                                    DELETE FROM business_report_data WHERE businessDate = STR_TO_DATE('${brDate}','%b %d %Y');
-                                                    DELETE FROM balance_data WHERE balanceDate =  STR_TO_DATE('${brDate}','%b %d %Y');
-                                                    DELETE FROM transactionId_with_date WHERE transactionId = '${transactionId}'`;
-                    } else if (transactionType == 'DEBIT') {
-                        sql_querry_removedetails = `UPDATE bank_data SET availableBalance = availableBalance + ${transactionValue} WHERE bankId = '${process.env.STATIC_WALLETID}';
-                                                    DELETE FROM expense_data WHERE transactionId = '${transactionId}';
-                                                    DELETE FROM debit_transaction_data WHERE transactionId = '${transactionId}';
-                                                    DELETE FROM business_report_data WHERE businessDate = STR_TO_DATE('${brDate}','%b %d %Y');
-                                                    DELETE FROM balance_data WHERE balanceDate =  STR_TO_DATE('${brDate}','%b %d %Y');
-                                                    DELETE FROM transactionId_with_date WHERE transactionId = '${transactionId}'`;
-                    } else {
-                        sql_querry_removedetails = `DELETE FROM business_report_data WHERE businessDate = STR_TO_DATE('${brDate}','%b %d %Y');
-                                                    DELETE FROM balance_data WHERE balanceDate =  STR_TO_DATE('${brDate}','%b %d %Y')`;
-                    }
-                    pool.query(sql_querry_removedetails, (err, data) => {
-                        if (err) {
-                            console.error("An error occurred in SQL Queery", err);
-                            return res.status(500).send('Database Error');
-                        }
-                        return res.status(200).send("Business Report Deleted Successfully");
-                    })
-                })
+                    return res.status(200).send("Business Report Deleted Successfully");
+                });
             } else {
                 return res.status(404).send('Business Report Not Found');
             }
@@ -350,10 +446,18 @@ const removeBusinessReport = (req, res) => {
 // Update Business Report
 
 const updateBusinessReport = (req, res) => {
-    try {
-        let token;
-        token = req.headers.authorization.split(" ")[1];
-        if (token) {
+    pool2.getConnection((err, connection) => {
+        if (err) {
+            console.error("Error getting database connection:", err);
+            return res.status(500).send('Database Error');
+        }
+        try {
+            let token;
+            token = req.headers && req.headers.authorization ? req.headers.authorization.split(" ")[1] : null;
+            if (!token) {
+                connection.release();
+                return res.status(401).send("Please Login First.....!");
+            }
             const decoded = jwt.verify(token, process.env.JWT_SECRET);
             const userId = decoded.id.id;
             const staticWalletId = process.env.STATIC_WALLETID;
@@ -365,11 +469,19 @@ const updateBusinessReport = (req, res) => {
                 openingBalanceComment: req.body.openingBalanceComment,
                 closingBalance: req.body.closingBalance ? req.body.closingBalance : 0,
                 reportDate: req.body.reportDate ? new Date(req.body.reportDate).toString().slice(4, 15) : null,
-            }
-            console.log(businessReport, datas.openingBalanceAmt, datas.closingBalance, datas.reportDate);
+            };
             if (!businessReport || !datas.reportDate) {
+                connection.release();
                 return res.status(400).send("Please Fill All The Fields");
-            } else {
+            }
+
+            connection.beginTransaction((err) => {
+                if (err) {
+                    console.error("Error beginning transaction:", err);
+                    connection.release();
+                    return res.status(500).send('Database Error');
+                }
+
                 const keys = Object.keys(businessReport);
                 function generateBrUpdateQuery(data) {
                     let query = 'UPDATE business_report_data\nSET businessAmount = CASE\n';
@@ -391,22 +503,87 @@ const updateBusinessReport = (req, res) => {
                                                     balanceAmount = '${datas && datas.openingBalanceAmt ? datas.openingBalanceAmt : 0}',
                                                     balanceComment = ${datas.openingBalanceComment ? `'${datas.openingBalanceComment}'` : null}
                                                 WHERE balanceDate = STR_TO_DATE('${datas.reportDate}','%b %d %Y')`;
-                console.log(sql_queries_updateData);
-                pool.query(sql_queries_updateData, (err, data) => {
+
+                connection.query(sql_queries_updateData, (err, data) => {
                     if (err) {
-                        console.error("An error occurred in SQL Queery", err);
-                        return res.status(500).send('Database Error');
+                        console.error("An error occurred in SQL Query", err);
+                        connection.rollback(() => {
+                            connection.release();
+                            return res.status(500).send('Database Error');
+                        });
+                        return;
                     }
-                    return res.status(200).send("Business Report Updated Successfully");
-                })
-            }
-        } else {
-            res.status(401).send("Please Login Firest.....!");
+                    // Get totalCash for reportDate (same transaction, same connection)
+                    const sql_getIncomeForDate = `SELECT bcd.businessCategoryId, bcd.businessName, bcd.businessType, COALESCE(SUM(brd.businessAmount),0) AS businessAmt FROM business_category_data AS bcd
+                                                  LEFT JOIN business_report_data AS brd ON brd.businessCategoryId = bcd.businessCategoryId AND brd.businessDate = STR_TO_DATE('${datas.reportDate}','%b %d %Y')
+                                                  GROUP BY bcd.businessCategoryId ORDER BY bcd.businessName ASC`;
+                    connection.query(sql_getIncomeForDate, (err, incomeRows) => {
+                        if (err) {
+                            console.error("Error fetching income for totalCash", err);
+                            connection.rollback(() => {
+                                connection.release();
+                                return res.status(500).send('Database Error');
+                            });
+                            return;
+                        }
+                        const cashAmtSum = (incomeRows || []).filter(item => item.businessType === 'CASH').reduce((sum, item) => sum + (item.businessAmt || 0), 0);
+                        const onlineAmtSum = (incomeRows || []).filter(item => item.businessType === 'ONLINE').reduce((sum, item) => sum + (item.businessAmt || 0), 0);
+                        const dueAmtSum = (incomeRows || []).filter(item => item.businessType === 'DUE').reduce((sum, item) => sum + (item.businessAmt || 0), 0);
+                        const totalCash = cashAmtSum - (onlineAmtSum + dueAmtSum);
+
+                        const sql_getAutoTransaction = `SELECT transactionId, transactionAmount, autoTransactionDate FROM business_autoTrasactionId_data WHERE autoTransactionDate = STR_TO_DATE('${datas.reportDate}','%b %d %Y')`;
+                        connection.query(sql_getAutoTransaction, (err, autoTxnRows) => {
+                            if (err) {
+                                console.error("Error fetching auto transaction", err);
+                                connection.rollback(() => {
+                                    connection.release();
+                                    return res.status(500).send('Database Error');
+                                });
+                                return;
+                            }
+                            const hasExisting = autoTxnRows && autoTxnRows.length && autoTxnRows[0];
+                            const existingTransactionId = hasExisting ? autoTxnRows[0].transactionId : null;
+                            const oldAmount = hasExisting && autoTxnRows[0].transactionAmount != null ? autoTxnRows[0].transactionAmount : 0;
+
+                            const creditAmt = totalCash - oldAmount;
+                            const sql_updateCredit = `UPDATE bank_data SET availableBalance = availableBalance + ${creditAmt} WHERE bankId = '${staticWalletId}';
+                                                      UPDATE credit_transaction_data SET userId = '${userId}', creditAmount = ${totalCash}, creditComment = 'Auto Credit & Update By Business Report', creditDate = STR_TO_DATE('${datas.reportDate}','%b %d %Y') WHERE transactionId = '${existingTransactionId}';
+                                                      UPDATE business_autoTrasactionId_data SET transactionAmount = ${totalCash} WHERE transactionId = '${existingTransactionId}'`;
+                            connection.query(sql_updateCredit, (errUpdate) => {
+                                if (errUpdate) {
+                                    console.error("Error updating cash credit", errUpdate);
+                                    connection.rollback(() => {
+                                        connection.release();
+                                        return res.status(500).send('Database Error');
+                                    });
+                                    return;
+                                }
+                                connection.commit((err) => {
+                                    if (err) {
+                                        console.error("Error committing transaction:", err);
+                                        connection.rollback(() => {
+                                            connection.release();
+                                            return res.status(500).send('Database Error');
+                                        });
+                                        return;
+                                    }
+                                    connection.release();
+                                    return res.status(200).send("Business Report Updated Successfully");
+                                });
+                            });
+                            return;
+                        });
+                    });
+                });
+            });
+        } catch (error) {
+            console.error('An error occurred', error);
+            connection.rollback(() => {
+                connection.release();
+                return res.status(500).json('Internal Server Error');
+            });
         }
-    } catch (error) {
-        console.error('An error occurred', error);
-        res.status(500).send('Internal Server Error');
-    }
+    });
 }
 
 // Get Expense & Closing Balance By Date
@@ -1248,6 +1425,59 @@ const exportExcelForBusinessReportNet = async (req, res) => {
     }
 };
 
+// Fill Business Category Textbox Loop Data
+
+const fillBusinessCategory = (req, res) => {
+    try {
+        const currentDate = getCurrentDate();
+        let sql_queries_getStatics = `SELECT
+                                         COALESCE(SUM(CASE WHEN billPayType IN ('cash', 'due', 'online') AND billType = 'Pick Up' THEN settledAmount ELSE 0 END), 0) AS "Take Away",
+                                         COALESCE(SUM(CASE WHEN billPayType IN ('cash', 'due', 'online') AND billType = 'Delivery' THEN settledAmount ELSE 0 END), 0) AS "Home Delivery",
+                                         COALESCE(SUM(CASE WHEN billPayType IN ('cash', 'due', 'online') AND billType = 'Dine In' AND billStatus IN ('print','complete') THEN settledAmount ELSE 0 END), 0) AS "Restaurent",
+                                         COALESCE(SUM(CASE WHEN billPayType IN ('cash','online') AND billStatus != 'cancel' AND billType = 'Hotel' THEN settledAmount ELSE 0 END), 0) AS "Hotel Cash",
+                                         COALESCE(SUM(CASE WHEN billPayType = 'debit' AND billStatus != 'cancel' AND billType = 'Hotel' THEN settledAmount ELSE 0 END), 0) AS "Hotel Debit",
+                                         COALESCE(SUM(CASE WHEN billPayType = 'online' AND billStatus != 'cancel' AND billType IN ('Pick UP','Delivery','Dine In','Hotel') THEN settledAmount ELSE 0 END), 0) AS "G pay",
+                                         COALESCE(SUM(CASE WHEN billPayType = 'due' AND billStatus != 'cancel' AND billType IN ('Pick UP','Delivery','Dine In') THEN settledAmount ELSE 0 END), 0) AS "Parcel Due"
+                                     FROM billing_data
+                                     WHERE billDate = STR_TO_DATE('${currentDate}', '%b %d %Y');
+                                     SELECT businessCategoryId, businessName, businessType FROM business_category_data 
+                                     Order BY businessName`;
+        pool.query(sql_queries_getStatics, (err, data) => {
+            if (err) {
+                console.error("An error occurred in SQL Queery", err);
+                return res.status(500).send('Database Error');
+            } else {
+                const fillData = data[0];
+                const businessCategoryData = data[1];
+
+                // Get the first object from fillData array (contains all the amounts)
+                const fillDataObj = fillData && fillData.length ? fillData[0] : {};
+
+                // Map through businessCategoryData and add amount from fillData
+                const businessCategoryWithAmount = businessCategoryData.map(category => {
+                    const businessName = category.businessName;
+                    // Find matching key in fillDataObj (case-insensitive match)
+                    const amt = fillDataObj[businessName] !== undefined
+                        ? fillDataObj[businessName]
+                        : (fillDataObj[Object.keys(fillDataObj).find(key =>
+                            key.toLowerCase() === businessName.toLowerCase()
+                        )] || 0);
+
+                    return {
+                        ...category,
+                        fillAmount: amt
+                    };
+                });
+
+                return res.status(200).send(businessCategoryWithAmount);
+            }
+        })
+    } catch (error) {
+        console.error('An error occurred', error);
+        res.status(500).json('Internal Server Error');
+    }
+}
+
 module.exports = {
     addBusinessReport,
     updateBusinessReport,
@@ -1258,5 +1488,6 @@ module.exports = {
     exportPdfForBusinessReport,
     getBusinessReportDashBoardwithNetProfit,
     exportPdfForBusinessReportNet,
-    exportExcelForBusinessReportNet
+    exportExcelForBusinessReportNet,
+    fillBusinessCategory
 }

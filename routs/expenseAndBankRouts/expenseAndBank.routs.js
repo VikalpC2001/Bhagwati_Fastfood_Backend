@@ -107,5 +107,6 @@ router.get('/exportExcelForBusinessReport', protect, businessReportController.ex
 router.get('/exportPdfForBusinessReport', protect, businessReportController.exportPdfForBusinessReport);
 router.get('/exportPdfForBusinessReportNet', protect, businessReportController.exportPdfForBusinessReportNet);
 router.get('/exportExcelForBusinessReportNet', businessReportController.exportExcelForBusinessReportNet);
+router.get('/fillBusinessCategory', protect, businessReportController.fillBusinessCategory);
 
 module.exports = router;

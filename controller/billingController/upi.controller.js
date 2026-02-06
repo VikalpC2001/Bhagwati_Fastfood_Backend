@@ -1,6 +1,8 @@
 const { on } = require('nodemon');
 const pool = require('../../database');
 const jwt = require("jsonwebtoken");
+const { jsPDF } = require('jspdf');
+require('jspdf-autotable');
 
 // Get Date Function 4 Hour
 
@@ -251,7 +253,8 @@ const ddlUPI = (req, res) => {
                                           isOfficial,
                                           isDefault
                                       FROM
-                                          billing_onlineUPI_data`;
+                                          billing_onlineUPI_data
+                                      ORDER BY isDefault DESC, holderName ASC`;
         pool.query(sql_query_getDetails, (err, rows, fields) => {
             if (err) {
                 console.error("An error occurred in SQL Queery", err);
@@ -339,6 +342,112 @@ const getUPITransactionById = (req, res) => {
     }
 }
 
+// Export PDF helper (same pattern as dueAccount createPDFList)
+async function createPDFList(res, datas, sumFooterArray, tableHeading, fileName = 'upi-transactions.pdf') {
+    try {
+        const doc = new jsPDF();
+        const jsonData = datas;
+        const keys = Object.keys(jsonData[0]);
+        const columns = [
+            { header: 'Sr.', dataKey: 'serialNo' },
+            ...keys.map(key => ({ header: key, dataKey: key }))
+        ];
+        const data = jsonData.map((item, index) => [index + 1, ...keys.map(key => item[key])]);
+        if (sumFooterArray) {
+            data.push(sumFooterArray);
+        }
+        doc.text(15, 15, tableHeading);
+        doc.autoTable({
+            startY: 20,
+            head: [columns.map(col => col.header)],
+            body: data,
+            theme: 'grid',
+            styles: {
+                cellPadding: 2,
+                halign: 'center',
+                fontSize: 10
+            },
+        });
+        const pdfBytes = await doc.output();
+        res.setHeader('Content-Disposition', `attachment; filename="${fileName}"`);
+        res.setHeader('Content-Type', 'application/pdf');
+        res.send(pdfBytes);
+    } catch (error) {
+        console.error('An error occurred', error);
+        res.status(500).json('Internal Server Error');
+    }
+}
+
+// Export PDF for UPI transactions by ID (same data as getUPITransactionById, no pagination)
+const exportPdfForUPITransactionById = (req, res) => {
+    try {
+        const date = new Date();
+        const y = date.getFullYear();
+        const m = date.getMonth();
+        const firstDay = new Date(y, m, 1).toString().slice(4, 15);
+        const lastDay = new Date(y, m + 1, 0).toString().slice(4, 15);
+        const upiId = req.query.upiId;
+        const startDate = (req.query.startDate ? req.query.startDate : '').slice(4, 15);
+        const endDate = (req.query.endDate ? req.query.endDate : '').slice(4, 15);
+        const currentDate = getCurrentDate();
+
+        if (!upiId) {
+            return res.status(404).send('Please Fill All The Fields...!');
+        }
+
+        const sql_getHolderAndTransactions = `SELECT holderName FROM billing_onlineUPI_data WHERE onlineId = '${upiId}';
+                                              SELECT
+                                                  RIGHT(bwu.bwuId, 10) AS "Transaction Id",
+                                                  bwu.amount AS "Amt",
+                                                  bd.billType AS "Type",
+                                                  bd.cashier AS "Added By",
+                                                  DATE_FORMAT(bwu.onlineDate, '%W') AS "Day",
+                                                  DATE_FORMAT(bwu.onlineDate, '%D %M %Y') AS "Date",
+                                                  DATE_FORMAT(bwu.creationDate, '%r') AS "Time"
+                                              FROM billing_billWiseUpi_data AS bwu
+                                              LEFT JOIN billing_data AS bd ON bd.billId = bwu.billId
+                                              WHERE bwu.onlineId = '${upiId}'
+                                              AND bwu.onlineDate BETWEEN STR_TO_DATE('${startDate || currentDate}','%b %d %Y') AND STR_TO_DATE('${endDate || currentDate}','%b %d %Y')
+                                              ORDER BY bwu.onlineDate DESC`;
+
+        pool.query(sql_getHolderAndTransactions, (err, rows) => {
+            if (err) {
+                console.error('An error occurred in SQL Query', err);
+                return res.status(500).send('Database Error');
+            }
+            if (!rows || !rows[0] || rows[0].length === 0) {
+                return res.status(404).send('UPI account not found');
+            }
+            if (!rows[1] || rows[1].length === 0) {
+                return res.status(400).send('No Data Found');
+            }
+            const holderName = rows[0][0].holderName;
+            const transactionRows = JSON.parse(JSON.stringify(rows[1]));
+            const totalAmount = transactionRows.reduce((sum, item) => sum + (Number(item.amount) || 0), 0);
+            const keys = Object.keys(transactionRows[0]);
+            const amountIndex = keys.indexOf('amount');
+            const sumFooterArray = new Array(1 + keys.length).fill('');
+            sumFooterArray[0] = 'Total';
+            if (amountIndex !== -1) sumFooterArray[1 + amountIndex] = totalAmount;
+
+            const fromDate = startDate || firstDay;
+            const toDate = endDate || lastDay;
+            const tableHeading = `${holderName} UPI Transactions From ${fromDate} To ${toDate}`;
+            const fileName = `upi-transactions-${upiId}-${fromDate.replace(/\s/g, '-')}.pdf`;
+
+            createPDFList(res, transactionRows, sumFooterArray, tableHeading, fileName)
+                .then(() => res.status(200))
+                .catch((err) => {
+                    console.error(err);
+                    res.status(500).send('Error creating PDF');
+                });
+        });
+    } catch (error) {
+        console.error('An error occurred', error);
+        res.status(500).send('Internal Server Error');
+    }
+}
+
 // Get UPI Statics By Id
 
 const getUPIStaticsById = (req, res) => {
@@ -416,6 +525,7 @@ module.exports = {
     updateUPI,
     ddlUPI,
     getUPITransactionById,
+    exportPdfForUPITransactionById,
     getUPIStaticsById,
     setDefaultUPI
 }

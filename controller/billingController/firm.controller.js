@@ -2,6 +2,7 @@ const pool = require('../../database');
 const jwt = require("jsonwebtoken");
 const { jsPDF } = require('jspdf');
 require('jspdf-autotable');
+const excelJS = require('exceljs');
 
 async function createPDF(res, datas, firmData) {
     try {
@@ -53,7 +54,11 @@ async function createPDF(res, datas, firmData) {
             discount: 0,
             cgst: 0,
             sgst: 0,
-            total: 0
+            total: 0,
+            cash: 0,
+            debit: 0,
+            due: 0,
+            online: 0
         };
 
         function addSection(doc, title, items, isFirstPage = false, footer) {
@@ -64,13 +69,14 @@ async function createPDF(res, datas, firmData) {
             doc.text(title, 15.1, isFirstPage ? 50 : 20);
 
             const head = [
-                ['Bill No.', 'Amount', 'Discount', 'CGST', 'SGST', 'Total Amount']
+                ['Bill No.', 'Pay Type', 'Amount', 'Discount', 'CGST', 'SGST', 'Total Amount']
             ];
 
             const tableData = items.map((item) => (
                 [item.billNumber,
+                item.billPayType || '-',
                 parseFloat(item.totalAmount).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 }),
-                parseFloat(item.discountValue).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 }),
+                parseFloat(item.totalDiscount).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 }),
                     0,
                     0,
                 parseFloat(item.settledAmount).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
@@ -97,8 +103,8 @@ async function createPDF(res, datas, firmData) {
                     halign: 'center',
                 },
                 didParseCell: function (data) {
-                    // Apply a red background to the entire row if settled amount is 0
-                    const settledAmount = parseFloat(data.row.raw[5]);
+                    // Apply a red background to the entire row if settled amount is 0 (column index 6 after adding Pay Type)
+                    const settledAmount = parseFloat(data.row.raw[6]);
                     if (settledAmount === 0) {
                         data.cell.styles.fillColor = [255, 0, 79];
                         data.cell.styles.textColor = [255, 255, 255] // Red background for the entire row
@@ -112,16 +118,25 @@ async function createPDF(res, datas, firmData) {
                 }
             });
 
-            // Accumulate totals
-            grandTotals.amount += parseFloat(footer[1].replace(/,/g, ''));
-            grandTotals.discount += parseFloat(footer[2].replace(/,/g, ''));
-            grandTotals.total += parseFloat(footer[5].replace(/,/g, ''));
+            // Accumulate totals (footer: Total, Pay Type blank, Amount, Discount, CGST, SGST, Total Amount)
+            grandTotals.amount += parseFloat(footer[2].replace(/,/g, ''));
+            grandTotals.discount += parseFloat(footer[3].replace(/,/g, ''));
+            grandTotals.total += parseFloat(footer[6].replace(/,/g, ''));
+        }
+
+        function accumulatePayTypeTotals(section) {
+            grandTotals.cash += Number(section.sumOfCash) || 0;
+            grandTotals.debit += Number(section.sumOfDebit) || 0;
+            grandTotals.due += Number(section.sumOfDue) || 0;
+            grandTotals.online += Number(section.sumOfOnline) || 0;
         }
 
         let isFirstPage = true;
         Object.keys(datas).forEach((key, index) => {
             const section = datas[key];
+            accumulatePayTypeTotals(section);
             const footer = ['Total',
+                '',
                 parseFloat(datas[key].sumOftotalAmount).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 }),
                 parseFloat(datas[key].sumOFtotalDiscount).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 }),
                 '0',
@@ -137,18 +152,35 @@ async function createPDF(res, datas, firmData) {
         doc.setFontSize(16);
         doc.text('Grand Total Summary', 14, 20);
 
-        // Add grand total details
+        // Add grand total details (order: Total Cash, Debit, Due, Online → line → Amount, Discount, Total GST, Total Amount)
         doc.setFontSize(14);
-        const grandTotalLines = [
+        const grandTotalLinesFirst = [
+            ['Total Cash', grandTotals.cash.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })],
+            ['Total Debit', grandTotals.debit.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })],
+            ['Total Due', grandTotals.due.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })],
+            ['Total Online', grandTotals.online.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })]
+        ];
+        const grandTotalLinesSecond = [
             ['Amount', grandTotals.amount.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })],
             ['Discount', grandTotals.discount.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })],
             ['Total GST (CGST + SGST)', (grandTotals.cgst + grandTotals.sgst).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })],
             ['Total Amount', grandTotals.total.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })]
         ];
 
-        grandTotalLines.forEach((line, index) => {
-            doc.text(line[0], 14, 40 + (index * 10));
-            doc.text(line[1] + ' Rs.', pageWidth - 14 - doc.getTextWidth(line[1]), 40 + (index * 10));
+        let y = 40;
+        grandTotalLinesFirst.forEach((line) => {
+            doc.text(line[0], 14, y);
+            doc.text(line[1] + ' Rs.', pageWidth - 24 - doc.getTextWidth(line[1]), y);
+            y += 10;
+        });
+        // Line after Total Cash, Debit, Due, Online (wider line, no extra space above/below)
+        doc.setLineWidth(0.5);
+        doc.line(14, y, pageWidth - 14, y);
+        y += 10;
+        grandTotalLinesSecond.forEach((line) => {
+            doc.text(line[0], 14, y);
+            doc.text(line[1] + ' Rs.', pageWidth - 24 - doc.getTextWidth(line[1]), y);
+            y += 10;
         });
 
         const pdfBytes = await doc.output('arraybuffer');
@@ -161,6 +193,141 @@ async function createPDF(res, datas, firmData) {
         // Stream the PDF to the client for download
         res.send(Buffer.from(pdfBytes));
 
+    } catch (error) {
+        console.error('An error occurred', error);
+        res.status(500).json('Internal Server Error');
+    }
+}
+
+async function createExcel(res, datas, firmData) {
+    try {
+        const workbook = new excelJS.Workbook();
+        const worksheet = workbook.addWorksheet('Tax Report', { views: [{ showGridLines: true }] });
+
+        const firm = firmData && firmData[0] ? firmData[0] : {};
+        let row = 1;
+
+        worksheet.mergeCells(row, 1, row, 7);
+        worksheet.getCell(row, 1).value = firm.firmName || '';
+        worksheet.getCell(row, 1).font = { bold: true, size: 24 };
+        worksheet.getCell(row, 1).alignment = { horizontal: 'center' };
+        row += 2;
+
+        worksheet.mergeCells(row, 1, row, 7);
+        worksheet.getCell(row, 1).value = firm.firmAddress || '';
+        worksheet.getCell(row, 1).font = { size: 12 };
+        worksheet.getCell(row, 1).alignment = { horizontal: 'center' };
+        row += 1;
+
+        worksheet.mergeCells(row, 1, row, 7);
+        worksheet.getCell(row, 1).value = `GSTIN : ${firm.gstNumber || ''}`;
+        worksheet.getCell(row, 1).font = { size: 12 };
+        worksheet.getCell(row, 1).alignment = { horizontal: 'center' };
+        row += 2;
+
+        worksheet.mergeCells(row, 1, row, 7);
+        worksheet.getCell(row, 1).value = 'Periodic Collection Summary';
+        worksheet.getCell(row, 1).font = { bold: true, size: 14 };
+        worksheet.getCell(row, 1).alignment = { horizontal: 'center' };
+        row += 2;
+
+        worksheet.getColumn(1).width = 28;
+        worksheet.getColumn(7).width = 18;
+        const headerRow = ['Bill No.', 'Pay Type', 'Amount', 'Discount', 'CGST', 'SGST', 'Total Amount'];
+        let grandTotals = { amount: 0, discount: 0, total: 0, cash: 0, debit: 0, due: 0, online: 0 };
+
+        Object.keys(datas).forEach((key) => {
+            const section = datas[key];
+            grandTotals.amount += Number(section.sumOftotalAmount) || 0;
+            grandTotals.discount += Number(section.sumOFtotalDiscount) || 0;
+            grandTotals.total += Number(section.sumOfsettledAmount) || 0;
+            grandTotals.cash += Number(section.sumOfCash) || 0;
+            grandTotals.debit += Number(section.sumOfDebit) || 0;
+            grandTotals.due += Number(section.sumOfDue) || 0;
+            grandTotals.online += Number(section.sumOfOnline) || 0;
+        });
+
+        Object.keys(datas).forEach((key) => {
+            const section = datas[key];
+            worksheet.mergeCells(row, 1, row, 7);
+            worksheet.getCell(row, 1).value = key;
+            worksheet.getCell(row, 1).font = { bold: true, size: 16 };
+            row += 1;
+
+            worksheet.getRow(row).values = headerRow;
+            worksheet.getRow(row).font = { bold: true };
+            worksheet.getRow(row).alignment = { horizontal: 'center', vertical: 'middle' };
+            row += 1;
+
+            section.items.forEach((item) => {
+                worksheet.getRow(row).values = [
+                    item.billNumber,
+                    item.billPayType || '-',
+                    parseFloat(item.totalAmount),
+                    parseFloat(item.totalDiscount),
+                    0,
+                    0,
+                    parseFloat(item.settledAmount)
+                ];
+                worksheet.getRow(row).alignment = { horizontal: 'center', vertical: 'middle' };
+                if (parseFloat(item.settledAmount) === 0) {
+                    worksheet.getRow(row).eachCell((c) => {
+                        c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFF004F' } };
+                        c.font = { color: { argb: 'FFFFFFFF' } };
+                    });
+                }
+                row += 1;
+            });
+
+            worksheet.getRow(row).values = [
+                'Total',
+                '',
+                parseFloat(section.sumOftotalAmount),
+                parseFloat(section.sumOFtotalDiscount),
+                0,
+                0,
+                parseFloat(section.sumOfsettledAmount)
+            ];
+            worksheet.getRow(row).font = { bold: true, size: 12 };
+            worksheet.getRow(row).alignment = { horizontal: 'center', vertical: 'middle' };
+            row += 2;
+        });
+
+        worksheet.mergeCells(row, 1, row, 7);
+        worksheet.getCell(row, 1).value = 'Grand Total Summary';
+        worksheet.getCell(row, 1).font = { bold: true, size: 16 };
+        row += 2;
+
+        const fmt = (n) => Number(n).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        [
+            ['Total Cash', grandTotals.cash],
+            ['Total Debit', grandTotals.debit],
+            ['Total Due', grandTotals.due],
+            ['Total Online', grandTotals.online]
+        ].forEach(([label, val]) => {
+            worksheet.getCell(row, 1).value = label;
+            worksheet.getCell(row, 2).value = fmt(val);
+            worksheet.getRow(row).font = { size: 14 };
+            row += 1;
+        });
+        row += 1;
+        [
+            ['Amount', grandTotals.amount],
+            ['Discount', grandTotals.discount],
+            ['Total GST (CGST + SGST)', 0],
+            ['Total Amount', grandTotals.total]
+        ].forEach(([label, val]) => {
+            worksheet.getCell(row, 1).value = label;
+            worksheet.getCell(row, 2).value = fmt(val);
+            worksheet.getRow(row).font = { size: 14 };
+            row += 1;
+        });
+
+        const buffer = await workbook.xlsx.writeBuffer();
+        const fileName = `tax-report-${Date.now()}.xlsx`;
+        res.setHeader('Content-Disposition', `attachment; filename="${fileName}"`);
+        res.contentType('application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+        res.send(buffer);
     } catch (error) {
         console.error('An error occurred', error);
         res.status(500).json('Internal Server Error');
@@ -799,6 +966,7 @@ const getTaxReportByFirmId = (req, res) => {
                                             CASE
                                                 WHEN billType = 'Hotel' AND billPayType = 'cash' THEN CONCAT('HC/ ',billNumber)
                                                 WHEN billType = 'Hotel' AND billPayType = 'debit' THEN CONCAT('HD/ ',billNumber)
+                                                WHEN billType = 'Hotel' AND billPayType = 'online' THEN CONCAT('HO/ ',billNumber)
                                                 ELSE billNumber
                                             END AS billNumber,
                                             billType,
@@ -842,7 +1010,11 @@ const getTaxReportByFirmId = (req, res) => {
                                 items: [],
                                 sumOFtotalDiscount: 0,
                                 sumOftotalAmount: 0,
-                                sumOfsettledAmount: 0
+                                sumOfsettledAmount: 0,
+                                sumOfCash: 0,
+                                sumOfDebit: 0,
+                                sumOfDue: 0,
+                                sumOfOnline: 0
                             };
                         }
                         acc[key].items.push(item);
@@ -850,6 +1022,11 @@ const getTaxReportByFirmId = (req, res) => {
                             acc[key].sumOFtotalDiscount += item.totalDiscount;
                             acc[key].sumOftotalAmount += item.totalAmount;
                             acc[key].sumOfsettledAmount += item.settledAmount;
+                            const amt = Number(item.totalAmount) || 0;
+                            if (item.billPayType === 'cash') acc[key].sumOfCash += amt;
+                            else if (item.billPayType === 'debit') acc[key].sumOfDebit += amt;
+                            else if (item.billPayType === 'due') acc[key].sumOfDue += amt;
+                            else if (item.billPayType === 'online') acc[key].sumOfOnline += amt;
                         }
                         return acc;
                     }, {});
@@ -874,6 +1051,106 @@ const getTaxReportByFirmId = (req, res) => {
     }
 }
 
+const getTaxReportByFirmIdExcel = (req, res) => {
+    try {
+        var date = new Date(), y = date.getFullYear(), m = (date.getMonth());
+        var firstDay = new Date(y, m, 1).toString().slice(4, 15);
+        var lastDay = new Date(y, m + 1, 0).toString().slice(4, 15);
+
+        const data = {
+            firmId: req.query.firmId,
+            billPayType: req.query.billPayType,
+            startDate: (req.query.startDate ? req.query.startDate : ''),
+            endDate: (req.query.endDate ? req.query.endDate : '')
+        };
+        if (!data.firmId) {
+            return res.status(404).send('Firm Not Found');
+        }
+        const sql_query_staticQuery = `SELECT
+                                            CASE
+                                                WHEN billType = 'Hotel' AND billPayType = 'cash' THEN CONCAT('HC/ ',billNumber)
+                                                WHEN billType = 'Hotel' AND billPayType = 'debit' THEN CONCAT('HD/ ',billNumber)
+                                                WHEN billType = 'Hotel' AND billPayType = 'online' THEN CONCAT('HO/ ',billNumber)
+                                                ELSE billNumber
+                                            END AS billNumber,
+                                            billType,
+                                            billPayType,
+                                            discountType,
+                                            discountValue,
+                                            totalDiscount,
+                                            totalAmount,
+                                            CASE
+                                                WHEN billStatus = 'Cancel' THEN 0
+                                                ELSE settledAmount
+                                            END AS settledAmount,
+                                            DATE_FORMAT(billDate,'%b %d %Y, %W') AS billDate,
+                                            billStatus
+                                       FROM
+                                            billing_Official_data`;
+        const sql_query_getFirmData = `SELECT
+                                           firmName,
+                                           gstNumber,
+                                           CONCAT(firmAddress,' - ',pincode) AS firmAddress
+                                       FROM
+                                           billing_firm_data
+                                       WHERE
+                                           firmId = '${data.firmId}'`;
+        let sql_querry_getDetails = `${sql_query_staticQuery}
+                                     WHERE firmId = '${data.firmId}' 
+                                     ${data.billPayType ? `AND billPayType = '${data.billPayType}'` : ''}
+                                     AND billDate BETWEEN STR_TO_DATE('${data.startDate ? data.startDate : firstDay}','%b %d %Y') AND STR_TO_DATE('${data.endDate ? data.endDate : lastDay}','%b %d %Y') 
+                                     ORDER BY billing_Official_data.billDate ASC, billing_Official_data.billNumber ASC;
+                                     ${sql_query_getFirmData}`;
+        pool.query(sql_querry_getDetails, (err, data) => {
+            if (err) {
+                console.error('An error occurred in SQL Query', err);
+                return res.status(500).send('Database Error');
+            }
+            if (data && data[0].length) {
+                const result = data[0].reduce((acc, item) => {
+                    const key = item.billDate;
+                    if (!acc[key]) {
+                        acc[key] = {
+                            items: [],
+                            sumOFtotalDiscount: 0,
+                            sumOftotalAmount: 0,
+                            sumOfsettledAmount: 0,
+                            sumOfCash: 0,
+                            sumOfDebit: 0,
+                            sumOfDue: 0,
+                            sumOfOnline: 0
+                        };
+                    }
+                    acc[key].items.push(item);
+                    if (item.billStatus != 'Cancel') {
+                        acc[key].sumOFtotalDiscount += item.totalDiscount;
+                        acc[key].sumOftotalAmount += item.totalAmount;
+                        acc[key].sumOfsettledAmount += item.settledAmount;
+                        const amt = Number(item.totalAmount) || 0;
+                        if (item.billPayType === 'cash') acc[key].sumOfCash += amt;
+                        else if (item.billPayType === 'debit') acc[key].sumOfDebit += amt;
+                        else if (item.billPayType === 'due') acc[key].sumOfDue += amt;
+                        else if (item.billPayType === 'online') acc[key].sumOfOnline += amt;
+                    }
+                    return acc;
+                }, {});
+                const firmdata = data && data[1].length ? data[1] : null;
+                createExcel(res, result, firmdata)
+                    .then(() => res.status(200))
+                    .catch((err) => {
+                        console.error(err);
+                        res.status(500).send('Error creating Excel');
+                    });
+            } else {
+                return res.status(404).send('No Data Found');
+            }
+        });
+    } catch (error) {
+        console.error('An error occurred', error);
+        res.status(500).send('Internal Server Error');
+    }
+};
+
 module.exports = {
     getFirmData,
     getFirmDataById,
@@ -882,6 +1159,7 @@ module.exports = {
     updateFirmData,
     ddlFirmData,
     getTaxReportByFirmId,
+    getTaxReportByFirmIdExcel,
     getBillDataByFirmId,
     getCancelBillDataByFirmId,
     getComplimentaryBillDataByFirmId,

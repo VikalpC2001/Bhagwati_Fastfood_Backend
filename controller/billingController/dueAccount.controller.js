@@ -793,6 +793,130 @@ const updateDueBillDataById = (req, res) => {
     }
 }
 
+// Get Customer Transaction Data
+
+const getDueTransactionDataById = (req, res) => {
+    try {
+        const page = req.query.page;
+        const numPerPage = req.query.numPerPage;
+        const skip = (page - 1) * numPerPage;
+        const limit = skip + ',' + numPerPage;
+        const data = {
+            accountId: req.query.accountId,
+            startDate: (req.query.startDate ? req.query.startDate : '').slice(4, 15),
+            endDate: (req.query.endDate ? req.query.endDate : '').slice(4, 15)
+        }
+        if (!data.accountId) {
+            return res.status(404).send('accountId Not Found');
+        } else {
+            const commonQueryForDebit = `SELECT
+                                              dabId AS transactionId,
+                                              enterBy AS enterBy,
+                                              accountId AS accountId,
+                                              "debit" AS transactionType,
+                                              billAmount AS transactionAmt,
+                                              dueNote AS transactionNote,
+                                              dueDate AS transactionDate,
+                                              DATE_FORMAT(dueDate, '%d %b %Y') AS displayDate,
+                                              DATE_FORMAT(creationDate, '%h:%i %p') AS diplayTime,
+                                              creationDate AS transactionDateTime
+                                          FROM
+                                              due_billAmount_data
+                                          WHERE accountId = '${data.accountId}'`;
+
+            const commonQueryForCredit = `SELECT
+                                              transactionId AS transactionId,
+                                              receivedBy AS enterBy,
+                                              accountId AS accountId,
+                                              "credit" AS transactionType,
+                                              paidAmount AS transactionAmt,
+                                              transactionNote AS transactionNote,
+                                              transactionDate AS transactionDate,
+                                              DATE_FORMAT(transactionDate, '%d %b %Y') AS displayDate,
+                                              DATE_FORMAT(creationDate, '%h:%i %p') AS diplayTime,
+                                              creationDate AS transactionDateTime
+                                          FROM
+                                              due_transaction_data
+                                          WHERE accountId = '${data.accountId}'`;
+
+            if (data.startDate && data.endDate) {
+                sql_querry_getCountdetails = `SELECT count(*) AS numRows FROM (
+                                                ${commonQueryForCredit}
+                                                UNION ALL
+                                                ${commonQueryForDebit}
+                                              ) AS combined_data
+                                              WHERE transactionDate BETWEEN STR_TO_DATE('${data.startDate}','%b %d %Y') AND STR_TO_DATE('${data.endDate}','%b %d %Y')`
+            } else {
+                sql_querry_getCountdetails = `SELECT count(*) AS numRows FROM (
+                                                ${commonQueryForCredit}
+                                                UNION ALL
+                                                ${commonQueryForDebit}
+                                              ) AS combined_data`;
+            }
+            pool.query(sql_querry_getCountdetails, (err, rows, fields) => {
+                if (err) {
+                    console.error("An error occurred in SQL Queery", err);
+                    return res.status(500).send('Database Error');
+                } else {
+                    const numRows = rows[0].numRows;
+                    const numPages = Math.ceil(numRows / numPerPage);
+
+                    const sql_query_combinedData = `SELECT transactionId, enterBy, accountId, transactionType, transactionAmt, transactionNote, transactionDate, displayDate, diplayTime,
+                                                    ((SELECT COALESCE(SUM(ctd.paidAmount), 0) FROM due_transaction_data AS ctd
+                                                     WHERE ctd.accountId = '${data.accountId}'
+                                                       AND (
+                                                            ctd.transactionDate < combined_data.transactionDate
+                                                            OR (ctd.transactionDate = combined_data.transactionDate AND ctd.creationDate <= combined_data.transactionDateTime)
+                                                       )
+                                                    ) -      
+                                                    (SELECT COALESCE(SUM(dtd.billAmount), 0) FROM due_billAmount_data AS dtd
+                                                     WHERE dtd.accountId = '${data.accountId}'
+                                                       AND (
+                                                            dtd.dueDate < combined_data.transactionDate
+                                                            OR (dtd.dueDate = combined_data.transactionDate AND dtd.creationDate <= combined_data.transactionDateTime)
+                                                       )
+                                                    )) AS balance`;
+                    const sql_query_orderAndLimit = `ORDER BY transactionDate DESC, transactionDateTime DESC LIMIT ${limit}`;
+                    if (data.startDate && data.endDate) {
+                        sql_queries_getdetails = `${sql_query_combinedData}
+                                                  FROM (
+                                                        ${commonQueryForCredit}
+                                                        UNION ALL
+                                                        ${commonQueryForDebit}
+                                                       ) AS combined_data
+                                                  WHERE transactionDate BETWEEN STR_TO_DATE('${data.startDate}','%b %d %Y') AND STR_TO_DATE('${data.endDate}','%b %d %Y')
+                                                  ${sql_query_orderAndLimit}`;
+                    } else {
+                        sql_queries_getdetails = `${sql_query_combinedData}
+                                                  FROM (
+                                                        ${commonQueryForCredit}
+                                                        UNION ALL
+                                                        ${commonQueryForDebit}
+                                                       ) AS combined_data
+                                                        ${sql_query_orderAndLimit}`;
+                    }
+                    pool.query(sql_queries_getdetails, (err, rows, fields) => {
+                        if (err) {
+                            console.error("An error occurred in SQL Queery", err);
+                            return res.status(500).send('Database Error');
+                        } else {
+                            if (numRows === 0) {
+                                const rows = []
+                                return res.status(200).send({ rows, numRows });
+                            } else {
+                                return res.status(200).send({ rows, numRows });
+                            }
+                        }
+                    });
+                }
+            })
+        }
+    } catch (error) {
+        console.error('An error occurred', error);
+        res.status(500).json('Internal Server Error');
+    }
+}
+
 // DDL Account Data
 
 const ddlDueAccountData = (req, res) => {
@@ -1177,6 +1301,6 @@ module.exports = {
     ddlDueAccountData,
     exportDueTransactionInvoice,
     exportPdfForDueBillData,
-    exportPdfForDueBillTransactionData
-
+    exportPdfForDueBillTransactionData,
+    getDueTransactionDataById
 }

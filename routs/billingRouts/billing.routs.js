@@ -27,10 +27,13 @@ const customerController = require("../../controller/billingController/customer.
 router.get('/searchCustomerData', protect, customerController.searchCustomerData);
 router.get('/getCustomerList', protect, customerController.getCustomerList);
 router.get('/getCustomerDetailsById', protect, customerController.getCustomerDetailsById);
-router.post('/addMultipleCustomerData', customerController.addMultipleCustomerData);
-router.post('/addCustomerData', customerController.addCustomerData);
-router.delete('/removeCustomeData', customerController.removeCustomeData);
-router.post('/updateCustomerData', customerController.updateCustomerData);
+router.post('/addMultipleCustomerData', protect, customerController.addMultipleCustomerData);
+router.post('/addCustomerData', protect, customerController.addCustomerData);
+router.delete('/removeCustomeData', protect, customerController.removeCustomeData);
+router.post('/updateCustomerData', protect, customerController.updateCustomerData);
+router.get('/getStaticsByCustomer', protect, customerController.getStaticsByCustomer);
+router.get('/getBillDataBycustomerId', protect, customerController.getBillDataBycustomerId);
+router.get('/exportPdfForBillDataByCustomerId', protect, customerController.exportPdfForBillDataByCustomerId);
 
 // Hotel Routs
 
@@ -50,7 +53,6 @@ router.delete('/removeHotelTransactionById', protect, hotelController.removeHote
 router.get('/getMonthWiseTransactionForHotel', protect, hotelController.getMonthWiseTransactionForHotel);
 router.get('/getHotelTransactionListById', protect, hotelController.getHotelTransactionListById);
 router.get('/exportHotelTransactionInvoice', protect, hotelController.exportHotelTransactionInvoice);
-router.get('/exportPdfHotelBillData', protect, hotelController.exportPdfHotelBillData);
 
 // Firm Routs
 
@@ -62,7 +64,8 @@ router.post('/addFirmData', protect, firmController.addFirmData);
 router.delete('/removeFirmData', protect, firmController.removeFirmData);
 router.post('/updateFirmData', protect, firmController.updateFirmData);
 router.get('/ddlFirmData', protect, firmController.ddlFirmData);
-router.get('/getTaxReportByFirmId', protect, firmController.getTaxReportByFirmId);
+router.get('/getTaxReportByFirmId', firmController.getTaxReportByFirmId);
+router.get('/getTaxReportByFirmIdExcel', firmController.getTaxReportByFirmIdExcel);
 router.get('/getBillDataByFirmId', protect, firmController.getBillDataByFirmId);
 router.get('/getCancelBillDataByFirmId', protect, firmController.getCancelBillDataByFirmId);
 router.get('/getComplimentaryBillDataByFirmId', protect, firmController.getComplimentaryBillDataByFirmId);
@@ -156,6 +159,8 @@ router.get('/ddlDueAccountData', protect, accountConntroller.ddlDueAccountData);
 router.get('/exportDueTransactionInvoice', protect, accountConntroller.exportDueTransactionInvoice);
 router.get('/exportPdfForDueBillData', protect, accountConntroller.exportPdfForDueBillData);
 router.get('/exportPdfForDueBillTransactionData', protect, accountConntroller.exportPdfForDueBillTransactionData);
+router.get('/getDueTransactionDataById', protect, accountConntroller.getDueTransactionDataById);
+
 
 // UPI Routs
 
@@ -167,6 +172,7 @@ router.delete('/removeUPI', protect, upiConntroller.removeUPI);
 router.post('/updateUPI', protect, upiConntroller.updateUPI);
 router.get('/ddlUPI', protect, upiConntroller.ddlUPI);
 router.get('/getUPITransactionById', protect, upiConntroller.getUPITransactionById);
+router.get('/exportPdfForUPITransactionById', protect, upiConntroller.exportPdfForUPITransactionById);
 router.get('/getUPIStaticsById', protect, upiConntroller.getUPIStaticsById);
 router.get('/setDefaultUPI', protect, upiConntroller.setDefaultUPI);
 
@@ -183,6 +189,7 @@ router.get('/updateStaticTableNumbers', protect, dineInController.updateStaticTa
 router.get('/printTableBill', protect, dineInController.printTableBill);
 router.post('/updateDineInBillData', protect, dineInController.updateDineInBillData);
 router.post('/sattledBillDataByID', protect, dineInController.sattledBillDataByID);
+router.post('/updateBillDataWithPrintByID', protect, dineInController.updateBillDataWithPrintByID);
 router.post('/cancelBillDataByID', protect, dineInController.cancelBillDataByID);
 router.get('/moveTable', protect, dineInController.moveTable);
 router.get('/isTableEmpty', protect, dineInController.isTableEmpty);
@@ -193,6 +200,7 @@ router.get('/sattledCancelTokenTable', protect, dineInController.sattledCancelTo
 const dashBoardController = require("../../controller/billingController/dashBoard.controller.js");
 
 router.get('/getThreeCategorDashBoardData', protect, dashBoardController.getThreeCategorDashBoardData);
+router.get('/getAllOrdersData', protect, dashBoardController.getAllOrdersData);
 
 // Settlement Routs
 
@@ -200,5 +208,6 @@ const settlementController = require("../../controller/billingController/settlem
 
 router.get('/getSettlementDataByFirm', protect, settlementController.getSettlementDataByFirm);
 router.post('/addSettleDataByFirm', protect, settlementController.addSettleDataByFirm);
+router.get('/getTempTestData', protect, settlementController.getTempTestData);
 
 module.exports = router;

@@ -100,6 +100,7 @@ const getAllOrdersData = (req, res) => {
         const billType = req.query.billType;
         const billDate = (req.query.billDate ? req.query.billDate : '').slice(4, 15);
         const currentDate = getCurrentDate();
+        console.log(currentDate);
         if (!billType) {
             return res.status(404).send('Bill Type Not Found');
         } else {
@@ -149,7 +150,36 @@ const getAllOrdersData = (req, res) => {
     }
 }
 
+// Get All orders
+
+const getSocialLinks = (req, res) => {
+    try {
+        const jsonData = {
+            "firmDetails": {
+                "firmName": "Shree Bhagwati Fast Food",
+                "firmAddress": "Palace Road, Rajkot",
+                "pincode": 360001,
+                "firmMobileNo": "9825360287",
+                "otherMobileNo": "9879248281",
+            },
+            "socialLinks": {
+                "Instagram": "https://www.instagram.com/bhagwati_fastfood?igsh=MW5ibnk1dTIxeGUwcQ==",
+                "Facebook": "https://www.facebook.com/share/1GYmQhnW6s/?mibextid=wwXIfr",
+                "WhatsApp": "https://wa.me/919825360287?text=Hii",
+                "Phone": "tel:+919825360287",
+                "Location": "https://maps.app.goo.gl/8uHttP7mqH8Z5Qqv9",
+                "Google Reviews": "https://share.google/ZWgzucw6XirXSQMdt"
+            }
+        }
+        return res.status(200).send(jsonData);
+    } catch (error) {
+        console.error('An error occurred', error);
+        res.status(500).json('Internal Server Error');
+    }
+}
+
 module.exports = {
     getThreeCategorDashBoardData,
-    getAllOrdersData
+    getAllOrdersData,
+    getSocialLinks
 }

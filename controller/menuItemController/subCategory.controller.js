@@ -2,6 +2,81 @@ const pool = require('../../database');
 const pool2 = require('../../databasePool');
 const jwt = require("jsonwebtoken");
 const { periodDatas } = require('./menuFunction.controller')
+const fs = require('fs');
+const multer = require('multer');
+const path = require('path');
+
+const ensureDirExists = (dirPath) => {
+    if (!fs.existsSync(dirPath)) {
+        fs.mkdirSync(dirPath, { recursive: true });
+    }
+};
+
+const CATEGORY_IMG_DIR = path.join(__dirname, '../../asset/categoryImg');
+ensureDirExists(CATEGORY_IMG_DIR);
+
+const isImageFile = (file) => {
+    const filetypes = /jpeg|jpg|png/;
+    const mimetypeOk = filetypes.test(file.mimetype);
+    const extOk = filetypes.test(path.extname(file.originalname).toLowerCase());
+    return mimetypeOk && extOk;
+};
+
+const subCategoryImgStorage = multer.diskStorage({
+    destination: (req, file, cb) => {
+        try {
+            ensureDirExists(CATEGORY_IMG_DIR);
+            cb(null, CATEGORY_IMG_DIR);
+        } catch (e) {
+            cb(e);
+        }
+    },
+    filename: (req, file, cb) => {
+        const rawSubCategoryId = (req.body && (req.body.subCategoryId || req.body.subCategoryId === 0))
+            ? req.body.subCategoryId
+            : req.query.subCategoryId;
+
+        const subCategoryId = String(rawSubCategoryId || '').trim();
+        // subCategoryId is also used as the filename base, so keep it filesystem-safe.
+        // Existing IDs in this project look like: subCategory_<timestamp>
+        if (!/^[a-zA-Z0-9_-]+$/.test(subCategoryId)) {
+            cb(new Error('Invalid subCategoryId for image upload.'));
+            return;
+        }
+
+        const ext = path.extname(file.originalname).toLowerCase();
+        cb(null, `${subCategoryId}${ext}`);
+    },
+});
+
+const uploadSubCategoryImageMiddleware = multer({
+    storage: subCategoryImgStorage,
+    limits: {
+        fileSize: 5 * 1024 * 1024,
+    },
+    fileFilter: (req, file, cb) => {
+        if (isImageFile(file)) cb(null, true);
+        else cb(new Error('Only image files with jpg, jpeg, or png extensions are allowed.'));
+    },
+}).any();
+
+const deleteCategoryImgFiles = async (fileNamesToDelete) => {
+    await Promise.all(
+        fileNamesToDelete.map(async (fileName) => {
+            const filePath = path.join(CATEGORY_IMG_DIR, fileName);
+            try {
+                await fs.promises.unlink(filePath);
+            } catch (e) {
+                // Ignore missing files; the replace logic is best-effort.
+            }
+        })
+    );
+};
+
+const getExistingCategoryImgFiles = async (subCategoryId) => {
+    const allFiles = await fs.promises.readdir(CATEGORY_IMG_DIR);
+    return allFiles.filter((f) => f.startsWith(`${subCategoryId}.`));
+};
 
 // Get Sub Category Data
 
@@ -44,6 +119,7 @@ const getSubCategoryList = (req, res) => {
                                                 imcd.categoryName,
                                                 iscd.subCategoryName,
                                                 iscd.displayRank,
+                                                iscd.imgLink,
                                                 COALESCE(SUM(fbd.totalRs), 0) AS totalRs
                                             FROM
                                                 item_subCategory_data AS iscd
@@ -97,39 +173,40 @@ const getSubCategoryList = (req, res) => {
 
 const getSubCategoryListForMobile = (req, res) => {
     try {
-        const sql_query_getDetails = `SELECT subCategoryId, subCategoryName, displayRank FROM item_subCategory_data`;
-        pool.query(sql_query_getDetails, (err, rows, fields) => {
+        const menuId = req.query.menuId ? req.query.menuId : process.env.BASE_MENU;
+        sql_querry_getddlCategory = `SELECT 
+                                            subCategoryId, 
+                                            subCategoryName,
+                                            (
+                                                SELECT COUNT(*)
+                                                FROM item_menuList_data imd
+                                                WHERE imd.itemSubCategory = subCategoryId
+                                            ) AS numberOfItem,
+                                            CASE
+                                                WHEN EXISTS (
+                                                    SELECT 1
+                                                    FROM item_unitWisePrice_data iup
+                                                    JOIN item_menuList_data id ON id.itemId = iup.itemId
+                                                    WHERE id.itemSubCategory = subCategoryId
+                                                      AND iup.status = 1 AND iup.menuCategoryId = '${menuId}'
+                                                ) THEN true
+                                                ELSE false
+                                            END AS status,
+                                            imgLink AS imageLink
+                                         FROM item_subCategory_data
+                                         HAVING status = 1
+                                         ORDER BY displayRank ASC`;
+
+        pool.query(sql_querry_getddlCategory, (err, data) => {
             if (err) {
                 console.error("An error occurred in SQL Queery", err);
                 return res.status(500).send('Database Error');
-            } else {
-                if (!rows.length) {
-                    const rows = [{
-                        'msg': 'No Data Found'
-                    }]
-                    return res.status(200).send(rows);
-                } else {
-                    const datas = Object.values(JSON.parse(JSON.stringify(rows)));
-                    if (datas.length) {
-                        periodDatas(datas)
-                            .then((data) => {
-                                const rows = datas.map((item, index) => (
-                                    { ...item, periods: data[index].periods }
-                                ))
-                                return res.status(200).send(rows);
-                            }).catch(error => {
-                                console.error('Error in processing datas :', error);
-                                return res.status(500).send('Internal Error');
-                            })
-                    } else {
-                        return res.status(400).send('No Data Found');
-                    }
-                }
             }
+            return res.status(200).send(data);
         })
     } catch (error) {
         console.error('An error occurred', error);
-        res.status(500).json('Internal Server Error');
+        res.status(500).send('Internal Server Error');
     }
 }
 
@@ -426,69 +503,121 @@ const updateSubCategoryPeriod = (req, res) => {
     })
 }
 
-// Test Roll Back 
+// Upload Sub-Category Image
 
-const addRollBackTransaction = (req, res) => {
-    pool2.getConnection((err, conn) => {
-        if (err) {
-            console.log('Joo Erro', err)
-            return;
-        }
-        try {
-            conn.beginTransaction((err) => {
-                const data = {
-                    subCategoryId: "1234",
-                    categoryId: 'Category_1713037807744',
-                    subCategoryName: "check",
-                    displayRank: 1,
-                    periodId: '45',
-                    startTime: "10 PM",
-                    endTIme: "02 AM"
+const uploadSubCategoryImage = (req, res) => {
+    try {
+        uploadSubCategoryImageMiddleware(req, res, async (err) => {
+            if (err) {
+                return res.status(500).send(err.message || 'File Upload Error');
+            }
+
+            const subCategoryId =
+                (req.body && req.body.subCategoryId !== undefined && req.body.subCategoryId !== null)
+                    ? String(req.body.subCategoryId).trim()
+                    : (req.query && req.query.subCategoryId ? String(req.query.subCategoryId).trim() : '');
+
+            if (!subCategoryId) {
+                return res.status(400).send('Please provide subCategoryId');
+            }
+            if (!/^[a-zA-Z0-9_-]+$/.test(subCategoryId)) {
+                return res.status(400).send('Invalid subCategoryId');
+            }
+
+            const files = req.files || [];
+            if (!files.length) {
+                return res.status(400).send('Please select an image file');
+            }
+            if (files.length !== 1) {
+                // Reject multi-file upload to keep a single image per subCategoryId.
+                try {
+                    await deleteCategoryImgFiles(files.map((f) => f.filename));
+                } catch (e) {
+                    // Non-fatal; the DB won't be updated because we return early.
                 }
-                const sql_querry_addData = `INSERT INTO item_subCategory_data (subCategoryId, categoryId, subCategoryName, displayRank)
-                                            VALUES ('${data.subCategoryId}', '${data.categoryId}', '${data.subCategoryName}', ${data.displayRank})`;
-                conn.query(sql_querry_addData, (err, row) => {
-                    if (err) {
-                        conn.rollback((e, d) => {
-                            console.error("An error occurred in SQL Queery 1", err);
-                            conn.release();
-                            return res.status(500).send('Database Error 1');
-                        })
-                    } else {
-                        const sql_querry_addPeriod = `INSERT INTO item_subCategoryPeriod_data (periodId, subCategoryId, startTime, endTime)
-                                                  VALUES ('${data.periodId}', '${data.subCategoryId}', TIME(STR_TO_DATE('${data.startTime}', '%h %p')), TIME(STR_TO_DATE('${data.endTIme}', '%h %p')))`;
-                        conn.query(sql_querry_addPeriod, (err, per) => {
-                            if (err) {
-                                conn.rollback((e, d) => {
-                                    console.error("An error occurred in SQL Queery 2", err);
-                                    conn.release();
-                                    return res.status(500).send('Database Error 2');
-                                })
-                            } else {
-                                conn.commit((err, done) => {
-                                    if (err) {
-                                        conn.rollback((e, d) => {
-                                            console.error("An error occurred in SQL Commit", err);
-                                            conn.release();
-                                            return res.status(500).send('Database Error In Commit');
-                                        })
-                                    } else {
-                                        console.log('')
-                                        conn.release();
-                                        return res.status(200).send('Data Added Success Fully');
-                                    }
-                                })
-                            }
-                        })
+                return res.status(400).send('Please upload only one photo');
+            }
+
+            const uploadedFile = files[0];
+            const newFileName = uploadedFile.filename;
+
+            try {
+                // Update first, then delete old images only after DB update succeeded.
+                const imgLink = `menuItemrouter/getSubCategoryImagebyName?imageName=${newFileName}`;
+                const sql = `UPDATE item_subCategory_data SET imgLink = ? WHERE subCategoryId = ?`;
+
+                pool.query(sql, [imgLink, subCategoryId], async (dbErr, result) => {
+                    if (dbErr) {
+                        // DB failed -> delete newly uploaded image so we don't leave orphan files.
+                        try {
+                            await deleteCategoryImgFiles([newFileName]);
+                        } catch (e) { }
+                        return res.status(500).send('Database Error');
                     }
-                })
-            })
-        } catch (error) {
-            console.error('An error occurred', error);
-            res.status(500).json('Internal Server Error');
-        }
-    })
+
+                    if (!result || result.affectedRows === 0) {
+                        try {
+                            await deleteCategoryImgFiles([newFileName]);
+                        } catch (e) { }
+                        return res.status(404).send('subCategoryId Not Found');
+                    }
+
+                    // Delete any previous images for this subCategoryId (excluding the just-uploaded one).
+                    try {
+                        const existingFiles = await getExistingCategoryImgFiles(subCategoryId);
+                        const toDelete = existingFiles.filter((f) => f !== newFileName);
+                        await deleteCategoryImgFiles(toDelete);
+                    } catch (e) {
+                        // Non-fatal: image replacement already succeeded, but cleanup failed.
+                    }
+
+                    return res.status(200).send({ message: 'SubCategory image updated successfully', imgLink });
+                });
+            } catch (e) {
+                // Best-effort cleanup if something unexpected happens before DB callback.
+                try {
+                    await deleteCategoryImgFiles([newFileName]);
+                } catch (_) { }
+                return res.status(500).send('Internal Server Error');
+            }
+        });
+    } catch (error) {
+        console.error('An error occurred', error);
+        res.status(500).json('Internal Server Error');
+    }
 }
+
+// Get Sub-Category Image By Name
+
+const getSubCategoryImagebyName = (req, res) => {
+    try {
+        const imageName = req.query.imageName;
+        if (!imageName) return res.status(400).send('Please provide imageName');
+
+        // Prevent path traversal (only allow filename portion)
+        const safeImageName = path.basename(imageName);
+        if (safeImageName !== imageName) return res.status(400).send('Invalid imageName');
+
+        const imagePath = path.join(CATEGORY_IMG_DIR, safeImageName);
+        const imageExt = path.extname(safeImageName).toLowerCase();
+        const contentType =
+            imageExt === '.png' ? 'image/png' :
+                imageExt === '.jpg' || imageExt === '.jpeg' ? 'image/jpeg' :
+                    'application/octet-stream';
+
+        fs.readFile(imagePath, (err, data) => {
+            if (err) {
+                return res.status(404).send('Image not found');
+            }
+            res.setHeader('Content-Type', contentType);
+            res.setHeader('Content-Length', data.length);
+            res.end(data);
+        });
+    } catch (error) {
+        console.error('An error occurred', error);
+        res.status(500).send('Internal Server Error');
+    }
+};
 
 module.exports = {
     getSubCategoryList,
@@ -498,6 +627,7 @@ module.exports = {
     updateSubCategoryData,
     addSubCategoryPeriod,
     updateSubCategoryPeriod,
-    addRollBackTransaction,
-    getSubCategoryListForMobile
+    getSubCategoryListForMobile,
+    uploadSubCategoryImage,
+    getSubCategoryImagebyName,
 }

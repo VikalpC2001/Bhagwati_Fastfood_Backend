@@ -20,6 +20,8 @@ const getBillCategory = (req, res) => {
                                          bcd.amountRange AS amountRange,
                                          bcd.stopAutoAcceptStartTime AS stopAutoAcceptStartTime,
                                          bcd.stopAutoAcceptCloseTime AS stopAutoAcceptCloseTime,
+                                         bcd.onlineURL AS onlineURL,
+                                         bcd.onlineNote AS onlineNote,
                                          bcd.billFooterNote AS billFooterNote,
                                          bcd.appriciateLine AS appriciateLine
                                      FROM
@@ -27,7 +29,9 @@ const getBillCategory = (req, res) => {
                                      LEFT JOIN item_menuCategory_data AS imc ON imc.menuCategoryId = bcd.menuId
                                      LEFT JOIN item_menuCategory_data AS oimc ON oimc.menuCategoryId = bcd.onlineMenuId
                                      LEFT JOIN billing_firm_data AS bfd ON bfd.firmId = bcd.firmId
-                                     WHERE bcd.categoryId IN ('pickUp', 'delivery', 'dineIn', 'hotel')`;
+                                     WHERE bcd.categoryId IN ('pickUp', 'delivery', 'dineIn', 'hotel')
+                                     ORDER BY FIELD(bcd.categoryId, 'pickUp', 'delivery', 'dineIn', 'hotel')`;
+
         pool.query(sql_query_getCategory, (err, data) => {
             if (err) {
                 console.error("An error occurred in SQL Query", err);
@@ -49,6 +53,53 @@ const getBillCategory = (req, res) => {
     }
 }
 
+// Get Bill Category Data By Id
+
+const getBillCategoryById = (req, res) => {
+    try {
+        const categoryId = req.query.categoryId ? req.query.categoryId : null;
+        if (!categoryId) {
+            return res.status(404).send("Category Id Not Found");
+        } else {
+            let sql_query_getCategoryById = `SELECT
+                                                bcd.categoryId AS categoryId,
+                                                bcd.categoryName AS categoryName,
+                                                bcd.menuId AS menuId,
+                                                imc.menuCategoryName AS offlineMenuName,
+                                                bcd.onlineMenuId AS onlineMenuId,
+                                                oimc.menuCategoryName AS onlineMenuName,
+                                                bcd.firmId AS firmId,
+                                                bfd.firmName AS firmName,
+                                                bcd.isOfficial AS isOfficial,
+                                                bcd.onlineStoreStatus AS onlineStoreStatus,
+                                                bcd.storeStartTime AS storeStartTime,
+                                                bcd.storeEndTime AS storeEndTime,
+                                                bcd.amountRange AS amountRange,
+                                                bcd.stopAutoAcceptStartTime AS stopAutoAcceptStartTime,
+                                                bcd.stopAutoAcceptCloseTime AS stopAutoAcceptCloseTime,
+                                                bcd.onlineURL AS onlineURL,
+                                                bcd.onlineNote AS onlineNote,
+                                                bcd.billFooterNote AS billFooterNote,
+                                                bcd.appriciateLine AS appriciateLine
+                                            FROM billing_category_data AS bcd
+                                            LEFT JOIN item_menuCategory_data AS imc ON imc.menuCategoryId = bcd.menuId
+                                            LEFT JOIN item_menuCategory_data AS oimc ON oimc.menuCategoryId = bcd.onlineMenuId
+                                            LEFT JOIN billing_firm_data AS bfd ON bfd.firmId = bcd.firmId
+                                            WHERE bcd.categoryId = '${categoryId}'`;
+            pool.query(sql_query_getCategoryById, (err, data) => {
+                if (err) {
+                    console.error("An error occurred in SQL Query", err);
+                    return res.status(500).send('Database Error');
+                }
+                return res.status(200).send(data[0]);
+            });
+        }
+    }
+    catch (error) {
+        console.error('An error occurred', error);
+        res.status(500).send('Internal Server Error');
+    }
+}
 // Update Bill Category Data
 
 const updateBillCategoryData = (req, res) => {
@@ -65,6 +116,8 @@ const updateBillCategoryData = (req, res) => {
             amountRange: req.body.amountRange ? req.body.amountRange : 0,
             stopAutoAcceptStartTime: req.body.stopAutoAcceptStartTime ? req.body.stopAutoAcceptStartTime : '00:00:00',
             stopAutoAcceptCloseTime: req.body.stopAutoAcceptCloseTime ? req.body.stopAutoAcceptCloseTime : '00:00:00',
+            onlineURL: req.body.onlineURL ? req.body.onlineURL : null,
+            onlineNote: req.body.onlineNote ? req.body.onlineNote : null,
             billFooterNote: req.body.billFooterNote ? req.body.billFooterNote : null,
             appriciateLine: req.body.appriciateLine ? req.body.appriciateLine : null
         }
@@ -84,6 +137,8 @@ const updateBillCategoryData = (req, res) => {
                                             amountRange = ${data.amountRange},
                                             stopAutoAcceptStartTime = '${data.stopAutoAcceptStartTime}',
                                             stopAutoAcceptCloseTime = '${data.stopAutoAcceptCloseTime}',
+                                            onlineURL = ${data.onlineURL ? `'${data.onlineURL}'` : null},
+                                            onlineNote = ${data.onlineNote ? `'${data.onlineNote}'` : null},
                                             billFooterNote = ${data.billFooterNote ? `'${data.billFooterNote}'` : null},
                                             appriciateLine = ${data.appriciateLine ? `'${data.appriciateLine}'` : null}
                                         WHERE 
@@ -93,6 +148,7 @@ const updateBillCategoryData = (req, res) => {
                     console.error("An error occurred in SQL Queery", err);
                     return res.status(500).send('Database Error');
                 } else {
+                    req?.io?.emit('getStoreUpdate');
                     return res.status(200).send('Record Updated Successfully');
                 }
             })
@@ -110,7 +166,8 @@ const ddlBillCategory = (req, res) => {
         let sql_query_getCategory = `SELECT
                                          bcd.categoryName AS categoryName
                                      FROM
-                                         billing_category_data AS bcd`;
+                                         billing_category_data AS bcd
+                                     ORDER BY FIELD(bcd.categoryId, 'pickUp', 'delivery', 'dineIn', 'hotel')`;
         pool.query(sql_query_getCategory, (err, data) => {
             if (err) {
                 console.error("An error occurred in SQL Query", err);
@@ -128,6 +185,7 @@ const ddlBillCategory = (req, res) => {
 
 module.exports = {
     getBillCategory,
+    getBillCategoryById,
     updateBillCategoryData,
     ddlBillCategory
 }

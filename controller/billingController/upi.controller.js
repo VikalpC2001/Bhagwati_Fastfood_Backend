@@ -1,4 +1,3 @@
-const { on } = require('nodemon');
 const pool = require('../../database');
 const jwt = require("jsonwebtoken");
 const { jsPDF } = require('jspdf');
@@ -423,9 +422,9 @@ const exportPdfForUPITransactionById = (req, res) => {
             }
             const holderName = rows[0][0].holderName;
             const transactionRows = JSON.parse(JSON.stringify(rows[1]));
-            const totalAmount = transactionRows.reduce((sum, item) => sum + (Number(item.amount) || 0), 0);
+            const totalAmount = transactionRows.reduce((sum, item) => sum + (Number(item.Amt) || 0), 0);
             const keys = Object.keys(transactionRows[0]);
-            const amountIndex = keys.indexOf('amount');
+            const amountIndex = keys.indexOf('Amt');
             const sumFooterArray = new Array(1 + keys.length).fill('');
             sumFooterArray[0] = 'Total';
             if (amountIndex !== -1) sumFooterArray[1 + amountIndex] = totalAmount;
@@ -434,7 +433,6 @@ const exportPdfForUPITransactionById = (req, res) => {
             const toDate = endDate || lastDay;
             const tableHeading = `${holderName} UPI Transactions From ${fromDate} To ${toDate}`;
             const fileName = `upi-transactions-${upiId}-${fromDate.replace(/\s/g, '-')}.pdf`;
-
             createPDFList(res, transactionRows, sumFooterArray, tableHeading, fileName)
                 .then(() => res.status(200))
                 .catch((err) => {

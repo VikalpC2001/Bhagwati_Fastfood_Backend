@@ -882,6 +882,60 @@ const getItemDataByCode = (req, res) => {
     }
 }
 
+// Get Item Data Foe Online Order
+
+const getItemDataForOnlineOrder = (req, res) => {
+    try {
+        const menuId = req.query.menuId ? req.query.menuId : 'base_2001';
+        const subCategoryId = req.query.subCategoryId ? req.query.subCategoryId : '';
+        const sql_query_staticQuery = `SELECT itemId, itemName, itemGujaratiName, itemCode, itemShortKey, itemSubCategory, spicyLevel, isJain, isPureJain, itemDescription FROM item_menuList_data`;
+        if (!menuId) {
+            return res.status(404).send('menuId Not Found');
+        } else if (req.query.subCategoryId) {
+            sql_querry_getItem = `${sql_query_staticQuery}
+                                  WHERE itemSubCategory = '${subCategoryId}'
+                                  ORDER BY itemCode ASC`;
+        } else {
+            sql_querry_getItem = `${sql_query_staticQuery}
+                                  ORDER BY itemCode ASC`;
+        }
+        pool.query(sql_querry_getItem, (err, rows) => {
+            if (err) {
+                console.error("An error occurred in SQL Queery", err);
+                return res.status(500).send('Database Error');
+            } else {
+                const datas = Object.values(JSON.parse(JSON.stringify(rows)));
+                if (datas.length) {
+                    varientDatas(datas, menuId)
+                        .then((data) => {
+                            const combinedData = datas.map((item, index) => (
+                                {
+                                    ...item,
+                                    variantsList: data[index].varients,
+                                    allVariantsList: data[index].allVariantsList,
+                                    periods: data[index].periods,
+                                    status: data[index].status
+                                }
+                            ));
+                            const activeItems = combinedData.filter(
+                                (item) => item.status === true || item.status === 1
+                            );
+                            return res.status(200).send(activeItems);
+                        }).catch(error => {
+                            console.error('Error in processing datas :', error);
+                            return res.status(500).send('Internal Error');
+                        });
+                } else {
+                    return res.status(400).send('No Data Found');
+                }
+            }
+        })
+    } catch (error) {
+        console.error('An error occurred', error);
+        res.status(500).json('Internal Server Error');
+    }
+}
+
 module.exports = {
     getItemData,
     addItemData,
@@ -893,5 +947,6 @@ module.exports = {
     updateItemPriceByMenuId,
     exportPdfForItemSalesReport,
     getItmeDataForTouchView,
-    getItemDataByCode
+    getItemDataByCode,
+    getItemDataForOnlineOrder
 }

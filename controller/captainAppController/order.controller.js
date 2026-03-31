@@ -1260,6 +1260,8 @@ const isTableEmpty = (req, res) => {
         const tableNo = req.query.tableNo;
         if (!tableNo) {
             return res.status(404).send('Please Enter Table Number')
+        } else if (tableNo.length > 4) {
+            return res.status(404).send('Please Enter Short Names')
         } else {
             let sql_query_chkTableIsEmpty = `SELECT tableId, tableNo FROM billing_DineInTable_data WHERE tableNo = '${tableNo}' AND billId IS NOT NULL`;
             pool.query(sql_query_chkTableIsEmpty, (err, table) => {

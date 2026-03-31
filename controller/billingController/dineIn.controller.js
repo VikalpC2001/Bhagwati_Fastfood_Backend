@@ -2738,11 +2738,11 @@ const updateBillDataWithPrintByID = (req, res) => {
                                                                             ...(billType === 'Dine In' ? { tableInfo: rows[5][0] } : ''),
                                                                             tableNo: rows && rows[5][0] ? rows[5][0].tableNo : 0,
                                                                             subTokens: rows && rows[5] && rows[6].length ? rows[6].map(item => item.subTokenNumber).sort((a, b) => a - b).join(", ") : null,
-                                                                            ...(['due', 'online'].includes(rows.billPayType) ?
-                                                                                rows.billPayType == 'due' ?
+                                                                            ...(['due', 'online'].includes(billData.billPayType) ?
+                                                                                billData.billPayType == 'due' ?
                                                                                     { "payInfo": { "accountId": rows[0][0].typeId, "customerName": rows[0][0].typeName } }
                                                                                     :
-                                                                                    rows.billPayType == 'online' ?
+                                                                                    billData.billPayType == 'online' ?
                                                                                         { "upiJson": { "onlineId": rows[0][0].onlineId, "holderName": rows[0][0].holderName, "upiId": rows[0][0].upiId } }
                                                                                         : ''
                                                                                 : '')
@@ -3011,6 +3011,8 @@ const isTableEmpty = (req, res) => {
         const tableNo = req.query.tableNo;
         if (!tableNo) {
             return res.status(404).send('Please Enter Table Number')
+        } else if (tableNo.length > 3) {
+            return res.status(404).send('Please Enter Short Names')
         } else {
             let sql_query_chkTableIsEmpty = `SELECT tableId, tableNo FROM billing_DineInTable_data WHERE tableNo = '${tableNo}' AND billId IS NOT NULL`;
             pool.query(sql_query_chkTableIsEmpty, (err, table) => {

@@ -30,7 +30,8 @@ router.delete('/removeSubCategoryData', protect, subCategoryController.removeSub
 router.post('/updateSubCategoryData', protect, subCategoryController.updateSubCategoryData);
 router.post('/addSubCategoryPeriod', protect, subCategoryController.addSubCategoryPeriod);
 router.post('/updateSubCategoryPeriod', protect, subCategoryController.updateSubCategoryPeriod);
-router.post('/addRollBackTransaction', protect, subCategoryController.addRollBackTransaction);
+router.post('/uploadSubCategoryImage', protect, subCategoryController.uploadSubCategoryImage);
+router.get('/getSubCategoryImagebyName', subCategoryController.getSubCategoryImagebyName);
 router.get('/getSubCategoryListForMobile', subCategoryController.getSubCategoryListForMobile);
 
 
@@ -59,6 +60,7 @@ router.post('/updateItemPriceByMenuId', protect, itemController.updateItemPriceB
 router.get('/exportPdfForItemSalesReport', itemController.exportPdfForItemSalesReport);
 router.get('/getItmeDataForTouchView', itemController.getItmeDataForTouchView);
 router.get('/getItemDataByCode', itemController.getItemDataByCode);
+router.get('/getItemDataForOnlineOrder', itemController.getItemDataForOnlineOrder);
 
 // Addon Group Routs
 

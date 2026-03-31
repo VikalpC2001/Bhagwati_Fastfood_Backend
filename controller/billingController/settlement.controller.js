@@ -181,9 +181,9 @@ const addSettleDataByFirm = (req, res) => {
                             const cashier = decoded.id.firstName;
                             const currentDate = getCurrentDate();
 
-                            const firmId = req.query.firmId ? req.query.firmId : null;
-                            const percentage = Number(req.query.percentage ? req.query.percentage : 0);
-                            const desiredAmt = Number(req.query.desiredAmt ? req.query.desiredAmt : 0);
+                            const firmId = req.body.firmId ? req.body.firmId : null;
+                            const percentage = Number(req.body.percentage ? req.body.percentage : 0);
+                            const desiredAmt = Number(req.body.desiredAmt ? req.body.desiredAmt : 0);
 
                             const uid1 = new Date();
                             const settlementId = String("settlement_" + uid1.getTime());

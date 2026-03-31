@@ -361,7 +361,8 @@ const getFirmData = (req, res) => {
                                                 firmMobileNo AS firmMobileNo,
                                                 otherMobileNo AS otherMobileNo,
                                                 isSettlement AS isSettlement,
-                                                csr AS csr
+                                                csr AS csr,
+                                                resetDate AS resetDate
                                               FROM
                                                 billing_firm_data AS bfd
                                               WHERE bfd.firmName LIKE '%` + searchWord + `%'
@@ -448,6 +449,7 @@ const addFirmData = async (req, res) => {
                     otherMobileNo: req.body.otherMobileNo ? req.body.otherMobileNo : null,
                     isSettlement: req.body.isSettlement ? true : false,
                     csr: req.body.csr ? req.body.csr : 0,
+                    resetDate: req.body.resetDate ? req.body.resetDate : null,
                 }
                 if (!data.firmName || !data.gstNumber || !data.firmAddress || !data.pincode || !data.firmMobileNo) {
                     return res.status(400).send("Please Fill All The Fields...!");
@@ -459,8 +461,8 @@ const addFirmData = async (req, res) => {
                         } else if (row && row.length) {
                             return res.status(400).send('Firm is Already In Use');
                         } else {
-                            const sql_querry_addCategory = `INSERT INTO billing_firm_data (firmId, firmName, gstNumber, firmAddress, pincode, firmMobileNo, otherMobileNo, isSettlement, csr)  
-                                                            VALUES ('${firmId}','${data.firmName}','${data.gstNumber}','${data.firmAddress}',${data.pincode},'${data.firmMobileNo}',NULLIF('${data.otherMobileNo}','null'),${data.isSettlement}, ${data.csr})`;
+                            const sql_querry_addCategory = `INSERT INTO billing_firm_data (firmId, firmName, gstNumber, firmAddress, pincode, firmMobileNo, otherMobileNo, isSettlement, csr, resetDate)  
+                                                            VALUES ('${firmId}','${data.firmName}','${data.gstNumber}','${data.firmAddress}',${data.pincode},'${data.firmMobileNo}',NULLIF('${data.otherMobileNo}','null'),${data.isSettlement}, ${data.csr}, '${data.resetDate}')`;
                             pool.query(sql_querry_addCategory, (err, data) => {
                                 if (err) {
                                     console.error("An error occurred in SQL Queery", err);
@@ -538,7 +540,9 @@ const updateFirmData = async (req, res) => {
             otherMobileNo: req.body.otherMobileNo ? req.body.otherMobileNo : null,
             isSettlement: req.body.isSettlement ? true : false,
             csr: req.body.csr ? req.body.csr : 0,
+            resetDate: req.body.resetDate ? req.body.resetDate : null,
         }
+        console.log(data);
         if (!data.firmId || !data.firmName || !data.gstNumber || !data.firmAddress || !data.pincode || !data.firmMobileNo) {
             return res.status(400).send("Please Fill All The Fields...!");
         } else {
@@ -561,7 +565,8 @@ const updateFirmData = async (req, res) => {
                                                     firmMobileNo = '${data.firmMobileNo}',
                                                     otherMobileNo = NULLIF('${data.otherMobileNo}','null'),
                                                     isSettlement = ${data.isSettlement},
-                                                    csr = ${data.csr}
+                                                    csr = ${data.csr},
+                                                    resetDate = '${data.resetDate}'
                                                   WHERE firmId = '${data.firmId}'`;
                 pool.query(sql_querry_updatedetails, (err, data) => {
                     if (err) {
@@ -833,6 +838,255 @@ const getCancelBillDataByFirmId = (req, res) => {
     }
 }
 
+async function createPDFList(res, datas, sumFooterArray, tableHeading, fileName = 'bill-export.pdf') {
+    try {
+        const doc = new jsPDF();
+        const jsonData = datas;
+        const keys = Object.keys(jsonData[0]);
+        const columns = [
+            { header: 'Sr.', dataKey: 'serialNo' },
+            ...keys.map(key => ({ header: key, dataKey: key }))
+        ];
+        const data = jsonData.map((item, index) => [index + 1, ...keys.map(key => item[key])]);
+        if (sumFooterArray) {
+            data.push(sumFooterArray);
+        }
+        doc.text(15, 15, tableHeading);
+        doc.autoTable({
+            startY: 20,
+            head: [columns.map(col => col.header)],
+            body: data,
+            theme: 'grid',
+            styles: {
+                cellPadding: 2,
+                halign: 'center',
+                fontSize: 10
+            },
+        });
+        const pdfBytes = await doc.output();
+        res.setHeader('Content-Disposition', `attachment; filename="${fileName}"`);
+        res.setHeader('Content-Type', 'application/pdf');
+        res.send(pdfBytes);
+    } catch (error) {
+        console.error('An error occurred', error);
+        res.status(500).send('Internal Server Error');
+    }
+}
+
+// Export PDF for bill data by firm (same filters as getBillDataByFirmId, no pagination).
+
+const exportPDFforBillDataByFirmId = (req, res) => {
+    try {
+        const date = new Date();
+        const lastDay = date.toString().slice(4, 15);
+        const firstDay = new Date(date);
+        firstDay.setMonth(firstDay.getMonth() - 1);
+        const firstDayStr = firstDay.toString().slice(4, 15);
+        const firmId = req.query.firmId ? req.query.firmId : null;
+        const billPayType = req.query.billPayType ? req.query.billPayType : null;
+        const billType = req.query.billType ? req.query.billType : null;
+        const startDate = (req.query.startDate ? req.query.startDate : '').slice(4, 15);
+        const endDate = (req.query.endDate ? req.query.endDate : '').slice(4, 15);
+
+        if (!firmId) {
+            return res.status(404).send('firmId Not Found....!');
+        }
+
+        const sql_query_getDetails = `SELECT
+                                        bod.billNumber AS "Bill No.",
+                                        bod.cashier AS "Cashier",
+                                        bod.billType AS "Bill Type",
+                                        bod.billPayType AS "Pay Type",
+                                        bod.totalAmount AS "Total Amt",
+                                        bod.totalDiscount AS "Discount",
+                                        CASE
+                                            WHEN bod.billStatus = 'Cancel' OR bod.billPayType = 'cancel' THEN 0
+                                            ELSE bod.settledAmount
+                                        END AS "Settled Amt",
+                                        DATE_FORMAT(bod.billDate,"%d-%m-%Y") AS "Date",
+                                        DATE_FORMAT(bod.billCreationDate,"%h:%i %p") AS "Time"
+                                      FROM billing_Official_data AS bod
+                                      WHERE bod.firmId = '${firmId}'
+                                      AND billDate BETWEEN STR_TO_DATE('${startDate || firstDayStr}','%b %d %Y') AND STR_TO_DATE('${endDate || lastDay}','%b %d %Y')
+                                      ${billType ? `AND bod.billType = '${billType}'` : ''}
+                                      ${billPayType ? `AND bod.billPayType = '${billPayType}'` : ''}
+                                      ORDER BY bod.billNumber ASC, bod.billCreationDate ASC`;
+
+        pool.query(sql_query_getDetails, (err, rows) => {
+            if (err) {
+                console.error('An error occurred in SQL Query', err);
+                return res.status(500).send('Database Error');
+            }
+            if (!rows || rows.length === 0) {
+                return res.status(400).send('No Data Found');
+            }
+            const keys = Object.keys(rows[0]);
+            const totalAmountIdx = keys.indexOf('Total Amt');
+            const settledAmountIdx = keys.indexOf('Settled Amt');
+            const sumFooterArray = new Array(1 + keys.length).fill('');
+            sumFooterArray[0] = 'Total';
+            const sumTotal = rows.reduce((s, r) => s + (Number(r['Total Amt']) || 0), 0);
+            const sumSettled = rows.reduce((s, r) => s + (Number(r['Settled Amt']) || 0), 0);
+            if (totalAmountIdx !== -1) sumFooterArray[1 + totalAmountIdx] = sumTotal.toFixed(2);
+            if (settledAmountIdx !== -1) sumFooterArray[1 + settledAmountIdx] = sumSettled.toFixed(2);
+
+            const fromDate = startDate || firstDayStr;
+            const toDate = endDate || lastDay;
+            const tableHeading = `Bill Data By Firm (${fromDate} To ${toDate})`;
+            const fileName = `bill-data-firm-${firmId}-${String(fromDate).replace(/\s/g, '-')}.pdf`;
+            createPDFList(res, rows, sumFooterArray, tableHeading, fileName)
+                .then(() => res.status(200))
+                .catch((err) => {
+                    console.error(err);
+                    res.status(500).send('Error creating PDF');
+                });
+        });
+    } catch (error) {
+        console.error('An error occurred', error);
+        res.status(500).send('Internal Server Error');
+    }
+};
+
+// Export PDF for complimentary bill data by firm (same filters as getComplimentaryBillDataByFirmId, no pagination).
+
+const exportPDFforComplimentaryBillDataByFirmId = (req, res) => {
+    try {
+        const date = new Date();
+        const lastDay = date.toString().slice(4, 15);
+        const firstDay = new Date(date);
+        firstDay.setMonth(firstDay.getMonth() - 1);
+        const firstDayStr = firstDay.toString().slice(4, 15);
+        const firmId = req.query.firmId ? req.query.firmId : null;
+        const billPayType = req.query.billPayType ? req.query.billPayType : null;
+        const billType = req.query.billType ? req.query.billType : null;
+        const startDate = (req.query.startDate ? req.query.startDate : '').slice(4, 15);
+        const endDate = (req.query.endDate ? req.query.endDate : '').slice(4, 15);
+
+        if (!firmId) {
+            return res.status(404).send('firmId Not Found....!');
+        }
+
+        const sql_query_getDetails = `SELECT
+                                        CONCAT('C', bcd.billNumber) AS "Bill No.",
+                                        bcd.cashier AS "Cashier",
+                                        bcd.billType AS "Bill Type",
+                                        bcd.billPayType AS "Pay Type",
+                                        bcd.totalAmount AS "Total Amt",
+                                        bcd.totalDiscount AS "Discount",
+                                        bcd.settledAmount AS "Settled Amt",
+                                        DATE_FORMAT(bcd.billDate,"%d-%m-%Y") AS "Date",
+                                        DATE_FORMAT(bcd.billCreationDate,"%h:%i %p") AS "Time"
+                                      FROM billing_Complimentary_data AS bcd
+                                      WHERE bcd.firmId = '${firmId}'
+                                      AND bcd.billDate BETWEEN STR_TO_DATE('${startDate || firstDayStr}','%b %d %Y') AND STR_TO_DATE('${endDate || lastDay}','%b %d %Y')
+                                      ${billType ? `AND bcd.billType = '${billType}'` : ''}
+                                      ${billPayType ? `AND bcd.billPayType = '${billPayType}'` : ''}
+                                      ORDER BY bcd.billNumber ASC, bcd.billCreationDate ASC`;
+
+        pool.query(sql_query_getDetails, (err, rows) => {
+            if (err) {
+                console.error('An error occurred in SQL Query', err);
+                return res.status(500).send('Database Error');
+            }
+            if (!rows || rows.length === 0) {
+                return res.status(400).send('No Data Found');
+            }
+            const keys = Object.keys(rows[0]);
+            const totalAmountIdx = keys.indexOf('Total Amt');
+            const settledAmountIdx = keys.indexOf('Settled Amt');
+            const sumFooterArray = new Array(1 + keys.length).fill('');
+            sumFooterArray[0] = 'Total';
+            const sumTotal = rows.reduce((s, r) => s + (Number(r['Total Amt']) || 0), 0);
+            const sumSettled = rows.reduce((s, r) => s + (Number(r['Settled Amt']) || 0), 0);
+            if (totalAmountIdx !== -1) sumFooterArray[1 + totalAmountIdx] = sumTotal.toFixed(2);
+            if (settledAmountIdx !== -1) sumFooterArray[1 + settledAmountIdx] = sumSettled.toFixed(2);
+
+            const fromDate = startDate || firstDayStr;
+            const toDate = endDate || lastDay;
+            const tableHeading = `Complimentary Bill Data By Firm (${fromDate} To ${toDate})`;
+            const fileName = `complimentary-bill-data-firm-${firmId}-${String(fromDate).replace(/\s/g, '-')}.pdf`;
+            createPDFList(res, rows, sumFooterArray, tableHeading, fileName)
+                .then(() => res.status(200))
+                .catch((err) => {
+                    console.error(err);
+                    res.status(500).send('Error creating PDF');
+                });
+        });
+    } catch (error) {
+        console.error('An error occurred', error);
+        res.status(500).send('Internal Server Error');
+    }
+};
+
+// Export PDF for cancel bill data by firm (same filters as getCancelBillDataByFirmId, no pagination).
+
+const exportPDFforCancelBillDataByFirmId = (req, res) => {
+    try {
+        const date = new Date();
+        const lastDay = date.toString().slice(4, 15);
+        const firstDay = new Date(date);
+        firstDay.setMonth(firstDay.getMonth() - 1);
+        const firstDayStr = firstDay.toString().slice(4, 15);
+        const firmId = req.query.firmId ? req.query.firmId : null;
+        const billType = req.query.billType ? req.query.billType : null;
+        const startDate = (req.query.startDate ? req.query.startDate : '').slice(4, 15);
+        const endDate = (req.query.endDate ? req.query.endDate : '').slice(4, 15);
+
+        if (!firmId) {
+            return res.status(404).send('firmId Not Found....!');
+        }
+
+        const sql_query_getDetails = `SELECT
+                                        bod.billNumber AS "Bill No.",
+                                        bod.cashier AS "Cashier",
+                                        bod.billType AS "Bill Type",
+                                        bod.billPayType AS "Pay Type",
+                                        bod.totalAmount AS "Total Amt",
+                                        bod.totalDiscount AS "Discount",
+                                        bod.settledAmount AS "Settled Amt",
+                                        DATE_FORMAT(bod.billDate,"%d-%m-%Y") AS "Date",
+                                        DATE_FORMAT(bod.billCreationDate,"%h:%i %p") AS "Time"
+                                      FROM billing_Official_data AS bod
+                                      WHERE bod.firmId = '${firmId}' AND (bod.billPayType = 'cancel' OR bod.billStatus = 'cancel')
+                                      AND billDate BETWEEN STR_TO_DATE('${startDate || firstDayStr}','%b %d %Y') AND STR_TO_DATE('${endDate || lastDay}','%b %d %Y')
+                                      ${billType ? `AND bod.billType = '${billType}'` : ''}
+                                      ORDER BY bod.billCreationDate DESC, bod.billNumber DESC`;
+
+        pool.query(sql_query_getDetails, (err, rows) => {
+            if (err) {
+                console.error('An error occurred in SQL Query', err);
+                return res.status(500).send('Database Error');
+            }
+            if (!rows || rows.length === 0) {
+                return res.status(400).send('No Data Found');
+            }
+            const keys = Object.keys(rows[0]);
+            const totalAmountIdx = keys.indexOf('totalAmount');
+            const settledAmountIdx = keys.indexOf('settledAmount');
+            const sumFooterArray = new Array(1 + keys.length).fill('');
+            sumFooterArray[0] = 'Total';
+            const sumTotal = rows.reduce((s, r) => s + (Number(r.totalAmount) || 0), 0);
+            const sumSettled = rows.reduce((s, r) => s + (Number(r.settledAmount) || 0), 0);
+            if (totalAmountIdx !== -1) sumFooterArray[1 + totalAmountIdx] = sumTotal.toFixed(2);
+            if (settledAmountIdx !== -1) sumFooterArray[1 + settledAmountIdx] = sumSettled.toFixed(2);
+
+            const fromDate = startDate || firstDayStr;
+            const toDate = endDate || lastDay;
+            const tableHeading = `Cancel Bill Data By Firm (${fromDate} To ${toDate})`;
+            const fileName = `cancel-bill-data-firm-${firmId}-${String(fromDate).replace(/\s/g, '-')}.pdf`;
+            createPDFList(res, rows, sumFooterArray, tableHeading, fileName)
+                .then(() => res.status(200))
+                .catch((err) => {
+                    console.error(err);
+                    res.status(500).send('Error creating PDF');
+                });
+        });
+    } catch (error) {
+        console.error('An error occurred', error);
+        res.status(500).send('Internal Server Error');
+    }
+};
+
 // Get Month Wise Bill Data By Firm
 
 const getMonthWiseBillDataByFirmId = (req, res) => {
@@ -967,6 +1221,7 @@ const getTaxReportByFirmId = (req, res) => {
                                                 WHEN billType = 'Hotel' AND billPayType = 'cash' THEN CONCAT('HC/ ',billNumber)
                                                 WHEN billType = 'Hotel' AND billPayType = 'debit' THEN CONCAT('HD/ ',billNumber)
                                                 WHEN billType = 'Hotel' AND billPayType = 'online' THEN CONCAT('HO/ ',billNumber)
+                                                WHEN billType = 'Hotel' THEN CONCAT('H/ ',billNumber)
                                                 ELSE billNumber
                                             END AS billNumber,
                                             billType,
@@ -1071,6 +1326,7 @@ const getTaxReportByFirmIdExcel = (req, res) => {
                                                 WHEN billType = 'Hotel' AND billPayType = 'cash' THEN CONCAT('HC/ ',billNumber)
                                                 WHEN billType = 'Hotel' AND billPayType = 'debit' THEN CONCAT('HD/ ',billNumber)
                                                 WHEN billType = 'Hotel' AND billPayType = 'online' THEN CONCAT('HO/ ',billNumber)
+                                                WHEN billType = 'Hotel' THEN CONCAT('H/ ',billNumber)
                                                 ELSE billNumber
                                             END AS billNumber,
                                             billType,
@@ -1163,6 +1419,9 @@ module.exports = {
     getBillDataByFirmId,
     getCancelBillDataByFirmId,
     getComplimentaryBillDataByFirmId,
+    exportPDFforBillDataByFirmId,
+    exportPDFforComplimentaryBillDataByFirmId,
+    exportPDFforCancelBillDataByFirmId,
     getMonthWiseBillDataByFirmId,
     getStaticsDataByFirmId
 }

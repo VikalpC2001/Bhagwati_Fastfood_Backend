@@ -247,11 +247,18 @@ const addBusinessReport = (req, res) => {
             console.error("Error getting database connection:", err);
             return res.status(500).send('Database Error');
         }
+        let released = false;
+        const releaseOnce = () => {
+            if (!released) {
+                released = true;
+                connection.release();
+            }
+        };
         try {
             let token;
             token = req.headers && req.headers.authorization ? req.headers.authorization.split(" ")[1] : null;
             if (!token) {
-                connection.release();
+                releaseOnce();
                 return res.status(401).send("Please Login First.....!");
             }
             const decoded = jwt.verify(token, process.env.JWT_SECRET);
@@ -269,14 +276,14 @@ const addBusinessReport = (req, res) => {
                 reportDate: req.body.reportDate ? new Date(req.body.reportDate).toString().slice(4, 15) : null,
             };
             if (!businessReport || !data.reportDate) {
-                connection.release();
+                releaseOnce();
                 return res.status(400).send("Please Fill All The Fields");
             }
 
             connection.beginTransaction((err) => {
                 if (err) {
                     console.error("Error beginning transaction:", err);
-                    connection.release();
+                    releaseOnce();
                     return res.status(500).send('Database Error');
                 }
 
@@ -297,16 +304,18 @@ const addBusinessReport = (req, res) => {
                     if (err) {
                         console.error("Error validating settlement:", err);
                         connection.rollback(() => {
-                            connection.release();
-                            return res.status(500).send('Database Error');
+                            releaseOnce();
+                            res.status(500).send('Database Error');
                         });
+                        return;
                     }
                     const isValid = validateResult && validateResult.length && validateResult[0].isValid;
                     if (!isValid) {
                         connection.rollback(() => {
-                            connection.release();
-                            return res.status(400).send("First settle firm");
+                            releaseOnce();
+                            res.status(400).send("First settle firm");
                         });
+                        return;
                     }
 
                     // Check if business report already exists for this date
@@ -315,15 +324,17 @@ const addBusinessReport = (req, res) => {
                         if (err) {
                             console.error("An error occurred in SQL Query", err);
                             connection.rollback(() => {
-                                connection.release();
-                                return res.status(500).send('Database Error');
+                                releaseOnce();
+                                res.status(500).send('Database Error');
                             });
+                            return;
                         }
                         if (row && row.length) {
                             connection.rollback(() => {
-                                connection.release();
-                                return res.status(400).send(`Business is Already Added On Date ${data.reportDate}`);
+                                releaseOnce();
+                                res.status(400).send(`Business is Already Added On Date ${data.reportDate}`);
                             });
+                            return;
                         }
 
                         const keys = Object.keys(businessReport);
@@ -340,8 +351,8 @@ const addBusinessReport = (req, res) => {
                             if (err) {
                                 console.error("An error occurred in SQL Query", err);
                                 connection.rollback(() => {
-                                    connection.release();
-                                    return res.status(500).send('Database Error');
+                                    releaseOnce();
+                                    res.status(500).send('Database Error');
                                 });
                                 return;
                             }
@@ -353,8 +364,8 @@ const addBusinessReport = (req, res) => {
                                 if (err) {
                                     console.error("Error fetching income for totalCash", err);
                                     connection.rollback(() => {
-                                        connection.release();
-                                        return res.status(500).send('Database Error');
+                                        releaseOnce();
+                                        res.status(500).send('Database Error');
                                     });
                                     return;
                                 }
@@ -376,8 +387,8 @@ const addBusinessReport = (req, res) => {
                                     if (errCredit) {
                                         console.error("Error adding cash credit", errCredit);
                                         connection.rollback(() => {
-                                            connection.release();
-                                            return res.status(500).send('Database Error');
+                                            releaseOnce();
+                                            res.status(500).send('Database Error');
                                         });
                                         return;
                                     }
@@ -385,12 +396,12 @@ const addBusinessReport = (req, res) => {
                                         if (err) {
                                             console.error("Error committing transaction:", err);
                                             connection.rollback(() => {
-                                                connection.release();
-                                                return res.status(500).send('Database Error');
+                                                releaseOnce();
+                                                res.status(500).send('Database Error');
                                             });
                                             return;
                                         }
-                                        connection.release();
+                                        releaseOnce();
                                         return res.status(200).send("Business Report Added Successfully");
                                     });
                                 });
@@ -402,8 +413,8 @@ const addBusinessReport = (req, res) => {
         } catch (error) {
             console.error('An error occurred', error);
             connection.rollback(() => {
-                connection.release();
-                return res.status(500).json('Internal Server Error');
+                releaseOnce();
+                res.status(500).json('Internal Server Error');
             });
         }
     });
@@ -414,6 +425,7 @@ const addBusinessReport = (req, res) => {
 const removeBusinessReport = (req, res) => {
     try {
         var brDate = req.query.brDate ? new Date(req.query.brDate).toString().slice(4, 15) : null;
+        console.log(brDate);
         if (!brDate) {
             return res.status(404).send('Date Not Found');
         }
@@ -424,7 +436,8 @@ const removeBusinessReport = (req, res) => {
             }
             if (row && row.length) {
                 const sql_querry_removedetails = `DELETE FROM business_report_data WHERE businessDate = STR_TO_DATE('${brDate}','%b %d %Y');
-                                                  DELETE FROM balance_data WHERE balanceDate =  STR_TO_DATE('${brDate}','%b %d %Y')`;
+                                                  DELETE FROM balance_data WHERE balanceDate =  STR_TO_DATE('${brDate}','%b %d %Y');
+                                                  DELETE FROM business_autoTrasactionId_data WHERE autoTransactionDate = STR_TO_DATE('${brDate}','%b %d %Y')`;
 
                 pool.query(sql_querry_removedetails, (err, data) => {
                     if (err) {
@@ -451,11 +464,18 @@ const updateBusinessReport = (req, res) => {
             console.error("Error getting database connection:", err);
             return res.status(500).send('Database Error');
         }
+        let released = false;
+        const releaseOnce = () => {
+            if (!released) {
+                released = true;
+                connection.release();
+            }
+        };
         try {
             let token;
             token = req.headers && req.headers.authorization ? req.headers.authorization.split(" ")[1] : null;
             if (!token) {
-                connection.release();
+                releaseOnce();
                 return res.status(401).send("Please Login First.....!");
             }
             const decoded = jwt.verify(token, process.env.JWT_SECRET);
@@ -470,15 +490,16 @@ const updateBusinessReport = (req, res) => {
                 closingBalance: req.body.closingBalance ? req.body.closingBalance : 0,
                 reportDate: req.body.reportDate ? new Date(req.body.reportDate).toString().slice(4, 15) : null,
             };
+            console.log(datas);
             if (!businessReport || !datas.reportDate) {
-                connection.release();
+                releaseOnce();
                 return res.status(400).send("Please Fill All The Fields");
             }
 
             connection.beginTransaction((err) => {
                 if (err) {
                     console.error("Error beginning transaction:", err);
-                    connection.release();
+                    releaseOnce();
                     return res.status(500).send('Database Error');
                 }
 
@@ -508,8 +529,8 @@ const updateBusinessReport = (req, res) => {
                     if (err) {
                         console.error("An error occurred in SQL Query", err);
                         connection.rollback(() => {
-                            connection.release();
-                            return res.status(500).send('Database Error');
+                            releaseOnce();
+                            res.status(500).send('Database Error');
                         });
                         return;
                     }
@@ -521,8 +542,8 @@ const updateBusinessReport = (req, res) => {
                         if (err) {
                             console.error("Error fetching income for totalCash", err);
                             connection.rollback(() => {
-                                connection.release();
-                                return res.status(500).send('Database Error');
+                                releaseOnce();
+                                res.status(500).send('Database Error');
                             });
                             return;
                         }
@@ -536,15 +557,16 @@ const updateBusinessReport = (req, res) => {
                             if (err) {
                                 console.error("Error fetching auto transaction", err);
                                 connection.rollback(() => {
-                                    connection.release();
-                                    return res.status(500).send('Database Error');
+                                    releaseOnce();
+                                    res.status(500).send('Database Error');
                                 });
                                 return;
                             }
                             const hasExisting = autoTxnRows && autoTxnRows.length && autoTxnRows[0];
                             const existingTransactionId = hasExisting ? autoTxnRows[0].transactionId : null;
                             const oldAmount = hasExisting && autoTxnRows[0].transactionAmount != null ? autoTxnRows[0].transactionAmount : 0;
-
+                            console.log("oldAmount", oldAmount);
+                            console.log("totalCash", totalCash);
                             const creditAmt = totalCash - oldAmount;
                             const sql_updateCredit = `UPDATE bank_data SET availableBalance = availableBalance + ${creditAmt} WHERE bankId = '${staticWalletId}';
                                                       UPDATE credit_transaction_data SET userId = '${userId}', creditAmount = ${totalCash}, creditComment = 'Auto Credit & Update By Business Report', creditDate = STR_TO_DATE('${datas.reportDate}','%b %d %Y') WHERE transactionId = '${existingTransactionId}';
@@ -553,8 +575,8 @@ const updateBusinessReport = (req, res) => {
                                 if (errUpdate) {
                                     console.error("Error updating cash credit", errUpdate);
                                     connection.rollback(() => {
-                                        connection.release();
-                                        return res.status(500).send('Database Error');
+                                        releaseOnce();
+                                        res.status(500).send('Database Error');
                                     });
                                     return;
                                 }
@@ -562,16 +584,15 @@ const updateBusinessReport = (req, res) => {
                                     if (err) {
                                         console.error("Error committing transaction:", err);
                                         connection.rollback(() => {
-                                            connection.release();
-                                            return res.status(500).send('Database Error');
+                                            releaseOnce();
+                                            res.status(500).send('Database Error');
                                         });
                                         return;
                                     }
-                                    connection.release();
+                                    releaseOnce();
                                     return res.status(200).send("Business Report Updated Successfully");
                                 });
                             });
-                            return;
                         });
                     });
                 });
@@ -579,8 +600,8 @@ const updateBusinessReport = (req, res) => {
         } catch (error) {
             console.error('An error occurred', error);
             connection.rollback(() => {
-                connection.release();
-                return res.status(500).json('Internal Server Error');
+                releaseOnce();
+                res.status(500).json('Internal Server Error');
             });
         }
     });

@@ -433,7 +433,7 @@ const searchCustomerData = (req, res) => {
                          LEFT JOIN billing_customerAddress_data bcad ON bcad.customerId = bcd.customerId
                          WHERE (bcd.customerMobileNumber LIKE CONCAT('%', ?, '%') OR bcd.customerName LIKE CONCAT('%', ?, '%'))
                          ORDER BY bcad.addressCreationDate DESC
-                         LIMIT 30`;
+                         LIMIT 50`;
             pool.query(sql, [word, word], (err, rows) => {
                 if (err) {
                     console.error("SQL Error:", err);
@@ -472,11 +472,16 @@ const getCustomerList = (req, res) => {
                                                 bcd.customerName,
                                                 bcd.customerMobileNumber,
                                                 DATE_FORMAT(bcd.birthDate,'%b %d %Y') AS birthDate,
-                                                DATE_FORMAT(bcd.anniversaryDate,'%b %d %Y') AS anniversaryDate
+                                                DATE_FORMAT(bcd.anniversaryDate,'%b %d %Y') AS anniversaryDate,
+                                                DATE_FORMAT(MAX(bwc.creationDate), '%b %d %Y') AS lastOrderDate,
+                                                COALESCE(COUNT(CASE WHEN YEAR(bwc.creationDate) = YEAR(CURRENT_DATE) AND MONTH(bwc.creationDate) = MONTH(CURRENT_DATE) THEN 1 END), 0) AS totalOrdersCurrentMonth
                                               FROM 
                                                 billing_customer_data AS bcd
+                                              LEFT JOIN billing_billWiseCustomer_data AS bwc ON bwc.customerId = bcd.customerId
                                               WHERE bcd.customerName LIKE '%` + searchWord + `%'
                                               OR bcd.customerMobileNumber LIKE '%` + searchWord + `%'
+                                              GROUP BY bcd.customerId, bcd.customerName, bcd.customerMobileNumber, bcd.birthDate, bcd.anniversaryDate
+                                              ORDER BY lastOrderDate DESC, totalOrdersCurrentMonth DESC, bcd.customerName ASC
                                               LIMIT ${limit}`;
                 pool.query(sql_query_getDetails, (err, rows, fields) => {
                     if (err) {

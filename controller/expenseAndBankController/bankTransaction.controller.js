@@ -446,7 +446,8 @@ const removeTransactionData = (req, res) => {
             const sql_querry_removedetails = `UPDATE bank_data SET availableBalance = availableBalance - ${creditAmt} WHERE bankId = '${creditBankId}';
                                               UPDATE bank_data SET availableBalance = availableBalance + ${debitAmt} WHERE bankId = '${debitBankId}';
                                               DELETE FROM credit_transaction_data WHERE transactionId = '${transactionId}';
-                                              DELETE FROM debit_transaction_data WHERE transactionId = '${transactionId}';`;
+                                              DELETE FROM debit_transaction_data WHERE transactionId = '${transactionId}';
+                                              DELETE FROM business_autoTrasactionId_data WHERE transactionId = '${transactionId}';`;
             pool.query(sql_querry_removedetails, (err, data) => {
                 if (err) {
                     console.error("An error occurred in SQL Queery", err);

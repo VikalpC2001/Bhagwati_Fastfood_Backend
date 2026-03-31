@@ -803,8 +803,8 @@ const getDueTransactionDataById = (req, res) => {
         const limit = skip + ',' + numPerPage;
         const data = {
             accountId: req.query.accountId,
-            startDate: (req.query.startDate ? req.query.startDate : '').slice(4, 15),
-            endDate: (req.query.endDate ? req.query.endDate : '').slice(4, 15)
+            startDate: (req.query.startDate ? req.query.startDate : ''),
+            endDate: (req.query.endDate ? req.query.endDate : '')
         }
         if (!data.accountId) {
             return res.status(404).send('accountId Not Found');
@@ -817,7 +817,7 @@ const getDueTransactionDataById = (req, res) => {
                                               billAmount AS transactionAmt,
                                               dueNote AS transactionNote,
                                               dueDate AS transactionDate,
-                                              DATE_FORMAT(dueDate, '%d %b %Y') AS displayDate,
+                                              DATE_FORMAT(dueDate, '%a, %d %b %Y') AS displayDate,
                                               DATE_FORMAT(creationDate, '%h:%i %p') AS diplayTime,
                                               creationDate AS transactionDateTime
                                           FROM
@@ -832,7 +832,7 @@ const getDueTransactionDataById = (req, res) => {
                                               paidAmount AS transactionAmt,
                                               transactionNote AS transactionNote,
                                               transactionDate AS transactionDate,
-                                              DATE_FORMAT(transactionDate, '%d %b %Y') AS displayDate,
+                                              DATE_FORMAT(transactionDate, '%a, %d %b %Y') AS displayDate,
                                               DATE_FORMAT(creationDate, '%h:%i %p') AS diplayTime,
                                               creationDate AS transactionDateTime
                                           FROM
@@ -1197,7 +1197,7 @@ const exportPdfForDueBillData = (req, res) => {
 
         let sql_query_getDetails = `${sql_query_staticQuery}
                                     WHERE accountId = '${data.accountId}' 
-                                    AND dueDate BETWEEN STR_TO_DATE('${data.startDate ? data.startDate : firstDay}', '%b %d %Y') AND STR_TO_DATE('${data.endDate ? data.endDate : lastDay}', '%b %d %Y')
+                                    ${data.startDate && data.endDate ? `AND dueDate BETWEEN STR_TO_DATE('${data.startDate ? data.startDate : firstDay}', '%b %d %Y') AND STR_TO_DATE('${data.endDate ? data.endDate : lastDay}', '%b %d %Y')` : ''}
                                     ORDER BY due_billAmount_data.dueDate DESC, due_billAmount_data.creationDate DESC;
                                     ${sql_query_getAccountName}`;
 
@@ -1249,7 +1249,7 @@ const exportPdfForDueBillTransactionData = (req, res) => {
 
         let sql_query_getDetails = `${sql_query_staticQuery}
                                     WHERE accountId = '${data.accountId}' 
-                                    AND transactionDate BETWEEN STR_TO_DATE('${data.startDate ? data.startDate : firstDay}', '%b %d %Y') AND STR_TO_DATE('${data.endDate ? data.endDate : lastDay}', '%b %d %Y')
+                                    ${data.startDate && data.endDate ? `AND transactionDate BETWEEN STR_TO_DATE('${data.startDate ? data.startDate : firstDay}', '%b %d %Y') AND STR_TO_DATE('${data.endDate ? data.endDate : lastDay}', '%b %d %Y')` : ''}
                                     ORDER BY due_transaction_data.transactionDate DESC, due_transaction_data.creationDate DESC;
                                     ${sql_query_getAccountName}`;
 
@@ -1283,6 +1283,179 @@ const exportPdfForDueBillTransactionData = (req, res) => {
     }
 }
 
+// Export PDF For Combined Due Transactions (Debit/Credit + Running Balance)
+
+const exportPdfForDueTransactionDataById = (req, res) => {
+    try {
+        const data = {
+            accountId: req.query.accountId,
+            startDate: (req.query.startDate ? req.query.startDate : '').slice(4, 15),
+            endDate: (req.query.endDate ? req.query.endDate : '').slice(4, 15)
+        };
+
+        if (!data.accountId) {
+            return res.status(404).send('accountId Not Found');
+        }
+
+        const commonQueryForDebit = `SELECT
+                                          dabId AS transactionId,
+                                          enterBy AS enterBy,
+                                          accountId AS accountId,
+                                          "debit" AS transactionType,
+                                          billAmount AS transactionAmt,
+                                          dueNote AS transactionNote,
+                                          dueDate AS transactionDate,
+                                          creationDate AS transactionDateTime
+                                      FROM
+                                          due_billAmount_data
+                                      WHERE accountId = '${data.accountId}'`;
+
+        const commonQueryForCredit = `SELECT
+                                          transactionId AS transactionId,
+                                          receivedBy AS enterBy,
+                                          accountId AS accountId,
+                                          "credit" AS transactionType,
+                                          paidAmount AS transactionAmt,
+                                          transactionNote AS transactionNote,
+                                          transactionDate AS transactionDate,
+                                          creationDate AS transactionDateTime
+                                      FROM
+                                          due_transaction_data
+                                      WHERE accountId = '${data.accountId}'`;
+
+        let sql_query_getDetails = `SELECT
+                                        enterBy AS "Enter By",
+                                        DATE_FORMAT(transactionDate, '%d-%b-%Y') AS Date,
+                                        DATE_FORMAT(transactionDateTime, '%h:%i %p') AS Time,
+                                        transactionType AS Type,
+                                        transactionAmt AS Amt,
+                                        transactionNote AS Note,
+                                        ((SELECT COALESCE(SUM(ctd.paidAmount), 0) FROM due_transaction_data AS ctd
+                                         WHERE ctd.accountId = '${data.accountId}'
+                                           AND (
+                                                ctd.transactionDate < combined_data.transactionDate
+                                                OR (ctd.transactionDate = combined_data.transactionDate AND ctd.creationDate <= combined_data.transactionDateTime)
+                                           )
+                                        ) -
+                                        (SELECT COALESCE(SUM(dtd.billAmount), 0) FROM due_billAmount_data AS dtd
+                                         WHERE dtd.accountId = '${data.accountId}'
+                                           AND (
+                                                dtd.dueDate < combined_data.transactionDate
+                                                OR (dtd.dueDate = combined_data.transactionDate AND dtd.creationDate <= combined_data.transactionDateTime)
+                                           )
+                                        )) AS Balance
+                                    FROM (
+                                          ${commonQueryForCredit}
+                                          UNION ALL
+                                          ${commonQueryForDebit}
+                                    ) AS combined_data`;
+
+        if (data.startDate && data.endDate) {
+            sql_query_getDetails += ` WHERE transactionDate BETWEEN STR_TO_DATE('${data.startDate}','%b %d %Y') AND STR_TO_DATE('${data.endDate}','%b %d %Y')`;
+        }
+
+        sql_query_getDetails += ` ORDER BY transactionDate DESC, transactionDateTime DESC`;
+
+        const sql_query_getAccountName = `SELECT customerName FROM due_account_data WHERE accountId = '${data.accountId}'`;
+
+        pool.query(`${sql_query_getDetails}; ${sql_query_getAccountName}`, (err, rows) => {
+            if (err) {
+                console.error("An error occurred in SQL Queery", err);
+                return res.status(500).send('Database Error');
+            }
+
+            if (!rows || !rows[0] || rows[0].length <= 0) {
+                return res.status(400).send('No Data Found');
+            }
+
+            const pdfRows = Object.values(JSON.parse(JSON.stringify(rows[0])));
+            const accountName = rows[1] && rows[1][0] && rows[1][0].customerName ? rows[1][0].customerName : 'Customer';
+            const heading = data.startDate && data.endDate
+                ? `${accountName} Due Transactions From ${data.startDate} To ${data.endDate}`
+                : `${accountName} Due Transaction Report`;
+
+            const formatINR = (value) => {
+                if (value === null || value === undefined || value === '') return '';
+                const num = Number(value);
+                if (Number.isNaN(num)) return String(value);
+                return num.toLocaleString('en-IN');
+            };
+
+            const getDebitAmt = (row) => (String(row?.Type || '').toLowerCase() === 'debit' ? formatINR(row["Amt"]) : '-');
+            const getCreditAmt = (row) => (String(row?.Type || '').toLowerCase() === 'credit' ? formatINR(row["Amt"]) : '-');
+
+            const totalDebit = pdfRows.reduce((sum, row) => {
+                const isDebit = String(row?.Type || '').toLowerCase() === 'debit';
+                return isDebit ? sum + (Number(row?.["Amt"]) || 0) : sum;
+            }, 0);
+
+            const totalCredit = pdfRows.reduce((sum, row) => {
+                const isCredit = String(row?.Type || '').toLowerCase() === 'credit';
+                return isCredit ? sum + (Number(row?.["Amt"]) || 0) : sum;
+            }, 0);
+
+            const totalRowIndex = pdfRows.length; // index of last "Total" row in `body`
+
+            const doc = new jsPDF();
+
+            const splitText = doc.splitTextToSize(heading, 190);
+            const isSplit = splitText.length > 1;
+            doc.text(15, 15, splitText);
+            doc.autoTable({
+                startY: isSplit ? 25 : 20,
+                head: [["Date", "Time", "Note", "Debit", "Credit", "Balance"]],
+                body: [
+                    ...pdfRows.map((item) => [
+                        item["Date"] || '',
+                        item["Time"] || '',
+                        item["Note"] || '',
+                        getDebitAmt(item),
+                        getCreditAmt(item),
+                        formatINR(item["Balance"]),
+                    ]),
+                    [
+                        'Total',
+                        '',
+                        '',
+                        formatINR(totalDebit),
+                        formatINR(totalCredit),
+                        '',
+                    ],
+                ],
+                theme: 'grid',
+                styles: {
+                    cellPadding: 2,
+                    halign: 'center',
+                    fontSize: 10,
+                    lineColor: [0, 0, 0],
+                    lineWidth: 0.1,
+                },
+                didParseCell: function (hookData) {
+                    if (hookData.section !== 'body') return;
+                    // Bold the final "Total" row.
+                    if (hookData.row.index === totalRowIndex) {
+                        hookData.cell.styles.fontStyle = 'bold';
+                    }
+                    // Column indices: 0=Date, 1=Time, 2=Note, 3=DEBITAMT, 4=CREDITAMT, 5=Balance
+                    if (hookData.column.index === 3 && hookData.cell.raw) {
+                        hookData.cell.styles.textColor = [220, 38, 38]; // red for debit amount
+                    } else if (hookData.column.index === 4 && hookData.cell.raw) {
+                        hookData.cell.styles.textColor = [22, 163, 74]; // green for credit amount
+                    }
+                },
+            });
+
+            const pdfBytes = doc.output();
+            res.setHeader('Content-Disposition', 'attachment; filename="due-transaction-report.pdf"');
+            res.setHeader('Content-Type', 'application/pdf');
+            return res.send(pdfBytes);
+        });
+    } catch (error) {
+        console.error('An error occurred', error);
+        res.status(500).json('Internal Server Error');
+    }
+}
+
 module.exports = {
     getCustomerAccountList,
     getDueCustomerDataById,
@@ -1302,5 +1475,6 @@ module.exports = {
     exportDueTransactionInvoice,
     exportPdfForDueBillData,
     exportPdfForDueBillTransactionData,
+    exportPdfForDueTransactionDataById,
     getDueTransactionDataById
 }

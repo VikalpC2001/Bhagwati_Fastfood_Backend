@@ -728,27 +728,37 @@ const calculateDueSalary = (employeeId) => {
 };
 
 // Get Image Using API
-
 const imageFolderPath = path.join(process.env.EMPLOYEE_PHOTO_PATH);
 
 // Define a route to handle image retrieval
 const getImagebyName = (req, res) => {
     try {
         const imageName = req.query.imageName;
-        const imagePath = path.join(imageFolderPath, imageName);
+        if (!imageName) {
+            return res.status(400).send('Please provide imageName');
+        }
+
+        // Prevent path traversal (only allow the filename portion)
+        const safeImageName = path.basename(imageName);
+        if (safeImageName !== imageName) {
+            return res.status(400).send('Invalid imageName');
+        }
+
+        const imageExt = path.extname(safeImageName).toLowerCase();
+        const contentType =
+            imageExt === '.png' ? 'image/png' :
+                imageExt === '.jpg' || imageExt === '.jpeg' ? 'image/jpeg' :
+                    'application/octet-stream';
+
+        const imagePath = path.join(imageFolderPath, safeImageName);
         fs.readFile(imagePath, (err, data) => {
             if (err) {
-                console.error("Error reading image file:", err);
-                res.status(500).send("Error reading image file");
-                return;
+                return res.status(500).send('Error reading image file');
             }
-
-            // Set response headers for the image
-            res.setHeader("Content-Type", "image/jpeg");
+            res.setHeader("Content-Type", contentType);
             res.setHeader("Content-Length", data.length);
-            // Send the image data in the response body
             res.end(data);
-        })
+        });
         // Send the image as a response
         // res.sendFile(imagePath, (err) => {
         //     if (err) {

@@ -107,18 +107,19 @@ const getHotelDataById = (req, res) => {
                                                 WHEN discountType = 'percentage' THEN CONCAT(discount,' %')
                                                 WHEN discountType = 'fixed' THEN CONCAT('₹ ',discount)
                                                 ELSE discount
-                                            END AS discount
-                                          FROM
+                                            END AS discount,
+                                            CONCAT((SELECT onlineURL FROM billing_category_data WHERE categoryId = 'hotel' LIMIT 1), hotelId) AS onlineURL
+                                        FROM
                                             billing_hotel_data
-                                          WHERE hotelId = '${hotelId}'`;
-            pool.query(sql_querry_getCountDetails, (err, data) => {
+                                        WHERE hotelId = '${hotelId}'`;
+            pool.query(sql_querry_getCountDetails, (err, rows) => {
                 if (err) {
                     console.error("An error occurred in SQL Queery", err);
-                    return res.status(500).send('Database Error');
+                    return res.status(500).send('Database Error');;
                 } else {
-                    return res.status(200).send(data[0]);
+                    return res.status(200).send(rows[0]);
                 }
-            })
+            });
         }
     } catch (error) {
         console.error('An error occurred', error);
@@ -827,7 +828,7 @@ async function createBillPDF(res, datas, sumFooterArray, tableHeading) {
 
         doc.setFontSize(13);
         doc.setTextColor(0, 0, 0);
-        doc.setFont('BOLD')
+        doc.setFont('helvetica', 'bold')
         doc.text(address2XCoordinate + 8, 41, 'GSTIN: 24BDZPC3972L1ZX');
 
         doc.setDrawColor(0, 0, 0);
@@ -835,7 +836,7 @@ async function createBillPDF(res, datas, sumFooterArray, tableHeading) {
 
         doc.setFontSize(13);
         doc.setTextColor(0, 0, 0);
-        doc.setFont('BOLD')
+        doc.setFont('helvetica', 'bold')
         doc.text(15, 49, `A/c of : ${tableHeading} `);
 
         const amountColumnIndex = columns.findIndex(col => col.header === 'Amount');
@@ -1132,6 +1133,72 @@ const exportPdfHotelBillDataById = (req, res) => {
     }
 }
 
+// Export PDF for Hotel Online URL
+
+const exportPdfHotelOnlineURL = (req, res) => {
+    try {
+        const sql_query = `SELECT
+                               hotelId,
+                               hotelName,
+                               (SELECT onlineURL FROM billing_category_data WHERE categoryId = 'hotel' LIMIT 1) AS onlineURL
+                           FROM
+                               billing_hotel_data
+                           ORDER BY hotelName ASC`;
+        pool.query(sql_query, (err, rows) => {
+            if (err) {
+                console.error("An error occurred in SQL Queery", err);
+                return res.status(500).send('Database Error');
+            }
+
+            const hotelRows = rows || [];
+            if (!hotelRows.length) {
+                return res.status(400).send('No Data Found');
+            }
+
+            const baseUrl = hotelRows[0].onlineURL != null ? String(hotelRows[0].onlineURL).trim() : '';
+
+            const fullUrl = (hotelId) => (baseUrl ? `${baseUrl}${hotelId || ''}` : '');
+
+            const doc = new jsPDF();
+            doc.setFontSize(14);
+            doc.text(15, 15, 'Hotel Online URL');
+
+            const body = hotelRows.map((row, index) => [
+                index + 1,
+                row.hotelName || '',
+                fullUrl(row.hotelId),
+            ]);
+
+            doc.autoTable({
+                startY: 22,
+                head: [['Sr. No', 'Hotel Name', 'Online URL']],
+                body,
+                theme: 'striped',
+                styles: {
+                    cellPadding: 2,
+                    halign: 'center',
+                    fontSize: 9,
+                    lineColor: [0, 0, 0],
+                    lineWidth: 0.1,
+                },
+                columnStyles: {
+                    0: { cellWidth: 18 },
+                    1: { cellWidth: 55 },
+                    2: { cellWidth: 110, halign: 'left' },
+                },
+            });
+
+            const pdfBytes = doc.output();
+            res.setHeader('Content-Disposition', 'attachment; filename="hotel-online-url.pdf"');
+            res.setHeader('Content-Type', 'application/pdf');
+            return res.send(pdfBytes);
+        });
+    } catch (error) {
+        console.error('An error occurred', error);
+        res.status(500).json('Internal Server Error');
+    }
+};
+
 module.exports = {
     getHotelList,
     getHotelDataById,
@@ -1142,6 +1209,7 @@ module.exports = {
     updateHotelData,
     ddlHotelList,
     exportPdfHotelBillDataById,
+    exportPdfHotelOnlineURL,
     addHotelTransactionData,
     removeHotelTransactionById,
     getMonthWiseTransactionForHotel,

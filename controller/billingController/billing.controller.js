@@ -315,6 +315,7 @@ const getRecentBillData = (req, res) => {
             let sql_query_getRecentBill = `SELECT 
                                                 bd.billId AS billId, 
                                                 bd.billNumber AS billNumber,
+                                                bd.menuStatus AS menuStatus,
                                                 bd.settledAmount AS totalAmount,
                                                 CASE
                                                     WHEN bd.billPayType = 'Complimentary' THEN 'Comp'
@@ -392,6 +393,103 @@ const getRecentBillData = (req, res) => {
                 }
             })
         }
+    } catch (error) {
+        console.error('An error occurred', error);
+        res.status(500).json('Internal Server Error');
+    }
+}
+
+// Get Bill Data For Online Order
+
+const getBillDataForOnlineOrder = (req, res) => {
+    try {
+        const currentDate = getCurrentDate();
+        let sql_query_getBillDataForOnlineOrder = `SELECT 
+                                                        bd.billId AS billId, 
+                                                        bd.billNumber AS billNumber,
+                                                        bd.billType AS billType,
+                                                        bd.settledAmount AS totalAmount,
+                                                        CASE
+                                                            WHEN bd.billPayType = 'Complimentary' THEN 'Comp'
+                                                            WHEN bd.billPayType = 'CancelToken' THEN '❌ Token'
+                                                            ELSE bd.billPayType
+                                                        END AS billPayType,
+                                                        bd.billStatus AS billStatus,
+                                                        CASE
+                                                            WHEN bd.billType = 'Hotel' THEN CONCAT('H',btd.tokenNo)
+                                                            WHEN bd.billType = 'Pick Up' THEN CONCAT('P',btd.tokenNo)
+                                                            WHEN bd.billType = 'Delivery' THEN CONCAT('D',btd.tokenNo)
+                                                            WHEN bd.billType = 'Dine In' THEN CONCAT('R',btd.tokenNo)
+                                                        ELSE NULL
+                                                        END AS tokenNo,
+                                                        CASE
+                                                           WHEN bd.billType = 'Hotel' THEN
+                                                                TRIM(CONCAT(
+                                                                    COALESCE(bhd.hotelName, ''),
+                                                                    IF(bhd.hotelName IS NOT NULL AND hif.roomNo IS NOT NULL, ' - ', ''),
+                                                                    COALESCE(hif.roomNo, '')
+                                                                ))
+                                                            WHEN bd.billType = 'Pick Up' THEN COALESCE(bwc.customerName, bwc.address, bwc.mobileNo, NULL)
+                                                            WHEN bd.billType = 'Delivery' THEN COALESCE(bwc.address, bwc.customerName, bwc.mobileNo, NULL)
+                                                            WHEN bd.billType = 'Dine In' THEN CONCAT('Table No. ',bwt.tableNo)
+                                                        ELSE NULL
+                                                        END AS address,
+                                                        CASE
+                                                            WHEN bd.billType = 'Hotel' THEN
+                                                                TRIM(CONCAT(
+                                                                    COALESCE(bhd.hotelName, ''),
+                                                                    IF(bhd.hotelName IS NOT NULL AND hif.roomNo IS NOT NULL, ' - ', ''),
+                                                                    COALESCE(hif.roomNo, '')
+                                                                ))
+                                                            WHEN bd.billType = 'Pick Up' THEN
+                                                                TRIM(CONCAT(
+                                                                    COALESCE(bwc.mobileNo, ''),
+                                                                    IF(bwc.mobileNo IS NOT NULL AND bwc.customerName IS NOT NULL, ' - ', ''),
+                                                                    COALESCE(bwc.customerName, ''),
+                                                                    IF((bwc.mobileNo IS NOT NULL OR bwc.customerName IS NOT NULL) AND bwc.address IS NOT NULL, ' - ', ''),
+                                                                    COALESCE(bwc.address, ''),
+                                                                    IF((bwc.mobileNo IS NOT NULL OR bwc.customerName IS NOT NULL OR bwc.address IS NOT NULL) AND bwc.locality IS NOT NULL, ' - ', ''),
+                                                                    COALESCE(bwc.locality, '')
+                                                                ))
+                                                            WHEN bd.billType = 'Delivery' THEN
+                                                                TRIM(CONCAT(
+                                                                    COALESCE(bwc.mobileNo, ''),
+                                                                    IF(bwc.mobileNo IS NOT NULL AND bwc.customerName IS NOT NULL, ' - ', ''),
+                                                                    COALESCE(bwc.customerName, ''),
+                                                                    IF((bwc.mobileNo IS NOT NULL OR bwc.customerName IS NOT NULL) AND bwc.address IS NOT NULL, ' - ', ''),
+                                                                    COALESCE(bwc.address, ''),
+                                                                    IF((bwc.mobileNo IS NOT NULL OR bwc.customerName IS NOT NULL OR bwc.address IS NOT NULL) AND bwc.locality IS NOT NULL, ' - ', ''),
+                                                                    COALESCE(bwc.locality, '')
+                                                                ))
+                                                            WHEN bd.billType = 'Dine In' THEN COALESCE(bwt.assignCaptain,bwt.tableNo)
+                                                            ELSE NULL
+                                                        END AS info
+                                                   FROM billing_data AS bd
+                                                   LEFT JOIN billing_token_data AS btd ON btd.billId = bd.billId
+                                                   LEFT JOIN billing_billWiseCustomer_data AS bwc ON bwc.billId = bd.billId
+                                                   LEFT JOIN billing_billWiseTableNo_data AS bwt ON bwt.billId = bd.billId
+                                                   LEFT JOIN billing_hotelInfo_data AS hif ON hif.billId = bd.billId
+                                                   LEFT JOIN billing_hotel_data AS bhd ON bhd.hotelId = hif.hotelId
+                                                   WHERE bd.menuStatus = 'Online' AND bd.billDate = STR_TO_DATE('${currentDate}','%b %d %Y')
+                                                   ORDER BY bd.billCreationDate DESC`;
+        pool.query(sql_query_getBillDataForOnlineOrder, (err, data) => {
+            if (err) {
+                console.error("An error occurred in SQL Queery", err);
+                return res.status(500).send('Database Error');
+            } else {
+                if (data && data.length) {
+                    const totalCount = data.length;
+                    const totalAmount = data.reduce((sum, item) => sum + (Number(item.totalAmount) || 0), 0);
+                    return res.status(200).send({
+                        rows: data,
+                        totalCount,
+                        totalAmount
+                    });
+                } else {
+                    return res.status(404).send('No Data Found');
+                }
+            }
+        })
     } catch (error) {
         console.error('An error occurred', error);
         res.status(500).json('Internal Server Error');
@@ -4022,6 +4120,7 @@ const printBillInAdminSystem = (req, res) => {
                                                                 WHEN bd.billType = 'Dine In' THEN CONCAT('R',btd.tokenNo)
                                                                 ELSE NULL
                                                             END AS tokenNo,
+                                                            btd.tokenNo AS justToken,
                                                             bwu.onlineId AS onlineId,
                                                             boud.holderName AS holderName,
                                                             boud.upiId AS upiId,
@@ -4155,6 +4254,7 @@ const printBillInAdminSystem = (req, res) => {
                                     ...(billType === 'Hotel' ? { hotelDetails: billData[4][0] } : ''),
                                     ...(['Pick Up', 'Delivery', 'Dine In'].includes(billType) ? { customerDetails: billData && billData[4][0] ? billData[4][0] : '' } : ''),
                                     ...(billType === 'Dine In' ? { tableInfo: billData[5][0] } : ''),
+                                    ...(billType == 'Dine In' ? { tableNo: billData[5][0] ? billData[5][0].tableNo : 0 } : ''),
                                     subTokens: billData && billData[5] && billData[6].length ? billData[6].map(item => item.subTokenNumber).sort((a, b) => a - b).join(", ") : null,
                                     ...(['due', 'online'].includes(billPayType) ?
                                         billPayType == 'due' ?
@@ -4188,6 +4288,7 @@ module.exports = {
     getRecentBillData,
     getBillDataByToken,
     getLiveViewByCategoryId,
+    getBillDataForOnlineOrder,
 
     // Add Bill Data
     addHotelBillData,

@@ -953,63 +953,21 @@ const changePayTypeByDelivery = (req, res) => {
                                 return res.status(404).send('Please Fill All The Fields..!');
                             })
                         } else {
-                            if (deliveryData.payTypeData.deliveryType == 'Hotel') {
-                                let sql_querry_updateDelivery = `UPDATE
-                                                                     delivery_data
-                                                                 SET
-                                                                     totalBillAmt = ${deliveryData.totalBillAmt ? deliveryData.totalBillAmt : 0},
-                                                                     totalChange = ${deliveryData.totalChange ? deliveryData.totalChange : 0},
-                                                                     totalDesiredAmt = ${deliveryData.totalDesiredAmt ? deliveryData.totalDesiredAmt : 0}
-                                                                 WHERE deliveryId = '${deliveryData.deliveryId}';
-                                                                 UPDATE
-                                                                     delivery_billWiseDelivery_data
-                                                                 SET
-                                                                     billPayType = '${deliveryData.payTypeData.billPayType}',
-                                                                     billAmt = ${deliveryData.payTypeData.billAmt ? deliveryData.payTypeData.billAmt : 0},
-                                                                     billChange = ${deliveryData.payTypeData.billChange ? deliveryData.payTypeData.billChange : 0},
-                                                                     desiredAmt = ${deliveryData.payTypeData.desiredAmt ? deliveryData.payTypeData.desiredAmt : 0}
-                                                                 WHERE bwdId = '${deliveryData.payTypeData.bwdId}';
-                                                                 UPDATE billing_data SET billStatus = '${deliveryData.payTypeData.billPayType}' WHERE billId = '${deliveryData.payTypeData.billId}';
-                                                                 UPDATE billing_billWiseItem_data SET billStatus = '${deliveryData.payTypeData.billPayType}' WHERE billId = '${deliveryData.payTypeData.billId}';
-                                                                 UPDATE billing_Official_data SET billStatus = '${deliveryData.payTypeData.billPayType}' WHERE billId = '${deliveryData.payTypeData.billId}'`;
-                                connection.query(sql_querry_updateDelivery, (err) => {
-                                    if (err) {
-                                        console.error("Error Update Delivery Data:", err);
-                                        connection.rollback(() => {
-                                            connection.release();
-                                            return res.status(500).send('Database Error');
-                                        });
-                                    } else {
-                                        connection.commit((err) => {
-                                            if (err) {
-                                                console.error("Error committing transaction:", err);
-                                                connection.rollback(() => {
-                                                    connection.release();
-                                                    return res.status(500).send('Database Error');
-                                                });
-                                            } else {
-                                                connection.release();
-                                                return res.status(200).send('Change Successfully');
-                                            }
-                                        });
-                                    }
-                                });
-                            } else {
-                                const currentDateMD = `DATE_FORMAT(STR_TO_DATE('${currentDate}', '%b %d %Y'), '%m-%d')`;
-                                let sql_query_chkOfficial = `SELECT billId FROM billing_Official_data WHERE billId = '${deliveryData.payTypeData.billId}';
+                            const currentDateMD = `DATE_FORMAT(STR_TO_DATE('${currentDate}', '%b %d %Y'), '%m-%d')`;
+                            let sql_query_chkOfficial = `SELECT billId FROM billing_Official_data WHERE billId = '${deliveryData.payTypeData.billId}';
                                                              SELECT IF(COUNT(*) = 0, 0, MAX(billNumber)) AS officialLastBillNo FROM billing_Official_data bod CROSS JOIN (SELECT COALESCE(resetDate, '04-01') AS resetDate FROM billing_firm_data WHERE firmId = (SELECT firmId FROM billing_category_data WHERE categoryName = '${deliveryData.payTypeData.deliveryType}') LIMIT 1) AS frm WHERE bod.firmId = (SELECT firmId FROM billing_category_data WHERE categoryName = '${deliveryData.payTypeData.deliveryType}') AND (${currentDateMD} < frm.resetDate OR (${currentDateMD} >= frm.resetDate AND DATE_FORMAT(bod.billDate, '%m-%d') >= frm.resetDate AND DATE_FORMAT(bod.billCreationDate, '%m-%d') >= frm.resetDate)) FOR UPDATE;`;
-                                connection.query(sql_query_chkOfficial, (err, chkExist) => {
-                                    if (err) {
-                                        console.error("Error check official bill exist or not:", err);
-                                        connection.rollback(() => {
-                                            connection.release();
-                                            return res.status(500).send('Database Error');
-                                        });
-                                    } else {
-                                        const isExist = chkExist && chkExist[0].length ? true : false;
-                                        const officialLastBillNo = chkExist && chkExist[1] ? chkExist[1][0].officialLastBillNo : 0;
-                                        const nextOfficialBillNo = officialLastBillNo + 1;
-                                        let sql_querry_updateDelivery = `UPDATE
+                            connection.query(sql_query_chkOfficial, (err, chkExist) => {
+                                if (err) {
+                                    console.error("Error check official bill exist or not:", err);
+                                    connection.rollback(() => {
+                                        connection.release();
+                                        return res.status(500).send('Database Error');
+                                    });
+                                } else {
+                                    const isExist = chkExist && chkExist[0].length ? true : false;
+                                    const officialLastBillNo = chkExist && chkExist[1] ? chkExist[1][0].officialLastBillNo : 0;
+                                    const nextOfficialBillNo = officialLastBillNo + 1;
+                                    let sql_querry_updateDelivery = `UPDATE
                                                                              delivery_data
                                                                          SET
                                                                              totalBillAmt = ${deliveryData.totalBillAmt ? deliveryData.totalBillAmt : 0},
@@ -1025,60 +983,59 @@ const changePayTypeByDelivery = (req, res) => {
                                                                              desiredAmt = ${deliveryData.payTypeData.desiredAmt ? deliveryData.payTypeData.desiredAmt : 0}
                                                                          WHERE bwdId = '${deliveryData.payTypeData.bwdId}';
                                         ${deliveryData.payTypeData.billPayType == 'Cancel'
-                                                ?
-                                                `UPDATE billing_data SET billPayType = '${deliveryData.payTypeData.billPayType}', billStatus = '${deliveryData.payTypeData.billPayType}' WHERE billId = '${deliveryData.payTypeData.billId}';
+                                            ?
+                                            `UPDATE billing_data SET billPayType = '${deliveryData.payTypeData.billPayType}', billStatus = '${deliveryData.payTypeData.billPayType}' WHERE billId = '${deliveryData.payTypeData.billId}';
                                                  UPDATE billing_billWiseItem_data SET billPayType = '${deliveryData.payTypeData.billPayType}', billStatus = '${deliveryData.payTypeData.billPayType}' WHERE billId = '${deliveryData.payTypeData.billId}';
                                                  UPDATE billing_Official_data SET billPayType = '${deliveryData.payTypeData.billPayType}', billStatus = '${deliveryData.payTypeData.billPayType}' WHERE billId = '${deliveryData.payTypeData.billId}';
                                                  DELETE FROM billing_billWiseUpi_data WHERE billId = '${deliveryData.payTypeData.billId}';
                                                  DELETE FROM due_billAmount_data WHERE billId = '${deliveryData.payTypeData.billId}';`
-                                                :
-                                                `UPDATE billing_data SET billPayType = '${deliveryData.payTypeData.billPayType}' WHERE billId = '${deliveryData.payTypeData.billId}';
+                                            :
+                                            `UPDATE billing_data SET billPayType = '${deliveryData.payTypeData.billPayType}' WHERE billId = '${deliveryData.payTypeData.billId}';
                                                  UPDATE billing_billWiseItem_data SET billPayType = '${deliveryData.payTypeData.billPayType}' WHERE billId = '${deliveryData.payTypeData.billId}';
                                                  UPDATE billing_Official_data SET billPayType = '${deliveryData.payTypeData.billPayType}' WHERE billId = '${deliveryData.payTypeData.billId}';
                                                  DELETE FROM billing_billWiseUpi_data WHERE billId = '${deliveryData.payTypeData.billId}';
                                                  DELETE FROM due_billAmount_data WHERE billId = '${deliveryData.payTypeData.billId}';
                                                  ${deliveryData.payTypeData.billPayType == 'online'
-                                                    ?
-                                                    `INSERT INTO billing_billWiseUpi_data(bwuId, onlineId, billId, amount, onlineDate)
+                                                ?
+                                                `INSERT INTO billing_billWiseUpi_data(bwuId, onlineId, billId, amount, onlineDate)
                                                      VALUES('${bwuId}', '${deliveryData.onlineId}', '${deliveryData.payTypeData.billId}', '${deliveryData.payTypeData.billAmt}', STR_TO_DATE('${currentDate}','%b %d %Y'));`
-                                                    :
-                                                    deliveryData.accountId && deliveryData.payTypeData.billPayType == 'due'
-                                                        ?
-                                                        `INSERT INTO due_billAmount_data(dabId, enterBy, accountId, billId, billAmount, dueNote, dueDate)
-                                                         VALUES('${dabId}', '${enterBy}', '${deliveryData.accountId}','${deliveryData.payTypeData.billId}',${deliveryData.payTypeData.billAmt},${deliveryData.billNote ? `'${deliveryData.billNote}'` : null}, STR_TO_DATE('${currentDate}','%b %d %Y'));`
-                                                        :
-                                                        ''}
-                                                 ${!isExist && deliveryData.isOfficial
+                                                :
+                                                deliveryData.accountId && deliveryData.payTypeData.billPayType == 'due'
                                                     ?
-                                                    `INSERT INTO billing_Official_data(billId, billNumber, firmId, cashier, menuStatus, billType, billPayType, discountType, discountValue, totalDiscount, totalAmount, settledAmount, billComment, billDate, billStatus)
-                                                     SELECT billId, ${nextOfficialBillNo}, firmId, cashier, menuStatus, billType, '${deliveryData.payTypeData.billPayType}', discountType, discountValue, totalDiscount, totalAmount, settledAmount, billComment, billDate, billStatus FROM billing_data WHERE billId = '${deliveryData.payTypeData.billId}';`
+                                                    `INSERT INTO due_billAmount_data(dabId, enterBy, accountId, billId, billAmount, dueNote, dueDate)
+                                                         VALUES('${dabId}', '${enterBy}', '${deliveryData.accountId}','${deliveryData.payTypeData.billId}',${deliveryData.payTypeData.billAmt},${deliveryData.billNote ? `'${deliveryData.billNote}'` : null}, STR_TO_DATE('${currentDate}','%b %d %Y'));`
                                                     :
-                                                    ''}`}`;
-                                        connection.query(sql_querry_updateDelivery, (err) => {
-                                            if (err) {
-                                                console.error("Error Update Delivery Data:", err);
-                                                connection.rollback(() => {
-                                                    connection.release();
-                                                    return res.status(500).send('Database Error');
-                                                });
-                                            } else {
-                                                connection.commit((err) => {
-                                                    if (err) {
-                                                        console.error("Error committing transaction:", err);
-                                                        connection.rollback(() => {
-                                                            connection.release();
-                                                            return res.status(500).send('Database Error');
-                                                        });
-                                                    } else {
+                                                    ''}
+                                                 ${!isExist && deliveryData.isOfficial
+                                                ?
+                                                `INSERT INTO billing_Official_data(billId, billNumber, firmId, cashier, menuStatus, billType, billPayType, discountType, discountValue, totalDiscount, totalAmount, settledAmount, billComment, billDate, billStatus)
+                                                     SELECT billId, ${nextOfficialBillNo}, firmId, cashier, menuStatus, billType, '${deliveryData.payTypeData.billPayType}', discountType, discountValue, totalDiscount, totalAmount, settledAmount, billComment, billDate, billStatus FROM billing_data WHERE billId = '${deliveryData.payTypeData.billId}';`
+                                                :
+                                                ''}`}`;
+                                    connection.query(sql_querry_updateDelivery, (err) => {
+                                        if (err) {
+                                            console.error("Error Update Delivery Data:", err);
+                                            connection.rollback(() => {
+                                                connection.release();
+                                                return res.status(500).send('Database Error');
+                                            });
+                                        } else {
+                                            connection.commit((err) => {
+                                                if (err) {
+                                                    console.error("Error committing transaction:", err);
+                                                    connection.rollback(() => {
                                                         connection.release();
-                                                        return res.status(200).send('Change Successfully');
-                                                    }
-                                                });
-                                            }
-                                        });
-                                    }
-                                })
-                            }
+                                                        return res.status(500).send('Database Error');
+                                                    });
+                                                } else {
+                                                    connection.release();
+                                                    return res.status(200).send('Change Successfully');
+                                                }
+                                            });
+                                        }
+                                    });
+                                }
+                            })
                         }
                     } else {
                         connection.rollback(() => {

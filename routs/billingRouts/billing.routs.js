@@ -9,6 +9,7 @@ const categoryController = require("../../controller/billingController/billCateg
 router.get('/getBillCategory', protect, categoryController.getBillCategory);
 router.post('/updateBillCategoryData', protect, categoryController.updateBillCategoryData);
 router.get('/ddlBillCategory', protect, categoryController.ddlBillCategory);
+router.get('/getBillCategoryById', categoryController.getBillCategoryById);
 
 // Comment Routs
 
@@ -41,13 +42,14 @@ const hotelController = require("../../controller/billingController/hotel.contro
 
 router.get('/getHotelList', protect, hotelController.getHotelList);
 router.get('/getHotelStaticsData', protect, hotelController.getHotelStaticsData);
-router.get('/getHotelDataById', protect, hotelController.getHotelDataById);
+router.get('/getHotelDataById', hotelController.getHotelDataById);
 router.get('/getHotelBillDataById', protect, hotelController.getHotelBillDataById);
 router.post('/addHotelData', protect, hotelController.addHotelData);
 router.delete('/removeHotelData', protect, hotelController.removeHotelData);
 router.post('/updateHotelData', protect, hotelController.updateHotelData);
 router.get('/ddlHotelList', protect, hotelController.ddlHotelList);
-router.get('/exportPdfHotelBillDataById', hotelController.exportPdfHotelBillDataById);
+router.get('/exportPdfHotelBillDataById', protect, hotelController.exportPdfHotelBillDataById);
+router.get('/exportPdfHotelOnlineURL', protect, hotelController.exportPdfHotelOnlineURL);
 router.post('/addHotelTransactionData', protect, hotelController.addHotelTransactionData);
 router.delete('/removeHotelTransactionById', protect, hotelController.removeHotelTransactionById);
 router.get('/getMonthWiseTransactionForHotel', protect, hotelController.getMonthWiseTransactionForHotel);
@@ -69,6 +71,9 @@ router.get('/getTaxReportByFirmIdExcel', firmController.getTaxReportByFirmIdExce
 router.get('/getBillDataByFirmId', protect, firmController.getBillDataByFirmId);
 router.get('/getCancelBillDataByFirmId', protect, firmController.getCancelBillDataByFirmId);
 router.get('/getComplimentaryBillDataByFirmId', protect, firmController.getComplimentaryBillDataByFirmId);
+router.get('/exportPDFforBillDataByFirmId', protect, firmController.exportPDFforBillDataByFirmId);
+router.get('/exportPDFforComplimentaryBillDataByFirmId', protect, firmController.exportPDFforComplimentaryBillDataByFirmId);
+router.get('/exportPDFforCancelBillDataByFirmId', protect, firmController.exportPDFforCancelBillDataByFirmId);
 router.get('/getMonthWiseBillDataByFirmId', protect, firmController.getMonthWiseBillDataByFirmId);
 router.get('/getStaticsDataByFirmId', protect, firmController.getStaticsDataByFirmId);
 
@@ -82,6 +87,7 @@ router.get('/getBillDataById', protect, billingController.getBillDataById);
 router.get('/getRecentBillData', protect, billingController.getRecentBillData);
 router.get('/getBillDataByToken', protect, billingController.getBillDataByToken);
 router.get('/getLiveViewByCategoryId', protect, billingController.getLiveViewByCategoryId);
+router.get('/getBillDataForOnlineOrder', protect, billingController.getBillDataForOnlineOrder);
 
 // Add Billing Data
 router.post('/addHotelBillData', protect, billingController.addHotelBillData);
@@ -105,6 +111,8 @@ const onlineBillingController = require("../../controller/billingController/onli
 
 router.post('/addOnlineHotelBillData', onlineBillingController.addOnlineHotelBillData);
 router.post('/addOnlinePickUpBillData', onlineBillingController.addOnlinePickUpBillData);
+router.post('/addOnlineOrderData', onlineBillingController.addOnlineOrderData);
+router.post('/addOnlineHotelOrderData', onlineBillingController.addOnlineHotelOrderData);
 
 // Hold Billing Routs
 
@@ -125,6 +133,8 @@ const pendingController = require("../../controller/billingController/pendingBil
 router.get('/getPendingCount', protect, pendingController.getPendingCount);
 router.get('/getPendingBillData', protect, pendingController.getPendingBillData);
 router.get('/getPendingBillDataById', protect, pendingController.getPendingBillDataById);
+router.get('/acceptPendingBillData', protect, pendingController.acceptPendingBillData);
+router.get('/rejectPendingBillData', protect, pendingController.rejectPendingBillData);
 router.post('/addHotelPendingBillData', protect, pendingController.addHotelPendingBillData);
 router.post('/addPickUpPendingBillData', protect, pendingController.addPickUpPendingBillData);
 router.post('/addDeliveryPendingBillData', protect, pendingController.addDeliveryPendingBillData);
@@ -159,6 +169,7 @@ router.get('/ddlDueAccountData', protect, accountConntroller.ddlDueAccountData);
 router.get('/exportDueTransactionInvoice', protect, accountConntroller.exportDueTransactionInvoice);
 router.get('/exportPdfForDueBillData', protect, accountConntroller.exportPdfForDueBillData);
 router.get('/exportPdfForDueBillTransactionData', protect, accountConntroller.exportPdfForDueBillTransactionData);
+router.get('/exportPdfForDueTransactionDataById', protect, accountConntroller.exportPdfForDueTransactionDataById);
 router.get('/getDueTransactionDataById', protect, accountConntroller.getDueTransactionDataById);
 
 
@@ -201,6 +212,7 @@ const dashBoardController = require("../../controller/billingController/dashBoar
 
 router.get('/getThreeCategorDashBoardData', protect, dashBoardController.getThreeCategorDashBoardData);
 router.get('/getAllOrdersData', protect, dashBoardController.getAllOrdersData);
+router.get('/getSocialLinks', dashBoardController.getSocialLinks);
 
 // Settlement Routs
 

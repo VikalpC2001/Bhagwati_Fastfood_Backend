@@ -4,16 +4,14 @@ const { jsPDF } = require('jspdf');
 require('jspdf-autotable');
 
 function getAddressValidation(addressDetails) {
-
     const addressCount = addressDetails.reduce((acc, curr) => {
-        const address = curr.address.toLowerCase(); // Normalize address to lowercase
-        acc[address] = (acc[address] || 0) + 1; // Increment count
+        const address = (curr?.address || '').trim().toLowerCase();
+        if (!address) return acc;
+        acc[address] = (acc[address] || 0) + 1;
         return acc;
     }, {});
 
-    const isAddressRepeated = Object.values(addressCount).some(count => count > 1);
-
-    return isAddressRepeated;
+    return Object.values(addressCount).some(count => count > 1);
 }
 
 // Get Statics Data By Customer Data
@@ -481,7 +479,7 @@ const getCustomerList = (req, res) => {
                                               WHERE bcd.customerName LIKE '%` + searchWord + `%'
                                               OR bcd.customerMobileNumber LIKE '%` + searchWord + `%'
                                               GROUP BY bcd.customerId, bcd.customerName, bcd.customerMobileNumber, bcd.birthDate, bcd.anniversaryDate
-                                              ORDER BY lastOrderDate DESC, totalOrdersCurrentMonth DESC, bcd.customerName ASC
+                                              ORDER BY totalOrdersCurrentMonth DESC, lastOrderDate DESC, bcd.customerName ASC
                                               LIMIT ${limit}`;
                 pool.query(sql_query_getDetails, (err, rows, fields) => {
                     if (err) {
@@ -529,7 +527,8 @@ const getCustomerDetailsById = (req, res) => {
                                              customerLocality AS locality
                                          FROM
                                              billing_customerAddress_data
-                                         WHERE customerId = '${customerId}'`;
+                                         WHERE customerId = '${customerId}'
+                                         ORDER BY customerAddress ASC`;
             pool.query(sql_query_getCustomerData, (err, data) => {
                 if (err) {
                     console.error("An error occurred in SQL Queery", err);
@@ -662,6 +661,17 @@ const addCustomerData = (req, res) => {
                     connection.rollback(() => {
                         connection.release();
                         return res.status(404).send('Please Fill Mobile Number..!');
+                    });
+                    return;
+                }
+
+                const hasInvalidAddress = addressJson.some(
+                    (item) => item && (item.address == null || String(item.address).trim() === '')
+                );
+                if (hasInvalidAddress) {
+                    connection.rollback(() => {
+                        connection.release();
+                        return res.status(400).send("Please Fill Address..!");
                     });
                     return;
                 }
@@ -879,6 +889,15 @@ const updateCustomerData = (req, res) => {
                         return res.status(400).send("Please Fill Mobile Number..!");
                     });
                 }
+                const hasInvalidAddress = addressJson.some(
+                    (item) => item && (item.address == null || String(item.address).trim() === '')
+                );
+                if (hasInvalidAddress) {
+                    return connection.rollback(() => {
+                        connection.release();
+                        return res.status(400).send("Please Fill Address..!");
+                    });
+                }
 
                 if (addressJson && getAddressValidation(addressJson)) {
                     return connection.rollback(() => {
@@ -942,6 +961,7 @@ const updateCustomerData = (req, res) => {
 
                             connection.query(sqlFetchOld, [customerData.customerId], (err, oldAddresses) => {
                                 if (err) {
+                                    console.error("Error Fetch Old Address :", err);
                                     return connection.rollback(() => {
                                         connection.release();
                                         return res.status(500).send("Database Error");
@@ -977,6 +997,7 @@ const updateCustomerData = (req, res) => {
 
                                     connection.query(sqlDelete, [toDelete], (err) => {
                                         if (err) {
+                                            console.error("Error Delete Address :", err);
                                             return connection.rollback(() => {
                                                 connection.release();
                                                 return res.status(500).send("Database Error");
@@ -1005,6 +1026,7 @@ const updateCustomerData = (req, res) => {
                                             item.addressId
                                         ], (err) => {
                                             if (err) {
+                                                console.error("Error Update Address :", err);
                                                 return connection.rollback(() => {
                                                     connection.release();
                                                     return res.status(500).send("Database Error");
@@ -1031,6 +1053,7 @@ const updateCustomerData = (req, res) => {
 
                                     connection.query(sqlInsert, [values], (err) => {
                                         if (err) {
+                                            console.error("Error Insert Address :", err);
                                             return connection.rollback(() => {
                                                 connection.release();
                                                 return res.status(500).send("Database Error");

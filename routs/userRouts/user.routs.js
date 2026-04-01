@@ -13,5 +13,6 @@ router.post('/updateUserDetails', protect, userController.updateUserDetails);
 router.get('/fillUserDetails', protect, userController.fillUserDetails);
 router.get('/ddlUsersList', protect, userController.ddlUsersList);
 router.post('/chkPassword', protect, userController.chkPassword);
+router.get('/checkHealth', userController.checkHealth);
 
 module.exports = router;

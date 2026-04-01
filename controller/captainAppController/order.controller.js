@@ -1331,9 +1331,28 @@ const printTableBillForApp = (req, res) => {
 
                                         if (isOfficial) {
                                             const currentDate = getCurrentDate();
-                                            const currentDateMD = `DATE_FORMAT(STR_TO_DATE('${currentDate}', '%b %d %Y'), '%m-%d')`;
+                                            const resetStartDateExpr = `STR_TO_DATE(
+                                                                            CONCAT(
+                                                                                CASE
+                                                                                    WHEN DATE(STR_TO_DATE('${currentDate}', '%b %d %Y')) < STR_TO_DATE(
+                                                                                        CONCAT(YEAR(STR_TO_DATE('${currentDate}', '%b %d %Y')), '-', frm.resetDate),
+                                                                                        '%Y-%m-%d'
+                                                                                    )
+                                                                                    THEN YEAR(STR_TO_DATE('${currentDate}', '%b %d %Y')) - 1
+                                                                                    ELSE YEAR(STR_TO_DATE('${currentDate}', '%b %d %Y'))
+                                                                                END,
+                                                                                '-',
+                                                                                frm.resetDate
+                                                                            ),
+                                                                            '%Y-%m-%d'
+                                                                        )`;
                                             let sql_query_chkOfficial = `SELECT billId, billNumber FROM billing_Official_data WHERE billId = '${billId}';
-                                                                         SELECT IF(COUNT(*) = 0, 0, MAX(billNumber)) AS officialLastBillNo FROM billing_Official_data bod CROSS JOIN (SELECT COALESCE(resetDate, '04-01') AS resetDate FROM billing_firm_data WHERE firmId = (SELECT firmId FROM billing_category_data WHERE categoryId = 'dineIn') LIMIT 1) AS frm WHERE bod.firmId = (SELECT firmId FROM billing_category_data WHERE categoryId = 'dineIn') AND (${currentDateMD} < frm.resetDate OR (${currentDateMD} >= frm.resetDate AND DATE_FORMAT(bod.billDate, '%m-%d') >= frm.resetDate AND DATE_FORMAT(bod.billCreationDate, '%m-%d') >= frm.resetDate)) FOR UPDATE;`;
+                                                                         SELECT COALESCE(MAX(bod.billNumber), 0) AS officialLastBillNo
+                                                                         FROM billing_Official_data bod
+                                                                         CROSS JOIN (SELECT COALESCE(resetDate, '04-01') AS resetDate FROM billing_firm_data WHERE firmId = (SELECT firmId FROM billing_category_data WHERE categoryId = 'dineIn') LIMIT 1) AS frm
+                                                                         WHERE bod.firmId = (SELECT firmId FROM billing_category_data WHERE categoryId = 'dineIn')
+                                                                         AND bod.billDate >= ${resetStartDateExpr}
+                                                                         FOR UPDATE;`;
                                             connection.query(sql_query_chkOfficial, (err, chkExist) => {
                                                 if (err) {
                                                     console.error("Error check official bill exist or not:", err);

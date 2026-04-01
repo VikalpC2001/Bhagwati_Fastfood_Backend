@@ -345,6 +345,24 @@ const chkPassword = (req, res) => {
     }
 }
 
+// Check Health API
+
+const checkHealth = (req, res) => {
+    try {
+        res.status(200).json({
+            status: "OK",
+            message: "Server is running on port " + process.env.PORT,
+            time: new Date(),
+            uptime: process.uptime()
+        });
+    } catch (err) {
+        res.status(503).json({
+            status: "DOWN",
+            message: "Something went wrong",
+        });
+    }
+}
+
 module.exports = {
     authUser,
     getUserDetails,
@@ -354,5 +372,6 @@ module.exports = {
     updateUserDetails,
     fillUserDetails,
     ddlUsersList,
-    chkPassword
+    chkPassword,
+    checkHealth
 }

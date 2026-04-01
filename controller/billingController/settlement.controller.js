@@ -72,13 +72,31 @@ const getSettlementDataByFirm = (req, res) => {
                                 const sql_static_condition = `WHERE firmId = '${firmId}' 
                                                               AND billPayType != 'complimentary' 
                                                               AND billDate = STR_TO_DATE('${currentDate}','%b %d %Y')`;
-                                const currentDateMD = `DATE_FORMAT(STR_TO_DATE('${currentDate}', '%b %d %Y'), '%m-%d')`;
+                                const resetStartDateExpr = `STR_TO_DATE(
+                                                                CONCAT(
+                                                                    CASE
+                                                                        WHEN DATE(STR_TO_DATE('${currentDate}', '%b %d %Y')) < STR_TO_DATE(
+                                                                            CONCAT(YEAR(STR_TO_DATE('${currentDate}', '%b %d %Y')), '-', frm.resetDate),
+                                                                            '%Y-%m-%d'
+                                                                        )
+                                                                        THEN YEAR(STR_TO_DATE('${currentDate}', '%b %d %Y')) - 1
+                                                                        ELSE YEAR(STR_TO_DATE('${currentDate}', '%b %d %Y'))
+                                                                    END,
+                                                                    '-',
+                                                                    frm.resetDate
+                                                                ),
+                                                                '%Y-%m-%d'
+                                                            )`;
                                 const sql_query_getTodayBusiness = `SELECT COALESCE(SUM(settledAmount),0) AS todayBusiness FROM billing_data 
                                                                     ${sql_static_condition};
                                                                     SELECT COALESCE(SUM(settledAmount),0) AS officialBusiness FROM billing_Official_data 
                                                                     ${sql_static_condition};
-                                                                    SELECT IF(COUNT(*) = 0, 0, MAX(billNumber)) AS officialLastBillNo FROM billing_Official_data bod 
-                                                                    CROSS JOIN (SELECT COALESCE(resetDate, '04-01') AS resetDate FROM billing_firm_data WHERE firmId = '${firmId}' LIMIT 1) AS frm WHERE bod.firmId = '${firmId}' AND (${currentDateMD} < frm.resetDate OR (${currentDateMD} >= frm.resetDate AND DATE_FORMAT(bod.billDate, '%m-%d') >= frm.resetDate AND DATE_FORMAT(bod.billCreationDate, '%m-%d') >= frm.resetDate)) FOR UPDATE`;
+                                                                    SELECT COALESCE(MAX(bod.billNumber), 0) AS officialLastBillNo
+                                                                    FROM billing_Official_data bod
+                                                                    CROSS JOIN (SELECT COALESCE(resetDate, '04-01') AS resetDate FROM billing_firm_data WHERE firmId = '${firmId}' LIMIT 1) AS frm
+                                                                    WHERE bod.firmId = '${firmId}'
+                                                                    AND bod.billDate >= ${resetStartDateExpr}
+                                                                    FOR UPDATE`;
                                 pool.query(sql_query_getTodayBusiness, (err, business) => {
                                     if (err) {
                                         console.error("An error occurred in SQL Queery", err);
@@ -215,13 +233,31 @@ const addSettleDataByFirm = (req, res) => {
                                                 const sql_static_condition = `WHERE firmId = '${firmId}' 
                                                                               AND billPayType != 'complimentary' 
                                                                               AND billDate = STR_TO_DATE('${currentDate}','%b %d %Y')`;
-                                                const currentDateMD = `DATE_FORMAT(STR_TO_DATE('${currentDate}', '%b %d %Y'), '%m-%d')`;
+                                                const resetStartDateExpr = `STR_TO_DATE(
+                                                                                CONCAT(
+                                                                                    CASE
+                                                                                        WHEN DATE(STR_TO_DATE('${currentDate}', '%b %d %Y')) < STR_TO_DATE(
+                                                                                            CONCAT(YEAR(STR_TO_DATE('${currentDate}', '%b %d %Y')), '-', frm.resetDate),
+                                                                                            '%Y-%m-%d'
+                                                                                        )
+                                                                                        THEN YEAR(STR_TO_DATE('${currentDate}', '%b %d %Y')) - 1
+                                                                                        ELSE YEAR(STR_TO_DATE('${currentDate}', '%b %d %Y'))
+                                                                                    END,
+                                                                                    '-',
+                                                                                    frm.resetDate
+                                                                                ),
+                                                                                '%Y-%m-%d'
+                                                                            )`;
                                                 const sql_query_getTodayBusiness = `SELECT COALESCE(SUM(settledAmount),0) AS todayBusiness FROM billing_data 
                                                                                     ${sql_static_condition};
                                                                                     SELECT COALESCE(SUM(settledAmount),0) AS officialBusiness FROM billing_Official_data 
                                                                                     ${sql_static_condition};
-                                                                                    SELECT IF(COUNT(*) = 0, 0, MAX(billNumber)) AS officialLastBillNo FROM billing_Official_data bod 
-                                                                                    CROSS JOIN (SELECT COALESCE(resetDate, '04-01') AS resetDate FROM billing_firm_data WHERE firmId = '${firmId}' LIMIT 1) AS frm WHERE bod.firmId = '${firmId}' AND (${currentDateMD} < frm.resetDate OR (${currentDateMD} >= frm.resetDate AND DATE_FORMAT(bod.billDate, '%m-%d') >= frm.resetDate AND DATE_FORMAT(bod.billCreationDate, '%m-%d') >= frm.resetDate)) FOR UPDATE`;
+                                                                                    SELECT COALESCE(MAX(bod.billNumber), 0) AS officialLastBillNo
+                                                                                    FROM billing_Official_data bod
+                                                                                    CROSS JOIN (SELECT COALESCE(resetDate, '04-01') AS resetDate FROM billing_firm_data WHERE firmId = '${firmId}' LIMIT 1) AS frm
+                                                                                    WHERE bod.firmId = '${firmId}'
+                                                                                    AND bod.billDate >= ${resetStartDateExpr}
+                                                                                    FOR UPDATE`;
                                                 connection.query(sql_query_getTodayBusiness, (err, business) => {
                                                     if (err) {
                                                         console.error("Error in Get Today Business:", err);
@@ -307,9 +343,27 @@ const addSettleDataByFirm = (req, res) => {
                                                                                 } else {
                                                                                     if (settleData && settleData.length) {
                                                                                         const billIdsString = settleData.map(item => `'${item.billId}'`).join(',');
-                                                                                        const currentDateMD = `DATE_FORMAT(STR_TO_DATE('${currentDate}', '%b %d %Y'), '%m-%d')`;
-                                                                                        const sql_query_getMaxBillNo = `SELECT IF(COUNT(*) = 0, 0, MAX(billNumber)) AS officialLastBillNo FROM billing_Official_data bod 
-                                                                                                                CROSS JOIN (SELECT COALESCE(resetDate, '04-01') AS resetDate FROM billing_firm_data WHERE firmId = '${firmId}' LIMIT 1) AS frm WHERE bod.firmId = '${firmId}' AND (${currentDateMD} < frm.resetDate OR (${currentDateMD} >= frm.resetDate AND DATE_FORMAT(bod.billDate, '%m-%d') >= frm.resetDate AND DATE_FORMAT(bod.billCreationDate, '%m-%d') >= frm.resetDate)) FOR UPDATE`;
+                                                                                        const resetStartDateExpr = `STR_TO_DATE(
+                                                                                                                        CONCAT(
+                                                                                                                            CASE
+                                                                                                                                WHEN DATE(STR_TO_DATE('${currentDate}', '%b %d %Y')) < STR_TO_DATE(
+                                                                                                                                    CONCAT(YEAR(STR_TO_DATE('${currentDate}', '%b %d %Y')), '-', frm.resetDate),
+                                                                                                                                    '%Y-%m-%d'
+                                                                                                                                )
+                                                                                                                                THEN YEAR(STR_TO_DATE('${currentDate}', '%b %d %Y')) - 1
+                                                                                                                                ELSE YEAR(STR_TO_DATE('${currentDate}', '%b %d %Y'))
+                                                                                                                            END,
+                                                                                                                            '-',
+                                                                                                                            frm.resetDate
+                                                                                                                        ),
+                                                                                                                        '%Y-%m-%d'
+                                                                                                                    )`;
+                                                                                        const sql_query_getMaxBillNo = `SELECT COALESCE(MAX(bod.billNumber), 0) AS officialLastBillNo
+                                                                                                                FROM billing_Official_data bod
+                                                                                                                CROSS JOIN (SELECT COALESCE(resetDate, '04-01') AS resetDate FROM billing_firm_data WHERE firmId = '${firmId}' LIMIT 1) AS frm
+                                                                                                                WHERE bod.firmId = '${firmId}'
+                                                                                                                AND bod.billDate >= ${resetStartDateExpr}
+                                                                                                                FOR UPDATE`;
                                                                                         connection.query(sql_query_getMaxBillNo, (err, lastBillNo) => {
                                                                                             if (err) {
                                                                                                 console.error("Error selecting last bill number:", err);

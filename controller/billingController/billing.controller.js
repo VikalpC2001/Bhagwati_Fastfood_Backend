@@ -1410,7 +1410,10 @@ const addPickUpBillData = (req, res) => {
                                                                             }
                                                                         });
                                                                     } else if (customerData && customerData.customerId && customerData.address?.trim()) {
-                                                                        let sql_queries_chkOldAdd = `SELECT addressId, customerId FROM billing_customerAddress_data WHERE customerAddress = TRIM('${customerData.address}') AND customerLocality = '${customerData.locality}'`;
+                                                                        let sql_queries_chkOldAdd = `SELECT addressId, customerId
+                                                                                                      FROM billing_customerAddress_data
+                                                                                                      WHERE customerId = '${customerData.customerId}'
+                                                                                                        AND LOWER(TRIM(customerAddress)) = LOWER(TRIM('${customerData.address}'))`;
                                                                         connection.query(sql_queries_chkOldAdd, (err, oldAdd) => {
                                                                             if (err) {
                                                                                 console.error("Error inserting Customer New Address:", err);
@@ -1448,7 +1451,18 @@ const addPickUpBillData = (req, res) => {
                                                                                     });
                                                                                 } else {
                                                                                     let sql_querry_addNewAddress = `INSERT INTO billing_customerAddress_data(addressId, customerId, customerAddress, customerLocality)
-                                                                                                                    VALUES ('${newAddressId}', '${customerData.customerId}', TRIM('${customerData.address}'), ${customerData.locality ? `TRIM('${customerData.locality}')` : null})`;
+                                                                                                                    SELECT
+                                                                                                                        '${newAddressId}',
+                                                                                                                        '${customerData.customerId}',
+                                                                                                                        TRIM('${customerData.address}'),
+                                                                                                                        ${customerData.locality ? `TRIM('${customerData.locality}')` : null}
+                                                                                                                    FROM DUAL
+                                                                                                                    WHERE NOT EXISTS (
+                                                                                                                        SELECT 1
+                                                                                                                        FROM billing_customerAddress_data
+                                                                                                                        WHERE customerId = '${customerData.customerId}'
+                                                                                                                          AND customerAddress = TRIM('${customerData.address}')
+                                                                                                                    )`;
                                                                                     connection.query(sql_querry_addNewAddress, (err) => {
                                                                                         if (err) {
                                                                                             console.error("Error inserting Customer New Address:", err);
@@ -1458,7 +1472,7 @@ const addPickUpBillData = (req, res) => {
                                                                                             });
                                                                                         } else {
                                                                                             let sql_query_addAddressRelation = `INSERT INTO billing_billWiseCustomer_data(bwcId, billId, customerId, addressId, mobileNo, customerName, address, locality)
-                                                                                                                                VALUES ('${bwcId}', '${billId}', '${customerData.customerId}', '${newAddressId}', ${customerData.mobileNo ? `TRIM('${customerData.mobileNo}')` : null}, ${customerData.customerName ? `TRIM('${customerData.customerName}')` : null}, ${customerData.address ? `'${customerData.address}'` : null}, ${customerData.locality ? `'${customerData.locality}'` : null})`;
+                                                                                                                                VALUES ('${bwcId}', '${billId}', '${customerData.customerId}', (SELECT addressId FROM billing_customerAddress_data WHERE customerId = '${customerData.customerId}' AND customerAddress = TRIM('${customerData.address}') LIMIT 1), ${customerData.mobileNo ? `TRIM('${customerData.mobileNo}')` : null}, ${customerData.customerName ? `TRIM('${customerData.customerName}')` : null}, ${customerData.address ? `'${customerData.address}'` : null}, ${customerData.locality ? `'${customerData.locality}'` : null})`;
                                                                                             connection.query(sql_query_addAddressRelation, (err) => {
                                                                                                 if (err) {
                                                                                                     console.error("Error inserting Customer Bill Wise Data:", err);
@@ -1526,7 +1540,7 @@ const addPickUpBillData = (req, res) => {
                                                                                 } else {
                                                                                     const existCustomerId = num && num[0] ? num[0].customerId : null;
                                                                                     if (existCustomerId && customerData.address) {
-                                                                                        let sql_queries_chkOldAdd = `SELECT addressId, customerId FROM billing_customerAddress_data WHERE customerAddress = TRIM('${customerData.address}') AND customerLocality = '${customerData.locality}'`;
+                                                                                        let sql_queries_chkOldAdd = `SELECT addressId, customerId FROM billing_customerAddress_data WHERE customerId = '${existCustomerId}' AND LOWER(TRIM(customerAddress)) = LOWER(TRIM('${customerData.address}'))`;
                                                                                         connection.query(sql_queries_chkOldAdd, (err, oldAdd) => {
                                                                                             if (err) {
                                                                                                 console.error("Error inserting Customer New Address:", err);
@@ -1564,7 +1578,18 @@ const addPickUpBillData = (req, res) => {
                                                                                                     });
                                                                                                 } else {
                                                                                                     let sql_querry_addNewAddress = `INSERT INTO billing_customerAddress_data(addressId, customerId, customerAddress, customerLocality)
-                                                                                                                                    VALUES ('${newAddressId}', '${existCustomerId}', TRIM('${customerData.address}'), ${customerData.locality ? `TRIM('${customerData.locality}')` : null})`;
+                                                                                                                                    SELECT
+                                                                                                                                        '${newAddressId}',
+                                                                                                                                        '${existCustomerId}',
+                                                                                                                                        TRIM('${customerData.address}'),
+                                                                                                                                        ${customerData.locality ? `TRIM('${customerData.locality}')` : null}
+                                                                                                                                    FROM DUAL
+                                                                                                                                    WHERE NOT EXISTS (
+                                                                                                                                        SELECT 1
+                                                                                                                                        FROM billing_customerAddress_data
+                                                                                                                                        WHERE customerId = '${existCustomerId}'
+                                                                                                                                          AND customerAddress = TRIM('${customerData.address}')
+                                                                                                                                    )`;
                                                                                                     connection.query(sql_querry_addNewAddress, (err) => {
                                                                                                         if (err) {
                                                                                                             console.error("Error inserting Customer New Address:", err);
@@ -1574,7 +1599,7 @@ const addPickUpBillData = (req, res) => {
                                                                                                             });
                                                                                                         } else {
                                                                                                             let sql_query_addAddressRelation = `INSERT INTO billing_billWiseCustomer_data(bwcId, billId, customerId, addressId, mobileNo, customerName, address, locality)
-                                                                                                                                                VALUES ('${bwcId}', '${billId}', '${existCustomerId}', '${newAddressId}', ${customerData.mobileNo ? `TRIM('${customerData.mobileNo}')` : null}, ${customerData.customerName ? `TRIM('${customerData.customerName}')` : null}, ${customerData.address ? `'${customerData.address}'` : null}, ${customerData.locality ? `'${customerData.locality}'` : null})`;
+                                                                                                                                                VALUES ('${bwcId}', '${billId}', '${existCustomerId}', (SELECT addressId FROM billing_customerAddress_data WHERE customerId = '${existCustomerId}' AND customerAddress = TRIM('${customerData.address}') LIMIT 1), ${customerData.mobileNo ? `TRIM('${customerData.mobileNo}')` : null}, ${customerData.customerName ? `TRIM('${customerData.customerName}')` : null}, ${customerData.address ? `'${customerData.address}'` : null}, ${customerData.locality ? `'${customerData.locality}'` : null})`;
                                                                                                             connection.query(sql_query_addAddressRelation, (err) => {
                                                                                                                 if (err) {
                                                                                                                     console.error("Error inserting Customer Bill Wise Data:", err);
@@ -1615,7 +1640,18 @@ const addPickUpBillData = (req, res) => {
                                                                                                 });
                                                                                             } else {
                                                                                                 let sql_querry_addNewAddress = `INSERT INTO billing_customerAddress_data(addressId, customerId, customerAddress, customerLocality)
-                                                                                                                                VALUES ('${newAddressId}', '${newCustomerId}', TRIM('${customerData.address}'), ${customerData.locality ? `TRIM('${customerData.locality}')` : null})`;
+                                                                                                                                SELECT
+                                                                                                                                    '${newAddressId}',
+                                                                                                                                    '${newCustomerId}',
+                                                                                                                                    TRIM('${customerData.address}'),
+                                                                                                                                    ${customerData.locality ? `TRIM('${customerData.locality}')` : null}
+                                                                                                                                FROM DUAL
+                                                                                                                                WHERE NOT EXISTS (
+                                                                                                                                    SELECT 1
+                                                                                                                                    FROM billing_customerAddress_data
+                                                                                                                                    WHERE customerId = '${newCustomerId}'
+                                                                                                                                      AND customerAddress = TRIM('${customerData.address}')
+                                                                                                                                )`;
                                                                                                 connection.query(sql_querry_addNewAddress, (err) => {
                                                                                                     if (err) {
                                                                                                         console.error("Error inserting Customer New Address:", err);
@@ -1625,7 +1661,7 @@ const addPickUpBillData = (req, res) => {
                                                                                                         });
                                                                                                     } else {
                                                                                                         let sql_query_addAddressRelation = `INSERT INTO billing_billWiseCustomer_data(bwcId, billId, customerId, addressId, mobileNo, customerName, address, locality)
-                                                                                                                                            VALUES ('${bwcId}', '${billId}', '${newCustomerId}', '${newAddressId}', ${customerData.mobileNo ? `TRIM('${customerData.mobileNo}')` : null}, ${customerData.customerName ? `TRIM('${customerData.customerName}')` : null}, ${customerData.address ? `'${customerData.address}'` : null}, ${customerData.locality ? `'${customerData.locality}'` : null})`;
+                                                                                                                                            VALUES ('${bwcId}', '${billId}', '${newCustomerId}', (SELECT addressId FROM billing_customerAddress_data WHERE customerId = '${newCustomerId}' AND customerAddress = TRIM('${customerData.address}') LIMIT 1), ${customerData.mobileNo ? `TRIM('${customerData.mobileNo}')` : null}, ${customerData.customerName ? `TRIM('${customerData.customerName}')` : null}, ${customerData.address ? `'${customerData.address}'` : null}, ${customerData.locality ? `'${customerData.locality}'` : null})`;
                                                                                                         connection.query(sql_query_addAddressRelation, (err) => {
                                                                                                             if (err) {
                                                                                                                 console.error("Error inserting Customer Bill Wise Data:", err);
@@ -2069,7 +2105,7 @@ const addDeliveryBillData = (req, res) => {
                                                                             }
                                                                         });
                                                                     } else if (customerData && customerData.customerId && customerData.address?.trim()) {
-                                                                        let sql_queries_chkOldAdd = `SELECT addressId, customerId FROM billing_customerAddress_data WHERE customerAddress = TRIM('${customerData.address}') AND customerLocality = '${customerData.locality}'`;
+                                                                        let sql_queries_chkOldAdd = `SELECT addressId, customerId FROM billing_customerAddress_data WHERE customerId = '${customerData.customerId}' AND LOWER(TRIM(customerAddress)) = LOWER(TRIM('${customerData.address}'))`;
                                                                         connection.query(sql_queries_chkOldAdd, (err, oldAdd) => {
                                                                             if (err) {
                                                                                 console.error("Error inserting Customer New Address:", err);
@@ -2106,7 +2142,18 @@ const addDeliveryBillData = (req, res) => {
                                                                                     });
                                                                                 } else {
                                                                                     let sql_querry_addNewAddress = `INSERT INTO billing_customerAddress_data(addressId, customerId, customerAddress, customerLocality)
-                                                                                                                    VALUES ('${newAddressId}', '${customerData.customerId}', TRIM('${customerData.address}'), ${customerData.locality ? `TRIM('${customerData.locality}')` : null})`;
+                                                                                                                    SELECT
+                                                                                                                        '${newAddressId}',
+                                                                                                                        '${customerData.customerId}',
+                                                                                                                        TRIM('${customerData.address}'),
+                                                                                                                        ${customerData.locality ? `TRIM('${customerData.locality}')` : null}
+                                                                                                                    FROM DUAL
+                                                                                                                    WHERE NOT EXISTS (
+                                                                                                                        SELECT 1
+                                                                                                                        FROM billing_customerAddress_data
+                                                                                                                        WHERE customerId = '${customerData.customerId}'
+                                                                                                                          AND LOWER(TRIM(customerAddress)) = LOWER(TRIM('${customerData.address}'))
+                                                                                                                    )`;
                                                                                     connection.query(sql_querry_addNewAddress, (err) => {
                                                                                         if (err) {
                                                                                             console.error("Error inserting Customer New Address:", err);
@@ -2116,7 +2163,7 @@ const addDeliveryBillData = (req, res) => {
                                                                                             });
                                                                                         } else {
                                                                                             let sql_query_addAddressRelation = `INSERT INTO billing_billWiseCustomer_data(bwcId, billId, customerId, addressId, mobileNo, customerName, address, locality)
-                                                                                                                                VALUES ('${bwcId}', '${billId}', '${customerData.customerId}', '${newAddressId}', ${customerData.mobileNo ? `TRIM('${customerData.mobileNo}')` : null}, ${customerData.customerName ? `TRIM('${customerData.customerName}')` : null}, ${customerData.address ? `'${customerData.address}'` : null}, ${customerData.locality ? `'${customerData.locality}'` : null})`;
+                                                                                                                                VALUES ('${bwcId}', '${billId}', '${customerData.customerId}', (SELECT addressId FROM billing_customerAddress_data WHERE customerId = '${customerData.customerId}' AND LOWER(TRIM(customerAddress)) = LOWER(TRIM('${customerData.address}')) LIMIT 1), ${customerData.mobileNo ? `TRIM('${customerData.mobileNo}')` : null}, ${customerData.customerName ? `TRIM('${customerData.customerName}')` : null}, ${customerData.address ? `'${customerData.address}'` : null}, ${customerData.locality ? `'${customerData.locality}'` : null})`;
                                                                                             connection.query(sql_query_addAddressRelation, (err) => {
                                                                                                 if (err) {
                                                                                                     console.error("Error inserting Customer Bill Wise Data:", err);
@@ -2182,7 +2229,10 @@ const addDeliveryBillData = (req, res) => {
                                                                                 } else {
                                                                                     const existCustomerId = num && num[0] ? num[0].customerId : null;
                                                                                     if (existCustomerId && customerData.address) {
-                                                                                        let sql_queries_chkOldAdd = `SELECT addressId, customerId FROM billing_customerAddress_data WHERE customerAddress = TRIM('${customerData.address}') AND customerLocality = '${customerData.locality}'`;
+                                                                                        let sql_queries_chkOldAdd = `SELECT addressId, customerId
+                                                                                                                      FROM billing_customerAddress_data
+                                                                                                                      WHERE customerId = '${existCustomerId}'
+                                                                                                                        AND LOWER(TRIM(customerAddress)) = LOWER(TRIM('${customerData.address}'))`;
                                                                                         connection.query(sql_queries_chkOldAdd, (err, oldAdd) => {
                                                                                             if (err) {
                                                                                                 console.error("Error inserting Customer New Address:", err);
@@ -2219,7 +2269,18 @@ const addDeliveryBillData = (req, res) => {
                                                                                                     });
                                                                                                 } else {
                                                                                                     let sql_querry_addNewAddress = `INSERT INTO billing_customerAddress_data(addressId, customerId, customerAddress, customerLocality)
-                                                                                                                                    VALUES ('${newAddressId}', '${existCustomerId}', TRIM('${customerData.address}'), ${customerData.locality ? `TRIM('${customerData.locality}')` : null})`;
+                                                                                                                                    SELECT
+                                                                                                                                        '${newAddressId}',
+                                                                                                                                        '${existCustomerId}',
+                                                                                                                                        TRIM('${customerData.address}'),
+                                                                                                                                        ${customerData.locality ? `TRIM('${customerData.locality}')` : null}
+                                                                                                                                    FROM DUAL
+                                                                                                                                    WHERE NOT EXISTS (
+                                                                                                                                        SELECT 1
+                                                                                                                                        FROM billing_customerAddress_data
+                                                                                                                                        WHERE customerId = '${existCustomerId}'
+                                                                                                                                          AND LOWER(TRIM(customerAddress)) = LOWER(TRIM('${customerData.address}'))
+                                                                                                                                    )`;
                                                                                                     connection.query(sql_querry_addNewAddress, (err) => {
                                                                                                         if (err) {
                                                                                                             console.error("Error inserting Customer New Address:", err);
@@ -2229,7 +2290,7 @@ const addDeliveryBillData = (req, res) => {
                                                                                                             });
                                                                                                         } else {
                                                                                                             let sql_query_addAddressRelation = `INSERT INTO billing_billWiseCustomer_data(bwcId, billId, customerId, addressId, mobileNo, customerName, address, locality)
-                                                                                                                                                VALUES ('${bwcId}', '${billId}', '${existCustomerId}', '${newAddressId}', ${customerData.mobileNo ? `TRIM('${customerData.mobileNo}')` : null}, ${customerData.customerName ? `TRIM('${customerData.customerName}')` : null}, ${customerData.address ? `'${customerData.address}'` : null}, ${customerData.locality ? `'${customerData.locality}'` : null})`;
+                                                                                                                                                VALUES ('${bwcId}', '${billId}', '${existCustomerId}', (SELECT addressId FROM billing_customerAddress_data WHERE customerId = '${existCustomerId}' AND LOWER(TRIM(customerAddress)) = LOWER(TRIM('${customerData.address}')) LIMIT 1), ${customerData.mobileNo ? `TRIM('${customerData.mobileNo}')` : null}, ${customerData.customerName ? `TRIM('${customerData.customerName}')` : null}, ${customerData.address ? `'${customerData.address}'` : null}, ${customerData.locality ? `'${customerData.locality}'` : null})`;
                                                                                                             connection.query(sql_query_addAddressRelation, (err) => {
                                                                                                                 if (err) {
                                                                                                                     console.error("Error inserting Customer Bill Wise Data:", err);
@@ -2269,7 +2330,18 @@ const addDeliveryBillData = (req, res) => {
                                                                                                 });
                                                                                             } else {
                                                                                                 let sql_querry_addNewAddress = `INSERT INTO billing_customerAddress_data(addressId, customerId, customerAddress, customerLocality)
-                                                                                                                                VALUES ('${newAddressId}', '${newCustomerId}', TRIM('${customerData.address}'), ${customerData.locality ? `TRIM('${customerData.locality}')` : null})`;
+                                                                                                                                SELECT
+                                                                                                                                    '${newAddressId}',
+                                                                                                                                    '${newCustomerId}',
+                                                                                                                                    TRIM('${customerData.address}'),
+                                                                                                                                    ${customerData.locality ? `TRIM('${customerData.locality}')` : null}
+                                                                                                                                FROM DUAL
+                                                                                                                                WHERE NOT EXISTS (
+                                                                                                                                    SELECT 1
+                                                                                                                                    FROM billing_customerAddress_data
+                                                                                                                                    WHERE customerId = '${newCustomerId}'
+                                                                                                                                      AND LOWER(TRIM(customerAddress)) = LOWER(TRIM('${customerData.address}'))
+                                                                                                                                )`;
                                                                                                 connection.query(sql_querry_addNewAddress, (err) => {
                                                                                                     if (err) {
                                                                                                         console.error("Error inserting Customer New Address:", err);
@@ -2279,7 +2351,7 @@ const addDeliveryBillData = (req, res) => {
                                                                                                         });
                                                                                                     } else {
                                                                                                         let sql_query_addAddressRelation = `INSERT INTO billing_billWiseCustomer_data(bwcId, billId, customerId, addressId, mobileNo, customerName, address, locality)
-                                                                                                                                            VALUES ('${bwcId}', '${billId}', '${newCustomerId}', '${newAddressId}', ${customerData.mobileNo ? `TRIM('${customerData.mobileNo}')` : null}, ${customerData.customerName ? `TRIM('${customerData.customerName}')` : null}, ${customerData.address ? `'${customerData.address}'` : null}, ${customerData.locality ? `'${customerData.locality}'` : null})`;
+                                                                                                                                            VALUES ('${bwcId}', '${billId}', '${newCustomerId}', (SELECT addressId FROM billing_customerAddress_data WHERE customerId = '${newCustomerId}' AND LOWER(TRIM(customerAddress)) = LOWER(TRIM('${customerData.address}')) LIMIT 1), ${customerData.mobileNo ? `TRIM('${customerData.mobileNo}')` : null}, ${customerData.customerName ? `TRIM('${customerData.customerName}')` : null}, ${customerData.address ? `'${customerData.address}'` : null}, ${customerData.locality ? `'${customerData.locality}'` : null})`;
                                                                                                         connection.query(sql_query_addAddressRelation, (err) => {
                                                                                                             if (err) {
                                                                                                                 console.error("Error inserting Customer Bill Wise Data:", err);
@@ -3035,7 +3107,7 @@ const updatePickUpBillData = (req, res) => {
                                                                                         }
                                                                                     });
                                                                                 } else if (customerData && customerData.customerId && customerData.address?.trim()) {
-                                                                                    let sql_queries_chkOldAdd = `SELECT addressId, customerId FROM billing_customerAddress_data WHERE customerAddress = TRIM('${customerData.address}') AND customerLocality = '${customerData.locality}'`;
+                                                                                    let sql_queries_chkOldAdd = `SELECT addressId, customerId FROM billing_customerAddress_data WHERE customerId = '${customerData.customerId}' AND LOWER(TRIM(customerAddress)) = LOWER(TRIM('${customerData.address}'))`;
                                                                                     connection.query(sql_queries_chkOldAdd, (err, oldAdd) => {
                                                                                         if (err) {
                                                                                             console.error("Error inserting Customer New Address:", err);
@@ -3074,7 +3146,8 @@ const updatePickUpBillData = (req, res) => {
                                                                                                 });
                                                                                             } else {
                                                                                                 let sql_querry_addNewAddress = `INSERT INTO billing_customerAddress_data(addressId, customerId, customerAddress, customerLocality)
-                                                                                                                                VALUES ('${newAddressId}', '${customerData.customerId}', TRIM('${customerData.address}'), ${customerData.locality ? `TRIM('${customerData.locality}')` : null})`;
+                                                                                                                                SELECT '${newAddressId}', '${customerData.customerId}', TRIM('${customerData.address}'), ${customerData.locality ? `TRIM('${customerData.locality}')` : null} FROM DUAL
+                                                                                                                                WHERE NOT EXISTS (SELECT 1 FROM billing_customerAddress_data WHERE customerId = '${customerData.customerId}' AND LOWER(TRIM(customerAddress)) = LOWER(TRIM('${customerData.address}')))`;
                                                                                                 connection.query(sql_querry_addNewAddress, (err) => {
                                                                                                     if (err) {
                                                                                                         console.error("Error inserting Customer New Address:", err);
@@ -3085,7 +3158,7 @@ const updatePickUpBillData = (req, res) => {
                                                                                                     } else {
                                                                                                         let sql_query_addAddressRelation = `DELETE FROM billing_billWiseCustomer_data WHERE billId = '${billData.billId}';
                                                                                                                                             INSERT INTO billing_billWiseCustomer_data(bwcId, billId, customerId, addressId, mobileNo, customerName, address, locality)
-                                                                                                                                            VALUES ('${bwcId}', '${billData.billId}', '${customerData.customerId}', '${newAddressId}', ${customerData.mobileNo ? `TRIM('${customerData.mobileNo}')` : null}, ${customerData.customerName ? `TRIM('${customerData.customerName}')` : null}, ${customerData.address ? `'${customerData.address}'` : null}, ${customerData.locality ? `'${customerData.locality}'` : null})`;
+                                                                                                                                            VALUES ('${bwcId}', '${billData.billId}', '${customerData.customerId}', (SELECT addressId FROM billing_customerAddress_data WHERE customerId = '${customerData.customerId}' AND LOWER(TRIM(customerAddress)) = LOWER(TRIM('${customerData.address}')) LIMIT 1), ${customerData.mobileNo ? `TRIM('${customerData.mobileNo}')` : null}, ${customerData.customerName ? `TRIM('${customerData.customerName}')` : null}, ${customerData.address ? `'${customerData.address}'` : null}, ${customerData.locality ? `'${customerData.locality}'` : null})`;
                                                                                                         connection.query(sql_query_addAddressRelation, (err) => {
                                                                                                             if (err) {
                                                                                                                 console.error("Error inserting Customer Bill Wise Data:", err);
@@ -3154,7 +3227,7 @@ const updatePickUpBillData = (req, res) => {
                                                                                             } else {
                                                                                                 const existCustomerId = num && num[0] ? num[0].customerId : null;
                                                                                                 if (existCustomerId && customerData.address) {
-                                                                                                    let sql_queries_chkOldAdd = `SELECT addressId, customerId FROM billing_customerAddress_data WHERE customerAddress = TRIM('${customerData.address}') AND customerLocality = '${customerData.locality}'`;
+                                                                                                    let sql_queries_chkOldAdd = `SELECT addressId, customerId FROM billing_customerAddress_data WHERE customerId = '${existCustomerId}' AND LOWER(TRIM(customerAddress)) = LOWER(TRIM('${customerData.address}'))`;
                                                                                                     connection.query(sql_queries_chkOldAdd, (err, oldAdd) => {
                                                                                                         if (err) {
                                                                                                             console.error("Error inserting Customer New Address:", err);
@@ -3193,7 +3266,8 @@ const updatePickUpBillData = (req, res) => {
                                                                                                                 });
                                                                                                             } else {
                                                                                                                 let sql_querry_addNewAddress = `INSERT INTO billing_customerAddress_data(addressId, customerId, customerAddress, customerLocality)
-                                                                                                                                                VALUES ('${newAddressId}', '${existCustomerId}', TRIM('${customerData.address}'), ${customerData.locality ? `TRIM('${customerData.locality}')` : null})`;
+                                                                                                                                                SELECT '${newAddressId}', '${existCustomerId}', TRIM('${customerData.address}'), ${customerData.locality ? `TRIM('${customerData.locality}')` : null} FROM DUAL
+                                                                                                                                                WHERE NOT EXISTS (SELECT 1 FROM billing_customerAddress_data WHERE customerId = '${existCustomerId}' AND LOWER(TRIM(customerAddress)) = LOWER(TRIM('${customerData.address}')))`;
                                                                                                                 connection.query(sql_querry_addNewAddress, (err) => {
                                                                                                                     if (err) {
                                                                                                                         console.error("Error inserting Customer New Address:", err);
@@ -3204,7 +3278,7 @@ const updatePickUpBillData = (req, res) => {
                                                                                                                     } else {
                                                                                                                         let sql_query_addAddressRelation = `DELETE FROM billing_billWiseCustomer_data WHERE billId = '${billData.billId}';
                                                                                                                                                             INSERT INTO billing_billWiseCustomer_data(bwcId, billId, customerId, addressId, mobileNo, customerName, address, locality)
-                                                                                                                                                            VALUES ('${bwcId}', '${billData.billId}', '${existCustomerId}', '${newAddressId}', ${customerData.mobileNo ? `TRIM('${customerData.mobileNo}')` : null}, ${customerData.customerName ? `TRIM('${customerData.customerName}')` : null}, ${customerData.address ? `'${customerData.address}'` : null}, ${customerData.locality ? `'${customerData.locality}'` : null})`;
+                                                                                                                                                            VALUES ('${bwcId}', '${billData.billId}', '${existCustomerId}', (SELECT addressId FROM billing_customerAddress_data WHERE customerId = '${existCustomerId}' AND LOWER(TRIM(customerAddress)) = LOWER(TRIM('${customerData.address}')) LIMIT 1), ${customerData.mobileNo ? `TRIM('${customerData.mobileNo}')` : null}, ${customerData.customerName ? `TRIM('${customerData.customerName}')` : null}, ${customerData.address ? `'${customerData.address}'` : null}, ${customerData.locality ? `'${customerData.locality}'` : null})`;
                                                                                                                         connection.query(sql_query_addAddressRelation, (err) => {
                                                                                                                             if (err) {
                                                                                                                                 console.error("Error inserting Customer Bill Wise Data:", err);
@@ -3245,7 +3319,8 @@ const updatePickUpBillData = (req, res) => {
                                                                                                             });
                                                                                                         } else {
                                                                                                             let sql_querry_addNewAddress = `INSERT INTO billing_customerAddress_data(addressId, customerId, customerAddress, customerLocality)
-                                                                                                                                            VALUES ('${newAddressId}', '${newCustomerId}', TRIM('${customerData.address}'), ${customerData.locality ? `TRIM('${customerData.locality}')` : null})`;
+                                                                                                                                            SELECT '${newAddressId}', '${newCustomerId}', TRIM('${customerData.address}'), ${customerData.locality ? `TRIM('${customerData.locality}')` : null} FROM DUAL
+                                                                                                                                            WHERE NOT EXISTS (SELECT 1 FROM billing_customerAddress_data WHERE customerId = '${newCustomerId}' AND LOWER(TRIM(customerAddress)) = LOWER(TRIM('${customerData.address}')))`;
                                                                                                             connection.query(sql_querry_addNewAddress, (err) => {
                                                                                                                 if (err) {
                                                                                                                     console.error("Error inserting Customer New Address:", err);
@@ -3256,7 +3331,7 @@ const updatePickUpBillData = (req, res) => {
                                                                                                                 } else {
                                                                                                                     let sql_query_addAddressRelation = `DELETE FROM billing_billWiseCustomer_data WHERE billId = '${billData.billId}';
                                                                                                                                                         INSERT INTO billing_billWiseCustomer_data(bwcId, billId, customerId, addressId, mobileNo, customerName, address, locality)
-                                                                                                                                                        VALUES ('${bwcId}', '${billData.billId}', '${newCustomerId}', '${newAddressId}', ${customerData.mobileNo ? `TRIM('${customerData.mobileNo}')` : null}, ${customerData.customerName ? `TRIM('${customerData.customerName}')` : null}, ${customerData.address ? `'${customerData.address}'` : null}, ${customerData.locality ? `'${customerData.locality}'` : null})`;
+                                                                                                                                                        VALUES ('${bwcId}', '${billData.billId}', '${newCustomerId}', (SELECT addressId FROM billing_customerAddress_data WHERE customerId = '${newCustomerId}' AND LOWER(TRIM(customerAddress)) = LOWER(TRIM('${customerData.address}')) LIMIT 1), ${customerData.mobileNo ? `TRIM('${customerData.mobileNo}')` : null}, ${customerData.customerName ? `TRIM('${customerData.customerName}')` : null}, ${customerData.address ? `'${customerData.address}'` : null}, ${customerData.locality ? `'${customerData.locality}'` : null})`;
                                                                                                                     connection.query(sql_query_addAddressRelation, (err) => {
                                                                                                                         if (err) {
                                                                                                                             console.error("Error inserting Customer Bill Wise Data:", err);
@@ -3722,7 +3797,7 @@ const updateDeliveryBillData = (req, res) => {
                                                                                         }
                                                                                     });
                                                                                 } else if (customerData && customerData.customerId && customerData.address?.trim()) {
-                                                                                    let sql_queries_chkOldAdd = `SELECT addressId, customerId FROM billing_customerAddress_data WHERE customerAddress = TRIM('${customerData.address}') AND customerLocality = '${customerData.locality}'`;
+                                                                                    let sql_queries_chkOldAdd = `SELECT addressId, customerId FROM billing_customerAddress_data WHERE customerId = '${customerData.customerId}' AND LOWER(TRIM(customerAddress)) = LOWER(TRIM('${customerData.address}'))`;
                                                                                     connection.query(sql_queries_chkOldAdd, (err, oldAdd) => {
                                                                                         if (err) {
                                                                                             console.error("Error inserting Customer New Address:", err);
@@ -3760,7 +3835,8 @@ const updateDeliveryBillData = (req, res) => {
                                                                                                 });
                                                                                             } else {
                                                                                                 let sql_querry_addNewAddress = `INSERT INTO billing_customerAddress_data(addressId, customerId, customerAddress, customerLocality)
-                                                                                                                                VALUES ('${newAddressId}', '${customerData.customerId}', TRIM('${customerData.address}'), ${customerData.locality ? `TRIM('${customerData.locality}')` : null})`;
+                                                                                                                                SELECT '${newAddressId}', '${customerData.customerId}', TRIM('${customerData.address}'), ${customerData.locality ? `TRIM('${customerData.locality}')` : null} FROM DUAL
+                                                                                                                                WHERE NOT EXISTS (SELECT 1 FROM billing_customerAddress_data WHERE customerId = '${customerData.customerId}' AND LOWER(TRIM(customerAddress)) = LOWER(TRIM('${customerData.address}')))`;
                                                                                                 connection.query(sql_querry_addNewAddress, (err) => {
                                                                                                     if (err) {
                                                                                                         console.error("Error inserting Customer New Address:", err);
@@ -3771,7 +3847,7 @@ const updateDeliveryBillData = (req, res) => {
                                                                                                     } else {
                                                                                                         let sql_query_addAddressRelation = `DELETE FROM billing_billWiseCustomer_data WHERE billId = '${billData.billId}';
                                                                                                                                             INSERT INTO billing_billWiseCustomer_data(bwcId, billId, customerId, addressId, mobileNo, customerName, address, locality)
-                                                                                                                                            VALUES ('${bwcId}', '${billData.billId}', '${customerData.customerId}', '${newAddressId}', ${customerData.mobileNo ? `TRIM('${customerData.mobileNo}')` : null}, ${customerData.customerName ? `TRIM('${customerData.customerName}')` : null}, ${customerData.address ? `'${customerData.address}'` : null}, ${customerData.locality ? `'${customerData.locality}'` : null})`;
+                                                                                                                                            VALUES ('${bwcId}', '${billData.billId}', '${customerData.customerId}', (SELECT addressId FROM billing_customerAddress_data WHERE customerId = '${customerData.customerId}' AND LOWER(TRIM(customerAddress)) = LOWER(TRIM('${customerData.address}')) LIMIT 1), ${customerData.mobileNo ? `TRIM('${customerData.mobileNo}')` : null}, ${customerData.customerName ? `TRIM('${customerData.customerName}')` : null}, ${customerData.address ? `'${customerData.address}'` : null}, ${customerData.locality ? `'${customerData.locality}'` : null})`;
                                                                                                         connection.query(sql_query_addAddressRelation, (err) => {
                                                                                                             if (err) {
                                                                                                                 console.error("Error inserting Customer Bill Wise Data:", err);
@@ -3838,7 +3914,7 @@ const updateDeliveryBillData = (req, res) => {
                                                                                             } else {
                                                                                                 const existCustomerId = num && num[0] ? num[0].customerId : null;
                                                                                                 if (existCustomerId && customerData.address) {
-                                                                                                    let sql_queries_chkOldAdd = `SELECT addressId, customerId FROM billing_customerAddress_data WHERE customerAddress = TRIM('${customerData.address}') AND customerLocality = '${customerData.locality}'`;
+                                                                                                    let sql_queries_chkOldAdd = `SELECT addressId, customerId FROM billing_customerAddress_data WHERE customerId = '${existCustomerId}' AND LOWER(TRIM(customerAddress)) = LOWER(TRIM('${customerData.address}'))`;
                                                                                                     connection.query(sql_queries_chkOldAdd, (err, oldAdd) => {
                                                                                                         if (err) {
                                                                                                             console.error("Error inserting Customer New Address:", err);
@@ -3876,7 +3952,8 @@ const updateDeliveryBillData = (req, res) => {
                                                                                                                 });
                                                                                                             } else {
                                                                                                                 let sql_querry_addNewAddress = `INSERT INTO billing_customerAddress_data(addressId, customerId, customerAddress, customerLocality)
-                                                                                                                                                VALUES ('${newAddressId}', '${existCustomerId}', TRIM('${customerData.address}'), ${customerData.locality ? `TRIM('${customerData.locality}')` : null})`;
+                                                                                                                                                SELECT '${newAddressId}', '${existCustomerId}', TRIM('${customerData.address}'), ${customerData.locality ? `TRIM('${customerData.locality}')` : null} FROM DUAL
+                                                                                                                                                WHERE NOT EXISTS (SELECT 1 FROM billing_customerAddress_data WHERE customerId = '${existCustomerId}' AND LOWER(TRIM(customerAddress)) = LOWER(TRIM('${customerData.address}')))`;
                                                                                                                 connection.query(sql_querry_addNewAddress, (err) => {
                                                                                                                     if (err) {
                                                                                                                         console.error("Error inserting Customer New Address:", err);
@@ -3887,7 +3964,7 @@ const updateDeliveryBillData = (req, res) => {
                                                                                                                     } else {
                                                                                                                         let sql_query_addAddressRelation = `DELETE FROM billing_billWiseCustomer_data WHERE billId = '${billData.billId}';
                                                                                                                                                             INSERT INTO billing_billWiseCustomer_data(bwcId, billId, customerId, addressId, mobileNo, customerName, address, locality)
-                                                                                                                                                            VALUES ('${bwcId}', '${billData.billId}', '${existCustomerId}', '${newAddressId}', ${customerData.mobileNo ? `TRIM('${customerData.mobileNo}')` : null}, ${customerData.customerName ? `TRIM('${customerData.customerName}')` : null}, ${customerData.address ? `'${customerData.address}'` : null}, ${customerData.locality ? `'${customerData.locality}'` : null})`;
+                                                                                                                                                            VALUES ('${bwcId}', '${billData.billId}', '${existCustomerId}', (SELECT addressId FROM billing_customerAddress_data WHERE customerId = '${existCustomerId}' AND LOWER(TRIM(customerAddress)) = LOWER(TRIM('${customerData.address}')) LIMIT 1), ${customerData.mobileNo ? `TRIM('${customerData.mobileNo}')` : null}, ${customerData.customerName ? `TRIM('${customerData.customerName}')` : null}, ${customerData.address ? `'${customerData.address}'` : null}, ${customerData.locality ? `'${customerData.locality}'` : null})`;
                                                                                                                         connection.query(sql_query_addAddressRelation, (err) => {
                                                                                                                             if (err) {
                                                                                                                                 console.error("Error inserting Customer Bill Wise Data:", err);
@@ -3927,7 +4004,8 @@ const updateDeliveryBillData = (req, res) => {
                                                                                                             });
                                                                                                         } else {
                                                                                                             let sql_querry_addNewAddress = `INSERT INTO billing_customerAddress_data(addressId, customerId, customerAddress, customerLocality)
-                                                                                                                                            VALUES ('${newAddressId}', '${newCustomerId}', TRIM('${customerData.address}'), ${customerData.locality ? `TRIM('${customerData.locality}')` : null})`;
+                                                                                                                                            SELECT '${newAddressId}', '${newCustomerId}', TRIM('${customerData.address}'), ${customerData.locality ? `TRIM('${customerData.locality}')` : null} FROM DUAL
+                                                                                                                                            WHERE NOT EXISTS (SELECT 1 FROM billing_customerAddress_data WHERE customerId = '${newCustomerId}' AND LOWER(TRIM(customerAddress)) = LOWER(TRIM('${customerData.address}')))`;
                                                                                                             connection.query(sql_querry_addNewAddress, (err) => {
                                                                                                                 if (err) {
                                                                                                                     console.error("Error inserting Customer New Address:", err);
@@ -3938,7 +4016,7 @@ const updateDeliveryBillData = (req, res) => {
                                                                                                                 } else {
                                                                                                                     let sql_query_addAddressRelation = `DELETE FROM billing_billWiseCustomer_data WHERE billId = '${billData.billId}';
                                                                                                                                                         INSERT INTO billing_billWiseCustomer_data(bwcId, billId, customerId, addressId, mobileNo, customerName, address, locality)
-                                                                                                                                                        VALUES ('${bwcId}', '${billData.billId}', '${newCustomerId}', '${newAddressId}', ${customerData.mobileNo ? `TRIM('${customerData.mobileNo}')` : null}, ${customerData.customerName ? `TRIM('${customerData.customerName}')` : null}, ${customerData.address ? `'${customerData.address}'` : null}, ${customerData.locality ? `'${customerData.locality}'` : null})`;
+                                                                                                                                                        VALUES ('${bwcId}', '${billData.billId}', '${newCustomerId}', (SELECT addressId FROM billing_customerAddress_data WHERE customerId = '${newCustomerId}' AND LOWER(TRIM(customerAddress)) = LOWER(TRIM('${customerData.address}')) LIMIT 1), ${customerData.mobileNo ? `TRIM('${customerData.mobileNo}')` : null}, ${customerData.customerName ? `TRIM('${customerData.customerName}')` : null}, ${customerData.address ? `'${customerData.address}'` : null}, ${customerData.locality ? `'${customerData.locality}'` : null})`;
                                                                                                                     connection.query(sql_query_addAddressRelation, (err) => {
                                                                                                                         if (err) {
                                                                                                                             console.error("Error inserting Customer Bill Wise Data:", err);

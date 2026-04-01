@@ -113,7 +113,21 @@ const addOnlineHotelBillData = (req, res) => {
         const amountAfterDiscount = settledAmount;
 
         const isComplimentary = billPayTypeFromHotel === 'complimentary';
-        const currentDateMD = `DATE_FORMAT(STR_TO_DATE('${currentDate}', '%b %d %Y'), '%m-%d')`;
+        const resetStartDateExpr = `STR_TO_DATE(
+                                        CONCAT(
+                                            CASE
+                                                WHEN DATE(STR_TO_DATE('${currentDate}', '%b %d %Y')) < STR_TO_DATE(
+                                                    CONCAT(YEAR(STR_TO_DATE('${currentDate}', '%b %d %Y')), '-', frm.resetDate),
+                                                    '%Y-%m-%d'
+                                                )
+                                                THEN YEAR(STR_TO_DATE('${currentDate}', '%b %d %Y')) - 1
+                                                ELSE YEAR(STR_TO_DATE('${currentDate}', '%b %d %Y'))
+                                            END,
+                                            '-',
+                                            frm.resetDate
+                                        ),
+                                        '%Y-%m-%d'
+                                    )`;
         const billTypeForToken = billData.billType || 'Hotel';
 
         pool2.getConnection((err, connection) => {
@@ -129,9 +143,24 @@ const addOnlineHotelBillData = (req, res) => {
                         return res.status(500).send('Database Error');
                     }
 
-                    let sql_query_getOfficialLastBillNo = `SELECT IF(COUNT(*) = 0, 0, MAX(billNumber)) AS officialLastBillNo FROM billing_Official_data bod CROSS JOIN (SELECT COALESCE(resetDate, '04-01') AS resetDate FROM billing_firm_data WHERE firmId = '${billData.firmId}' LIMIT 1) AS frm WHERE bod.firmId = '${billData.firmId}' AND (${currentDateMD} < frm.resetDate OR (${currentDateMD} >= frm.resetDate AND DATE_FORMAT(bod.billDate, '%m-%d') >= frm.resetDate AND DATE_FORMAT(bod.billCreationDate, '%m-%d') >= frm.resetDate)) FOR UPDATE`;
-                    let sql_query_getComplimentaryLastBillNo = `SELECT IF(COUNT(*) = 0, 0, MAX(billNumber)) AS complimentaryBillNo FROM billing_Complimentary_data bcd CROSS JOIN (SELECT COALESCE(resetDate, '04-01') AS resetDate FROM billing_firm_data WHERE firmId = '${billData.firmId}' LIMIT 1) AS frm WHERE bcd.firmId = '${billData.firmId}' AND (${currentDateMD} < frm.resetDate OR (${currentDateMD} >= frm.resetDate AND DATE_FORMAT(bcd.billDate, '%m-%d') >= frm.resetDate AND DATE_FORMAT(bcd.billCreationDate, '%m-%d') >= frm.resetDate)) FOR UPDATE`;
-                    let sql_query_getLastBillNo = `SELECT IF(COUNT(*) = 0, 0, MAX(billNumber)) AS lastBillNo FROM billing_data bd CROSS JOIN (SELECT COALESCE(resetDate, '04-01') AS resetDate FROM billing_firm_data WHERE firmId = '${billData.firmId}' LIMIT 1) AS frm WHERE bd.firmId = '${billData.firmId}' AND (${currentDateMD} < frm.resetDate OR (${currentDateMD} >= frm.resetDate AND DATE_FORMAT(bd.billDate, '%m-%d') >= frm.resetDate AND DATE_FORMAT(bd.billCreationDate, '%m-%d') >= frm.resetDate)) FOR UPDATE;
+                    let sql_query_getOfficialLastBillNo = `SELECT COALESCE(MAX(bod.billNumber), 0) AS officialLastBillNo
+                                                            FROM billing_Official_data bod
+                                                            CROSS JOIN (SELECT COALESCE(resetDate, '04-01') AS resetDate FROM billing_firm_data WHERE firmId = '${billData.firmId}' LIMIT 1) AS frm
+                                                            WHERE bod.firmId = '${billData.firmId}'
+                                                            AND bod.billDate >= ${resetStartDateExpr}
+                                                            FOR UPDATE`;
+                    let sql_query_getComplimentaryLastBillNo = `SELECT COALESCE(MAX(bcd.billNumber), 0) AS complimentaryBillNo
+                                                                 FROM billing_Complimentary_data bcd
+                                                                 CROSS JOIN (SELECT COALESCE(resetDate, '04-01') AS resetDate FROM billing_firm_data WHERE firmId = '${billData.firmId}' LIMIT 1) AS frm
+                                                                 WHERE bcd.firmId = '${billData.firmId}'
+                                                                 AND bcd.billDate >= ${resetStartDateExpr}
+                                                                 FOR UPDATE`;
+                    let sql_query_getLastBillNo = `SELECT COALESCE(MAX(bd.billNumber), 0) AS lastBillNo
+                                                   FROM billing_data bd
+                                                   CROSS JOIN (SELECT COALESCE(resetDate, '04-01') AS resetDate FROM billing_firm_data WHERE firmId = '${billData.firmId}' LIMIT 1) AS frm
+                                                   WHERE bd.firmId = '${billData.firmId}'
+                                                   AND bd.billDate >= ${resetStartDateExpr}
+                                                   FOR UPDATE;
                                                    SELECT COALESCE(MAX(tokenNo),0) AS lastTokenNo FROM billing_token_data WHERE billType = '${billTypeForToken}' AND billDate = STR_TO_DATE('${currentDate}','%b %d %Y') FOR UPDATE;
                                                    ${billData.isOfficial && !isComplimentary ? sql_query_getOfficialLastBillNo : isComplimentary ? sql_query_getComplimentaryLastBillNo : ''}`;
 
@@ -357,10 +386,39 @@ const addOnlinePickUpBillData = (req, res) => {
                     } else {
                         billData.billPayType = billData.billPayType === 'other' ? 'cash' : billData.billPayType;
                         const isComplimentary = billData.billPayType == 'complimentary' ? true : false;
-                        const currentDateMD = `DATE_FORMAT(STR_TO_DATE('${currentDate}', '%b %d %Y'), '%m-%d')`;
-                        let sql_query_getOfficialLastBillNo = `SELECT IF(COUNT(*) = 0, 0, MAX(billNumber)) AS officialLastBillNo FROM billing_Official_data bod CROSS JOIN (SELECT COALESCE(resetDate, '04-01') AS resetDate FROM billing_firm_data WHERE firmId = '${billData.firmId}' LIMIT 1) AS frm WHERE bod.firmId = '${billData.firmId}' AND (${currentDateMD} < frm.resetDate OR (${currentDateMD} >= frm.resetDate AND DATE_FORMAT(bod.billDate, '%m-%d') >= frm.resetDate AND DATE_FORMAT(bod.billCreationDate, '%m-%d') >= frm.resetDate)) FOR UPDATE`;
-                        let sql_query_getComplimentaryLastBillNo = `SELECT IF(COUNT(*) = 0, 0, MAX(billNumber)) AS complimentaryBillNo FROM billing_Complimentary_data bcd CROSS JOIN (SELECT COALESCE(resetDate, '04-01') AS resetDate FROM billing_firm_data WHERE firmId = '${billData.firmId}' LIMIT 1) AS frm WHERE bcd.firmId = '${billData.firmId}' AND (${currentDateMD} < frm.resetDate OR (${currentDateMD} >= frm.resetDate AND DATE_FORMAT(bcd.billDate, '%m-%d') >= frm.resetDate AND DATE_FORMAT(bcd.billCreationDate, '%m-%d') >= frm.resetDate)) FOR UPDATE`;
-                        let sql_query_getLastBillNo = `SELECT IF(COUNT(*) = 0, 0, MAX(billNumber)) AS lastBillNo FROM billing_data bd CROSS JOIN (SELECT COALESCE(resetDate, '04-01') AS resetDate FROM billing_firm_data WHERE firmId = '${billData.firmId}' LIMIT 1) AS frm WHERE bd.firmId = '${billData.firmId}' AND (${currentDateMD} < frm.resetDate OR (${currentDateMD} >= frm.resetDate AND DATE_FORMAT(bd.billDate, '%m-%d') >= frm.resetDate AND DATE_FORMAT(bd.billCreationDate, '%m-%d') >= frm.resetDate)) FOR UPDATE;
+                        const resetStartDateExpr = `STR_TO_DATE(
+                                                        CONCAT(
+                                                            CASE
+                                                                WHEN DATE(STR_TO_DATE('${currentDate}', '%b %d %Y')) < STR_TO_DATE(
+                                                                    CONCAT(YEAR(STR_TO_DATE('${currentDate}', '%b %d %Y')), '-', frm.resetDate),
+                                                                    '%Y-%m-%d'
+                                                                )
+                                                                THEN YEAR(STR_TO_DATE('${currentDate}', '%b %d %Y')) - 1
+                                                                ELSE YEAR(STR_TO_DATE('${currentDate}', '%b %d %Y'))
+                                                            END,
+                                                            '-',
+                                                            frm.resetDate
+                                                        ),
+                                                        '%Y-%m-%d'
+                                                    )`;
+                        let sql_query_getOfficialLastBillNo = `SELECT COALESCE(MAX(bod.billNumber), 0) AS officialLastBillNo
+                                                                FROM billing_Official_data bod
+                                                                CROSS JOIN (SELECT COALESCE(resetDate, '04-01') AS resetDate FROM billing_firm_data WHERE firmId = '${billData.firmId}' LIMIT 1) AS frm
+                                                                WHERE bod.firmId = '${billData.firmId}'
+                                                                AND bod.billDate >= ${resetStartDateExpr}
+                                                                FOR UPDATE`;
+                        let sql_query_getComplimentaryLastBillNo = `SELECT COALESCE(MAX(bcd.billNumber), 0) AS complimentaryBillNo
+                                                                     FROM billing_Complimentary_data bcd
+                                                                     CROSS JOIN (SELECT COALESCE(resetDate, '04-01') AS resetDate FROM billing_firm_data WHERE firmId = '${billData.firmId}' LIMIT 1) AS frm
+                                                                     WHERE bcd.firmId = '${billData.firmId}'
+                                                                     AND bcd.billDate >= ${resetStartDateExpr}
+                                                                     FOR UPDATE`;
+                        let sql_query_getLastBillNo = `SELECT COALESCE(MAX(bd.billNumber), 0) AS lastBillNo
+                                                       FROM billing_data bd
+                                                       CROSS JOIN (SELECT COALESCE(resetDate, '04-01') AS resetDate FROM billing_firm_data WHERE firmId = '${billData.firmId}' LIMIT 1) AS frm
+                                                       WHERE bd.firmId = '${billData.firmId}'
+                                                       AND bd.billDate >= ${resetStartDateExpr}
+                                                       FOR UPDATE;
                                                        SELECT COALESCE(MAX(tokenNo),0) AS lastTokenNo FROM billing_token_data WHERE billType = '${billData.billType}' AND billDate = STR_TO_DATE('${currentDate}','%b %d %Y') FOR UPDATE;
                                                        ${billData.isOfficial && !isComplimentary ? sql_query_getOfficialLastBillNo : isComplimentary ? sql_query_getComplimentaryLastBillNo : ''}`;
                         connection.query(sql_query_getLastBillNo, (err, result) => {

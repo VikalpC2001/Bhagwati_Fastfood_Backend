@@ -1,7 +1,7 @@
 const pool = require('../../database');
 const jwt = require("jsonwebtoken");
 const pool2 = require('../../databasePool');
-const { addPickUpPendingBillData, addHotelPendingBillData } = require('./pendingBill.controller');
+const { addOnlinePendingBillData, addHotelPendingBillData } = require('./pendingBill.controller');
 
 // Get Date Function 4 Hour
 
@@ -326,7 +326,7 @@ const addOnlineHotelBillData = (req, res) => {
                                                         settledAmount,
                                                         discountAmt,
                                                         amountAfterDiscount,
-                                                        billFooterNote: billFooterNoteVal,
+                                                        footerBill: billFooterNoteVal,
                                                         appriciateLine: appriciateLineVal,
                                                         isOfficial: isOfficialForBill,
                                                         officialBillNo: isOfficialForBill && !isComplimentary ? nextOfficialBillNo : isComplimentary ? 'C' + nextOfficialBillNo : 'Not Available',
@@ -363,29 +363,56 @@ const addOnlineHotelBillData = (req, res) => {
 
 // ADD Pick UP Online QR Billing Data
 
-const addOnlinePickUpBillData = (req, res) => {
-    pool2.getConnection((err, connection) => {
-        if (err) {
-            console.error("Error getting database connection:", err);
+const addOnlineBillData = (req, res) => {
+    const billData = req.body;
+    if (!billData.customerDetails || !billData.firmId || !billData.subTotal || !billData.settledAmount || !billData.billType || !billData.itemsData) {
+        return res.status(404).send('Please Fill All The Fields..!');
+    }
+
+    const sql_getCategoryPrint = `SELECT isOfficial, billFooterNote, appriciateLine FROM billing_category_data WHERE categoryName = '${billData.billType}' AND firmId = '${billData.firmId}' LIMIT 1`;
+
+    pool.query(sql_getCategoryPrint, (catErr, catRows) => {
+        if (catErr) {
+            console.error("Error getting category print config for online bill:", catErr);
             return res.status(500).send('Database Error');
         }
-        try {
-            connection.beginTransaction((err) => {
-                if (err) {
-                    console.error("Error beginning transaction:", err);
-                    connection.release();
-                    return res.status(500).send('Database Error');
-                } else {
-                    const currentDate = getCurrentDate();
-                    const billData = req.body;
-                    if (!billData.customerDetails || !billData.firmId || !billData.subTotal || !billData.settledAmount || !billData.billPayType || !billData.billStatus || !billData.itemsData) {
-                        connection.rollback(() => {
-                            connection.release();
-                            return res.status(404).send('Please Fill All The Fields..!');
-                        })
+
+        let billFooterNoteVal = '';
+        let appriciateLineVal = '';
+        const categoryPrintRow = catRows && catRows[0];
+        if (categoryPrintRow) {
+            billFooterNoteVal = categoryPrintRow.billFooterNote != null ? String(categoryPrintRow.billFooterNote) : '';
+            appriciateLineVal = categoryPrintRow.appriciateLine != null ? String(categoryPrintRow.appriciateLine) : '';
+        }
+
+        if (typeof billData.isOfficial === 'undefined' && categoryPrintRow && categoryPrintRow.isOfficial != null && categoryPrintRow.isOfficial !== undefined) {
+            const cr = categoryPrintRow;
+            billData.isOfficial =
+                cr.isOfficial === 1 ||
+                cr.isOfficial === '1' ||
+                cr.isOfficial === true ||
+                cr.isOfficial === 'true';
+        }
+
+        const isOfficialForBill =
+            billData.isOfficial === 1 ||
+            billData.isOfficial === '1' ||
+            billData.isOfficial === true ||
+            billData.isOfficial === 'true';
+
+        pool2.getConnection((err, connection) => {
+            if (err) {
+                console.error("Error getting database connection:", err);
+                return res.status(500).send('Database Error');
+            }
+            try {
+                connection.beginTransaction((err) => {
+                    if (err) {
+                        console.error("Error beginning transaction:", err);
+                        connection.release();
+                        return res.status(500).send('Database Error');
                     } else {
-                        billData.billPayType = billData.billPayType === 'other' ? 'cash' : billData.billPayType;
-                        const isComplimentary = billData.billPayType == 'complimentary' ? true : false;
+                        const currentDate = getCurrentDate();
                         const resetStartDateExpr = `STR_TO_DATE(
                                                         CONCAT(
                                                             CASE
@@ -407,12 +434,6 @@ const addOnlinePickUpBillData = (req, res) => {
                                                                 WHERE bod.firmId = '${billData.firmId}'
                                                                 AND bod.billDate >= ${resetStartDateExpr}
                                                                 FOR UPDATE`;
-                        let sql_query_getComplimentaryLastBillNo = `SELECT COALESCE(MAX(bcd.billNumber), 0) AS complimentaryBillNo
-                                                                     FROM billing_Complimentary_data bcd
-                                                                     CROSS JOIN (SELECT COALESCE(resetDate, '04-01') AS resetDate FROM billing_firm_data WHERE firmId = '${billData.firmId}' LIMIT 1) AS frm
-                                                                     WHERE bcd.firmId = '${billData.firmId}'
-                                                                     AND bcd.billDate >= ${resetStartDateExpr}
-                                                                     FOR UPDATE`;
                         let sql_query_getLastBillNo = `SELECT COALESCE(MAX(bd.billNumber), 0) AS lastBillNo
                                                        FROM billing_data bd
                                                        CROSS JOIN (SELECT COALESCE(resetDate, '04-01') AS resetDate FROM billing_firm_data WHERE firmId = '${billData.firmId}' LIMIT 1) AS frm
@@ -420,7 +441,7 @@ const addOnlinePickUpBillData = (req, res) => {
                                                        AND bd.billDate >= ${resetStartDateExpr}
                                                        FOR UPDATE;
                                                        SELECT COALESCE(MAX(tokenNo),0) AS lastTokenNo FROM billing_token_data WHERE billType = '${billData.billType}' AND billDate = STR_TO_DATE('${currentDate}','%b %d %Y') FOR UPDATE;
-                                                       ${billData.isOfficial && !isComplimentary ? sql_query_getOfficialLastBillNo : isComplimentary ? sql_query_getComplimentaryLastBillNo : ''}`;
+                                                       ${isOfficialForBill ? sql_query_getOfficialLastBillNo : ''}`;
                         connection.query(sql_query_getLastBillNo, (err, result) => {
                             if (err) {
                                 console.error("Error selecting last bill and token number:", err);
@@ -431,7 +452,7 @@ const addOnlinePickUpBillData = (req, res) => {
                             } else {
                                 const lastBillNo = result && result[0] && result[0][0].lastBillNo ? result[0][0].lastBillNo : 0;
                                 const lastTokenNo = result && result[0] && result[1][0].lastTokenNo ? result[1][0].lastTokenNo : 0;
-                                const officialLastBillNo = result && result[2] && result[2][0].officialLastBillNo ? result[2][0].officialLastBillNo : result && result[2] && result[2][0].complimentaryBillNo ? result[2][0].complimentaryBillNo : 0;
+                                const officialLastBillNo = result && result[2] && result[2][0].officialLastBillNo ? result[2][0].officialLastBillNo : 0;
 
                                 const nextBillNo = lastBillNo + 1;
                                 const nextOfficialBillNo = officialLastBillNo + 1;
@@ -459,21 +480,20 @@ const addOnlinePickUpBillData = (req, res) => {
                                                 '${billData.firmId}', 
                                                 'Online', 
                                                 'Online',
-                                                'Pick Up',
-                                                '${billData.billPayType}',
-                                                '${billData.discountType}',
-                                                ${billData.discountValue},
-                                                ${billData.totalDiscount},
+                                                '${billData.billType}',
+                                                'cash',
+                                                'none',
+                                                0,
+                                                0,
                                                 ${billData.subTotal},
                                                 ${billData.settledAmount},
                                                 ${billData.billComment ? `'${billData.billComment}'` : null},
                                                 STR_TO_DATE('${currentDate}','%b %d %Y'),
-                                                '${billData.billStatus}'`;
+                                                'Print'`;
                                 let sql_querry_addBillInfo = `INSERT INTO billing_data (billNumber,${columnData}) VALUES (${nextBillNo}, ${values})`;
                                 let sql_querry_addOfficialData = `INSERT INTO billing_Official_data (billNumber, ${columnData}) VALUES(${nextOfficialBillNo}, ${values})`;
-                                let sql_querry_addComplimentaryData = `INSERT INTO billing_Complimentary_data (billNumber, ${columnData}) VALUES(${nextOfficialBillNo}, ${values})`;
                                 let sql_querry_addBillData = `${sql_querry_addBillInfo};
-                                                              ${billData.isOfficial && !isComplimentary ? sql_querry_addOfficialData : isComplimentary ? sql_querry_addComplimentaryData : ''}`;
+                                                              ${isOfficialForBill ? sql_querry_addOfficialData : ''}`;
                                 connection.query(sql_querry_addBillData, (err) => {
                                     if (err) {
                                         console.error("Error inserting new bill number:", err);
@@ -537,9 +557,16 @@ const addOnlinePickUpBillData = (req, res) => {
                                                                     ...billData,
                                                                     firmData: firm[0][0],
                                                                     cashier: 'Online',
+                                                                    billPayType: 'cash',
+                                                                    discountType: 'none',
+                                                                    discountValue: 0,
+                                                                    totalDiscount: 0,
+                                                                    footerBill: billFooterNoteVal,
+                                                                    appriciateLine: appriciateLineVal,
+                                                                    isOfficial: isOfficialForBill,
                                                                     billNo: nextBillNo,
-                                                                    officialBillNo: billData.isOfficial && !isComplimentary ? nextOfficialBillNo : isComplimentary ? 'C' + nextOfficialBillNo : 'Not Available',
-                                                                    tokenNo: 'P' + nextTokenNo,
+                                                                    officialBillNo: isOfficialForBill ? nextOfficialBillNo : 'Not Available',
+                                                                    tokenNo: billData.billType === 'Delivery' ? 'D' + nextTokenNo : nextTokenNo,
                                                                     justToken: nextTokenNo,
                                                                     billDate: new Date(currentDate).toLocaleDateString('en-GB'),
                                                                     billTime: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
@@ -609,23 +636,23 @@ const addOnlinePickUpBillData = (req, res) => {
                             }
                         });
                     }
-                }
-            });
-        } catch (error) {
-            console.error('An error occurred', error);
-            connection.rollback(() => {
-                connection.release();
-                return res.status(500).json('Internal Server Error');
-            })
-        }
+                });
+            } catch (error) {
+                console.error('An error occurred', error);
+                connection.rollback(() => {
+                    connection.release();
+                    return res.status(500).json('Internal Server Error');
+                })
+            }
+        });
     });
-}
+};
 
 const addOnlineOrderData = (req, res) => {
     try {
         const billData = req.body;
 
-        if (!billData.customerDetails || !billData.firmId || !billData.subTotal || !billData.settledAmount || !billData.billPayType || !billData.billStatus || !billData.itemsData) {
+        if (!billData.customerDetails || !billData.billType || !billData.firmId || !billData.subTotal || !billData.settledAmount || !billData.itemsData) {
             return res.status(404).send('Please Fill All The Fields..!');
         }
 
@@ -647,7 +674,7 @@ const addOnlineOrderData = (req, res) => {
                                             stopAutoAcceptStartTime,
                                             stopAutoAcceptCloseTime
                                        FROM billing_category_data
-                                       WHERE categoryName = 'Pick Up'
+                                       WHERE categoryName = '${billData.billType}'
                                        LIMIT 1`;
 
         pool.query(sql_getPickUpCategory, (err, rows) => {
@@ -658,7 +685,7 @@ const addOnlineOrderData = (req, res) => {
 
             // If no config, default to existing online behaviour.
             if (!rows || !rows.length) {
-                return addOnlinePickUpBillData(req, res);
+                return addOnlineBillData(req, res);
             }
 
             const cfg = rows[0];
@@ -670,7 +697,7 @@ const addOnlineOrderData = (req, res) => {
 
             // Store closed by flag
             if (!onlineStoreStatus) {
-                return res.status(200).send('Store is close');
+                return res.status(404).send('Store is not open at this time');
             }
 
             const storeStartMinutes = timeToMinutes(cfg.storeStartTime);
@@ -685,12 +712,28 @@ const addOnlineOrderData = (req, res) => {
             }
 
             let shouldGoToPending = false;
-
-            // Amount range: if total > amountRange => pending
+            // amountRange: 0 => always pending.
+            // Delivery: auto-accept only when 300 <= total <= amountRange; else pending.
+            // Pick Up: auto-accept when total <= amountRange; if total > amountRange => pending.
             if (cfg.amountRange !== null && cfg.amountRange !== undefined) {
                 const rangeLimit = Number(cfg.amountRange);
-                if (!Number.isNaN(rangeLimit) && totalAmount > rangeLimit) {
-                    shouldGoToPending = true;
+                if (!Number.isNaN(rangeLimit)) {
+                    if (rangeLimit === 0) {
+                        shouldGoToPending = true;
+                    } else if (billData.billType === 'Delivery') {
+                        const deliveryMin = 300;
+                        const withinDeliveryBand =
+                            totalAmount >= deliveryMin && totalAmount <= rangeLimit;
+                        if (!withinDeliveryBand) {
+                            shouldGoToPending = true;
+                        }
+                    } else if (billData.billType === 'Pick Up') {
+                        if (totalAmount > rangeLimit) {
+                            shouldGoToPending = true;
+                        }
+                    } else if (totalAmount > rangeLimit) {
+                        shouldGoToPending = true;
+                    }
                 }
             }
 
@@ -717,9 +760,9 @@ const addOnlineOrderData = (req, res) => {
             }
 
             if (shouldGoToPending) {
-                return addPickUpPendingBillData(req, res);
+                return addOnlinePendingBillData(req, res);
             } else {
-                return addOnlinePickUpBillData(req, res);
+                return addOnlineBillData(req, res);
             }
         });
     } catch (error) {
@@ -788,17 +831,27 @@ const addOnlineHotelOrderData = (req, res) => {
             // Store closed by main time window (if start === end → treat as 24h open, skip this check)
             if (storeStartMinutes !== null && storeEndMinutes !== null && !storeHours24hEqual) {
                 if (nowMinutes < storeStartMinutes || nowMinutes > storeEndMinutes) {
-                    return res.status(200).send('Store is close');
+                    return res.status(404).send('Store is not open at this time');
                 }
             }
 
             let shouldGoToPending = false;
 
-            // Amount range: if total > amountRange => pending
+            // Hotel amountRange: 0 => always pending.
+            // Otherwise auto-accept only when 300 <= total <= amountRange; else pending.
             if (cfg.amountRange !== null && cfg.amountRange !== undefined) {
                 const rangeLimit = Number(cfg.amountRange);
-                if (!Number.isNaN(rangeLimit) && totalAmount > rangeLimit) {
-                    shouldGoToPending = true;
+                if (!Number.isNaN(rangeLimit)) {
+                    if (rangeLimit === 0) {
+                        shouldGoToPending = true;
+                    } else {
+                        const hotelMin = 100;
+                        const withinHotelBand =
+                            totalAmount >= hotelMin && totalAmount <= rangeLimit;
+                        if (!withinHotelBand) {
+                            shouldGoToPending = true;
+                        }
+                    }
                 }
             }
 
@@ -838,7 +891,7 @@ const addOnlineHotelOrderData = (req, res) => {
 
 module.exports = {
     addOnlineHotelBillData,
-    addOnlinePickUpBillData,
+    addOnlineBillData,
     addOnlineOrderData,
     addOnlineHotelOrderData
 }

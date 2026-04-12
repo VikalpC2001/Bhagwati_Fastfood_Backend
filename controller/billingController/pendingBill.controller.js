@@ -218,7 +218,7 @@ function mapPendingToPickUpOnlineBody(p) {
             comment: row.comment,
             ...(row.inputCode != null && String(row.inputCode) !== '' ? { inputCode: row.inputCode } : {})
         })),
-        billType: 'Pick Up',
+        billType: p.billType,
         isOfficial: p.isOfficial
     };
 }
@@ -247,7 +247,11 @@ function createResWithPendingCleanup(pendingId, req, res) {
                 const pendingCount = rows && rows[0] ? rows[0].pendingNo : 0;
                 req?.io?.emit('pendingBillList');
                 req?.io?.emit('getpendingCount', pendingCount);
-                req?.io?.emit(`order_${pendingId}`, { orderAccept: true });
+                const orderAcceptPayload = { orderAccept: true };
+                if (body != null && typeof body === 'object' && !Array.isArray(body) && body.tokenNo != null) {
+                    orderAcceptPayload.tokenNo = body.tokenNo;
+                }
+                req?.io?.emit(`order_${pendingId}`, orderAcceptPayload);
                 return res.status(200).send(body);
             });
         });
@@ -389,7 +393,7 @@ const acceptPendingBillData = (req, res) => {
                 return res.status(404).send('Pending Id Not Found');
             }
 
-            const { addOnlineHotelBillData, addOnlinePickUpBillData } = require('./onlineBilling.controller');
+            const { addOnlineHotelBillData, addOnlineBillData } = require('./onlineBilling.controller');
             const fakeReq = { body: {}, io: req.io };
             const fakeRes = createResWithPendingCleanup(pendingId, req, res);
 
@@ -400,10 +404,11 @@ const acceptPendingBillData = (req, res) => {
                 }
                 if (pendingJson.billType === 'Pick Up') {
                     fakeReq.body = mapPendingToPickUpOnlineBody(pendingJson);
-                    return addOnlinePickUpBillData(fakeReq, fakeRes);
+                    return addOnlineBillData(fakeReq, fakeRes);
                 }
                 if (pendingJson.billType === 'Delivery') {
-                    return res.status(501).send('Delivery pending accept is not supported yet; use POS or extend online delivery');
+                    fakeReq.body = mapPendingToPickUpOnlineBody(pendingJson);
+                    return addOnlineBillData(fakeReq, fakeRes);
                 }
                 return res.status(400).send('Unsupported bill type for accept');
             } catch (mapErr) {
@@ -602,7 +607,7 @@ const addHotelPendingBillData = (req, res) => {
 
 // Add Pending PickUp Bill Data
 
-const addPickUpPendingBillData = (req, res) => {
+const addOnlinePendingBillData = (req, res) => {
     pool2.getConnection((err, connection) => {
         if (err) {
             console.error("Error getting database connection:", err);
@@ -617,7 +622,7 @@ const addPickUpPendingBillData = (req, res) => {
                 } else {
                     const currentDate = getCurrentDate();
                     const pendingData = req.body;
-                    if (!pendingData.customerDetails || !pendingData.firmId || !pendingData.subTotal || !pendingData.settledAmount || !pendingData.billPayType || !pendingData.billStatus || !pendingData.itemsData) {
+                    if (!pendingData.customerDetails || !pendingData.billType || !pendingData.firmId || !pendingData.subTotal || !pendingData.settledAmount || !pendingData.itemsData) {
                         connection.rollback(() => {
                             connection.release();
                             return res.status(404).send('Please Fill All The Fields..!');
@@ -646,11 +651,11 @@ const addPickUpPendingBillData = (req, res) => {
                                         '${pendingData.firmId}', 
                                         'Online', 
                                         'Online',
-                                        'Pick Up',
-                                        '${pendingData.billPayType}',
-                                        '${pendingData.discountType}',
-                                        ${pendingData.discountValue},
-                                        ${pendingData.totalDiscount},
+                                        '${pendingData.billType}',
+                                        'cash',
+                                        'none',
+                                        0,
+                                        0,
                                         ${pendingData.subTotal},
                                         ${pendingData.settledAmount},
                                         ${pendingData.billComment ? `'${pendingData.billComment}'` : null},
@@ -694,161 +699,6 @@ const addPickUpPendingBillData = (req, res) => {
                                                 if (customerData && customerData.mobileNo || customerData && customerData.mobileNo) {
                                                     let sql_query_addAddressRelation = `INSERT INTO pending_billWiseCustomer_data(bwcId, pendingId, customerId, addressId, mobileNo, customerName, address, locality)
                                                                                         VALUES ('${bwcId}', '${pendingId}', ${customerData.customerId ? `'${customerData.customerId}'` : null}, ${customerData.addressId ? `'${customerData.addressId}'` : null}, ${customerData.mobileNo ? `TRIM('${customerData.mobileNo}')` : null}, ${customerData.customerName ? `TRIM('${customerData.customerName}')` : null}, ${customerData.address ? `'${customerData.address}'` : null}, ${customerData.locality ? `'${customerData.locality}'` : null})`;
-                                                    connection.query(sql_query_addAddressRelation, (err) => {
-                                                        if (err) {
-                                                            console.error("Error inserting Bill Wise Customer Data:", err);
-                                                            connection.rollback(() => {
-                                                                connection.release();
-                                                                return res.status(500).send('Database Error');
-                                                            });
-                                                        } else {
-                                                            connection.commit((err) => {
-                                                                if (err) {
-                                                                    console.error("Error committing transaction:", err);
-                                                                    connection.rollback(() => {
-                                                                        connection.release();
-                                                                        return res.status(500).send('Database Error');
-                                                                    });
-                                                                } else {
-                                                                    connection.release();
-                                                                    req?.io?.emit('pendingBillList');
-                                                                    req?.io?.emit('notification');
-                                                                    req?.io?.emit('getpendingCount', pendingCount);
-                                                                    return res.status(200).send({ pendingId: pendingId });
-                                                                }
-                                                            });
-                                                        }
-                                                    });
-                                                } else {
-                                                    connection.commit((err) => {
-                                                        if (err) {
-                                                            console.error("Error committing transaction:", err);
-                                                            connection.rollback(() => {
-                                                                connection.release();
-                                                                return res.status(500).send('Database Error');
-                                                            });
-                                                        } else {
-                                                            connection.release();
-                                                            req?.io?.emit('pendingBillList');
-                                                            req?.io?.emit('notification');
-                                                            req?.io?.emit('getpendingCount', pendingCount);
-                                                            return res.status(200).send({ pendingId: pendingId });
-                                                        }
-                                                    });
-                                                }
-                                            }
-                                        })
-                                    }
-                                });
-                            }
-                        });
-                    }
-                }
-            });
-        } catch (error) {
-            console.error('An error occurred', error);
-            connection.rollback(() => {
-                connection.release();
-                return res.status(500).json('Internal Server Error');
-            })
-        }
-    });
-}
-
-// Add Pending Delivery Bill Data
-
-const addDeliveryPendingBillData = (req, res) => {
-    pool2.getConnection((err, connection) => {
-        if (err) {
-            console.error("Error getting database connection:", err);
-            return res.status(500).send('Database Error');
-        }
-        try {
-            connection.beginTransaction((err) => {
-                if (err) {
-                    console.error("Error beginning transaction:", err);
-                    connection.release();
-                    return res.status(500).send('Database Error');
-                } else {
-                    const currentDate = getCurrentDate();
-                    const pendingData = req.body;
-                    if (!pendingData.customerDetails || !pendingData.firmId || !pendingData.subTotal || !pendingData.settledAmount || !pendingData.billPayType || !pendingData.billStatus || !pendingData.itemsData) {
-                        connection.rollback(() => {
-                            connection.release();
-                            return res.status(404).send('Please Fill All The Fields..!');
-                        })
-                    } else {
-
-                        const uid1 = new Date();
-                        const pendingId = String("pending_" + uid1.getTime());
-                        const bwcId = String("bwc_" + uid1.getTime());
-
-                        const columnData = `pendingId,
-                                            firmId,
-                                            cashier,
-                                            menuStatus,
-                                            billType,
-                                            billPayType,
-                                            discountType,
-                                            discountValue,
-                                            totalDiscount,
-                                            totalAmount,
-                                            settledAmount,
-                                            billComment,
-                                            billDate,
-                                            billStatus`;
-                        const values = `'${pendingId}',
-                                        '${pendingData.firmId}', 
-                                        'Online', 
-                                        'Online',
-                                        'Pick Up',
-                                        '${pendingData.billPayType}',
-                                        '${pendingData.discountType}',
-                                        ${pendingData.discountValue},
-                                        ${pendingData.totalDiscount},
-                                        ${pendingData.subTotal},
-                                        ${pendingData.settledAmount},
-                                        ${pendingData.billComment ? `'${pendingData.billComment}'` : null},
-                                        STR_TO_DATE('${currentDate}','%b %d %Y'),
-                                        'Pending'`;
-                        let sql_querry_addPendingBillInfo = `INSERT INTO pending_data (${columnData}) VALUES (${values})`;
-                        connection.query(sql_querry_addPendingBillInfo, (err) => {
-                            if (err) {
-                                console.error("Error inserting new Pending Data:", err);
-                                connection.rollback(() => {
-                                    connection.release();
-                                    return res.status(500).send('Database Error');
-                                });
-                            } else {
-                                const billItemData = pendingData.itemsData
-                                let addBillWiseItemData = billItemData.map((item, index) => {
-                                    let uniqueId = `iwb_${Date.now() + index + '_' + index}`; // Generating a unique ID using current timestamp
-                                    return `('${uniqueId}', '${pendingId}', '${item.itemId}', ${item.qty}, '${item.unit}', ${item.itemPrice}, ${item.price}, ${item.comment ? `'${item.comment}'` : null})`;
-                                }).join(', ');
-                                let sql_query_addItems = `INSERT INTO pending_billWiseItem_data(iwbId, pendingId, itemId, qty, unit, itemPrice, price, comment)
-                                                          VALUES ${addBillWiseItemData}`;
-                                connection.query(sql_query_addItems, (err) => {
-                                    if (err) {
-                                        console.error("Error inserting Bill Wise Item Data:", err);
-                                        connection.rollback(() => {
-                                            connection.release();
-                                            return res.status(500).send('Database Error');
-                                        });
-                                    } else {
-                                        let sql_query_getpendingCount = `SELECT COUNT(*) AS pendingNo FROM pending_data WHERE billStatus = 'Pending'`;
-                                        connection.query(sql_query_getpendingCount, (err, count) => {
-                                            if (err) {
-                                                console.error("Error inserting Bill Wise Item Data:", err);
-                                                connection.rollback(() => {
-                                                    connection.release();
-                                                    return res.status(500).send('Database Error');
-                                                });
-                                            } else {
-                                                let pendingCount = count && count[0] ? count[0].pendingNo : 0;
-                                                const customerData = pendingData.customerDetails;
-                                                if (customerData && customerData.mobileNo || customerData && customerData.mobileNo) {
-                                                    let sql_query_addAddressRelation = `INSERT INTO pending_billWiseCustomer_data(bwcId, pendingId, customerId, addressId, mobileNo, customerName, address, locality)
-                                                                                        VALUES ('${bwcId}', '${pendingId}', '${null}', '${null}', ${customerData.mobileNo ? `TRIM('${customerData.mobileNo}')` : null}, ${customerData.customerName ? `TRIM('${customerData.customerName}')` : null}, ${customerData.address ? `'${customerData.address}'` : null}, ${customerData.locality ? `'${customerData.locality}'` : null})`;
                                                     connection.query(sql_query_addAddressRelation, (err) => {
                                                         if (err) {
                                                             console.error("Error inserting Bill Wise Customer Data:", err);
@@ -954,7 +804,6 @@ module.exports = {
     acceptPendingBillData,
     rejectPendingBillData,
     addHotelPendingBillData,
-    addPickUpPendingBillData,
-    addDeliveryPendingBillData,
+    addOnlinePendingBillData,
     discardpendingData
 }

@@ -972,7 +972,6 @@ const addHotelBillData = (req, res) => {
                                                            FOR UPDATE;
                                                            SELECT COALESCE(MAX(tokenNo),0) AS lastTokenNo FROM billing_token_data WHERE billType = '${billData.billType}' AND billDate = STR_TO_DATE('${currentDate}','%b %d %Y') FOR UPDATE;
                                                            ${billData.isOfficial && !isComplimentary ? sql_query_getOfficialLastBillNo : isComplimentary ? sql_query_getComplimentaryLastBillNo : ''}`;
-                            console.log(billData);
                             connection.query(sql_query_getLastBillNo, (err, result) => {
                                 if (err) {
                                     console.error("Error selecting last bill and token number:", err);
@@ -1223,7 +1222,6 @@ const addPickUpBillData = (req, res) => {
                                                            FOR UPDATE;
                                                            SELECT COALESCE(MAX(tokenNo),0) AS lastTokenNo FROM billing_token_data WHERE billType = '${billData.billType}' AND billDate = STR_TO_DATE('${currentDate}','%b %d %Y') FOR UPDATE;
                                                            ${billData.isOfficial && !isComplimentary ? sql_query_getOfficialLastBillNo : isComplimentary ? sql_query_getComplimentaryLastBillNo : ''}`;
-                            console.log(sql_query_getLastBillNo);
                             connection.query(sql_query_getLastBillNo, (err, result) => {
                                 if (err) {
                                     console.error("Error selecting last bill and token number:", err);
@@ -1876,6 +1874,7 @@ const addDeliveryBillData = (req, res) => {
 
                         const currentDate = getCurrentDate();
                         const billData = req.body;
+
                         if (!billData.customerDetails || !billData.billType || !billData.firmId || !billData.subTotal || !billData.settledAmount || !billData.billPayType || !billData.billStatus || !billData.itemsData || !billData.customerDetails.mobileNo) {
                             connection.rollback(() => {
                                 connection.release();
@@ -2566,7 +2565,6 @@ const updateHotelBillData = (req, res) => {
                                 return res.status(404).send('Please Fill All The Fields..!');
                             })
                         } else {
-                            console.log(billData);
                             const isComplimentary = billData.billPayType == 'complimentary' ? true : false;
                             const resetStartDateExpr = `STR_TO_DATE(
                                                             CONCAT(
@@ -2848,7 +2846,6 @@ const updatePickUpBillData = (req, res) => {
 
                         const currentDate = getCurrentDate();
                         const billData = req.body;
-
 
                         if (!billData.billId || !billData.firmId || !billData.customerDetails || !billData.subTotal || !billData.settledAmount || !billData.billPayType || !billData.billStatus || !billData.itemsData) {
                             connection.rollback(() => {

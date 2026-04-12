@@ -110,7 +110,7 @@ router.get('/getAdminServerId', protect, billingController.getAdminServerId);
 const onlineBillingController = require("../../controller/billingController/onlineBilling.controller.js");
 
 router.post('/addOnlineHotelBillData', onlineBillingController.addOnlineHotelBillData);
-router.post('/addOnlinePickUpBillData', onlineBillingController.addOnlinePickUpBillData);
+router.post('/addOnlineBillData', onlineBillingController.addOnlineBillData);
 router.post('/addOnlineOrderData', onlineBillingController.addOnlineOrderData);
 router.post('/addOnlineHotelOrderData', onlineBillingController.addOnlineHotelOrderData);
 
@@ -136,8 +136,7 @@ router.get('/getPendingBillDataById', protect, pendingController.getPendingBillD
 router.get('/acceptPendingBillData', protect, pendingController.acceptPendingBillData);
 router.get('/rejectPendingBillData', protect, pendingController.rejectPendingBillData);
 router.post('/addHotelPendingBillData', protect, pendingController.addHotelPendingBillData);
-router.post('/addPickUpPendingBillData', protect, pendingController.addPickUpPendingBillData);
-router.post('/addDeliveryPendingBillData', protect, pendingController.addDeliveryPendingBillData);
+router.post('/addOnlinePendingBillData', protect, pendingController.addOnlinePendingBillData);
 router.delete('/discardpendingData', protect, pendingController.discardpendingData);
 
 // Printer Routs

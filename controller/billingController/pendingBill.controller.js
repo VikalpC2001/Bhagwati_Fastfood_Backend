@@ -536,8 +536,16 @@ const addHotelPendingBillData = (req, res) => {
                             });
                         } else {
                             let sql_query_addHotelDetalis = `INSERT INTO pending_hotelInfo_data (hotelInfoId, pendingId, hotelId, roomNo, customerName, phoneNumber)
-                                                             VALUES('${hotelInfoId}', '${pendingId}', '${pendingData.hotelId}', ${pendingData.roomNo ? `'${pendingData.roomNo}'` : null}, ${pendingData.customerName ? `'${pendingData.customerName}'` : null}, ${pendingData.mobileNo ? `'${pendingData.mobileNo}'` : null})`;
-                            connection.query(sql_query_addHotelDetalis, (err) => {
+                                                             VALUES(?, ?, ?, ?, ?, ?)`;
+                            const sql_query_addHotelDetalis_values = [
+                                hotelInfoId,
+                                pendingId,
+                                pendingData.hotelId,
+                                pendingData.roomNo || null,
+                                pendingData.customerName || null,
+                                pendingData.mobileNo || null
+                            ];
+                            connection.query(sql_query_addHotelDetalis, sql_query_addHotelDetalis_values, (err) => {
                                 if (err) {
                                     console.error("Error inserting Hotel Info Details:", err);
                                     connection.rollback(() => {
@@ -698,8 +706,18 @@ const addOnlinePendingBillData = (req, res) => {
                                                 const customerData = pendingData.customerDetails;
                                                 if (customerData && customerData.mobileNo || customerData && customerData.mobileNo) {
                                                     let sql_query_addAddressRelation = `INSERT INTO pending_billWiseCustomer_data(bwcId, pendingId, customerId, addressId, mobileNo, customerName, address, locality)
-                                                                                        VALUES ('${bwcId}', '${pendingId}', ${customerData.customerId ? `'${customerData.customerId}'` : null}, ${customerData.addressId ? `'${customerData.addressId}'` : null}, ${customerData.mobileNo ? `TRIM('${customerData.mobileNo}')` : null}, ${customerData.customerName ? `TRIM('${customerData.customerName}')` : null}, ${customerData.address ? `'${customerData.address}'` : null}, ${customerData.locality ? `'${customerData.locality}'` : null})`;
-                                                    connection.query(sql_query_addAddressRelation, (err) => {
+                                                                                        VALUES (?, ?, ?, ?, TRIM(?), TRIM(?), ?, ?)`;
+                                                    const sql_query_addAddressRelation_values = [
+                                                        bwcId,
+                                                        pendingId,
+                                                        customerData.customerId || null,
+                                                        customerData.addressId || null,
+                                                        customerData.mobileNo || null,
+                                                        customerData.customerName || null,
+                                                        customerData.address || null,
+                                                        customerData.locality || null
+                                                    ];
+                                                    connection.query(sql_query_addAddressRelation, sql_query_addAddressRelation_values, (err) => {
                                                         if (err) {
                                                             console.error("Error inserting Bill Wise Customer Data:", err);
                                                             connection.rollback(() => {

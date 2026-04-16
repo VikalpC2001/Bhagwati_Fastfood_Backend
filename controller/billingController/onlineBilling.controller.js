@@ -245,8 +245,16 @@ const addOnlineHotelBillData = (req, res) => {
                                     return;
                                 }
                                 let sql_query_addHotelDetalis = `INSERT INTO billing_hotelInfo_data(hotelInfoId, billId, hotelId, roomNo, customerName, phoneNumber)
-                                                                 VALUES('${hotelInfoId}', '${billId}', '${billData.hotelId}', ${billData.roomNo ? `'${billData.roomNo}'` : null}, ${billData.customerName ? `'${billData.customerName}'` : null}, ${billData.mobileNo ? `'${billData.mobileNo}'` : null})`;
-                                connection.query(sql_query_addHotelDetalis, (hotelInfoErr) => {
+                                                                 VALUES(?, ?, ?, ?, ?, ?)`;
+                                const sql_query_addHotelDetalis_values = [
+                                    hotelInfoId,
+                                    billId,
+                                    billData.hotelId,
+                                    billData.roomNo || null,
+                                    billData.customerName || null,
+                                    billData.mobileNo || null
+                                ];
+                                connection.query(sql_query_addHotelDetalis, sql_query_addHotelDetalis_values, (hotelInfoErr) => {
                                     if (hotelInfoErr) {
                                         console.error("Error inserting Hotel Info Details:", hotelInfoErr);
                                         connection.rollback(() => {
@@ -286,7 +294,7 @@ const addOnlineHotelBillData = (req, res) => {
                                                 ? `INSERT INTO billing_billWiseUpi_data(bwuId, onlineId, billId, amount, onlineDate)
                                                                                VALUES('${bwuId}', '${billData.onlineId}', '${billId}', '${amountAfterDiscount}', STR_TO_DATE('${currentDate}','%b %d %Y'));`
                                                 : ''}
-                                                                     SELECT adminMacAddress FROM billing_admin_data LIMIT 1`;
+                                                SELECT adminMacAddress FROM billing_admin_data LIMIT 1`;
                                         connection.query(sql_query_getFirmData, (firmErr, firm) => {
                                             if (firmErr) {
                                                 console.error("Error in firm/addon/upi queries:", firmErr);
@@ -576,8 +584,18 @@ const addOnlineBillData = (req, res) => {
                                                                 const customerData = billData.customerDetails;
                                                                 if (customerData && customerData.mobileNo || customerData && customerData.mobileNo) {
                                                                     let sql_query_addAddressRelation = `INSERT INTO billing_billWiseCustomer_data(bwcId, billId, customerId, addressId, mobileNo, customerName, address, locality)
-                                                                                                        VALUES ('${bwcId}', '${billId}', ${customerData.customerId ? `'${customerData.customerId}'` : null}, ${customerData.addressId ? `'${customerData.addressId}'` : null}, ${customerData.mobileNo ? `TRIM('${customerData.mobileNo}')` : null}, ${customerData.customerName ? `TRIM('${customerData.customerName}')` : null}, ${customerData.address ? `'${customerData.address}'` : null}, ${customerData.locality ? `'${customerData.locality}'` : null})`;
-                                                                    connection.query(sql_query_addAddressRelation, (err) => {
+                                                                                                        VALUES (?, ?, ?, ?, TRIM(?), TRIM(?), ?, ?)`;
+                                                                    const sql_query_addAddressRelation_values = [
+                                                                        bwcId,
+                                                                        billId,
+                                                                        customerData.customerId || null,
+                                                                        customerData.addressId || null,
+                                                                        customerData.mobileNo || null,
+                                                                        customerData.customerName || null,
+                                                                        customerData.address || null,
+                                                                        customerData.locality || null
+                                                                    ];
+                                                                    connection.query(sql_query_addAddressRelation, sql_query_addAddressRelation_values, (err) => {
                                                                         if (err) {
                                                                             console.error("Error inserting Bill Wise Customer Data:", err);
                                                                             connection.rollback(() => {
@@ -707,7 +725,7 @@ const addOnlineOrderData = (req, res) => {
             // Store closed by main time window (if start === end → treat as 24h open, skip this check)
             if (storeStartMinutes !== null && storeEndMinutes !== null && !storeHours24hEqual) {
                 if (nowMinutes < storeStartMinutes || nowMinutes > storeEndMinutes) {
-                    return res.status(200).send('Store is close');
+                    return res.status(404).send('Store is close');
                 }
             }
 
@@ -821,7 +839,7 @@ const addOnlineHotelOrderData = (req, res) => {
 
             // Store closed by flag
             if (!onlineStoreStatus) {
-                return res.status(200).send('Store is close');
+                return res.status(404).send('Store is close');
             }
 
             const storeStartMinutes = timeToMinutes(cfg.storeStartTime);

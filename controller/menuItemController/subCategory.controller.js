@@ -174,29 +174,60 @@ const getSubCategoryList = (req, res) => {
 const getSubCategoryListForMobile = (req, res) => {
     try {
         const menuId = req.query.menuId ? req.query.menuId : process.env.BASE_MENU;
-        sql_querry_getddlCategory = `SELECT 
-                                            subCategoryId, 
-                                            subCategoryName,
-                                            (
-                                                SELECT COUNT(*)
-                                                FROM item_menuList_data imd
-                                                WHERE imd.itemSubCategory = subCategoryId
-                                            ) AS numberOfItem,
-                                            CASE
-                                                WHEN EXISTS (
-                                                    SELECT 1
-                                                    FROM item_unitWisePrice_data iup
-                                                    JOIN item_menuList_data id ON id.itemId = iup.itemId
-                                                    WHERE id.itemSubCategory = subCategoryId
-                                                      AND iup.status = 1 AND iup.menuCategoryId = '${menuId}'
-                                                ) THEN true
-                                                ELSE false
-                                            END AS status,
-                                            imgLink AS imageLink
-                                         FROM item_subCategory_data
-                                         HAVING status = 1
-                                         ORDER BY displayRank ASC`;
-
+        sql_querry_getddlCategory = `SELECT
+                                         sc.subCategoryId,
+                                         sc.subCategoryName,
+                                         (
+                                             SELECT COUNT(*)
+                                             FROM item_menuList_data imd
+                                             WHERE imd.itemSubCategory = sc.subCategoryId
+                                         ) AS numberOfItem,
+                                         CASE
+                                             WHEN EXISTS (
+                                                 SELECT 1
+                                                 FROM item_unitWisePrice_data iup
+                                                 INNER JOIN item_menuList_data imd
+                                                     ON imd.itemId = iup.itemId
+                                                 WHERE imd.itemSubCategory = sc.subCategoryId
+                                                   AND iup.status = 1
+                                                   AND iup.menuCategoryId = '${menuId}'
+                                             ) THEN 1
+                                             ELSE 0
+                                         END AS status,
+                                         sc.imgLink AS imageLink
+                                     FROM item_subCategory_data sc
+                                     WHERE
+                                     (
+                                         -- No periods configured => Available all day
+                                         NOT EXISTS (
+                                             SELECT 1
+                                             FROM item_subCategoryPeriod_data sp
+                                             WHERE sp.subCategoryId = sc.subCategoryId
+                                         )
+                                         OR
+                                         -- Current time falls within at least one configured period
+                                         EXISTS (
+                                             SELECT 1
+                                             FROM item_subCategoryPeriod_data sp
+                                             WHERE sp.subCategoryId = sc.subCategoryId
+                                             AND (
+                                                 (
+                                                     sp.startTime <= sp.endTime
+                                                     AND CURTIME() BETWEEN sp.startTime AND sp.endTime
+                                                 )
+                                                 OR
+                                                 (
+                                                     sp.startTime > sp.endTime
+                                                     AND (
+                                                         CURTIME() >= sp.startTime
+                                                         OR CURTIME() <= sp.endTime
+                                                     )
+                                                 )
+                                             )
+                                         )
+                                     )
+                                     HAVING status = 1   
+                                     ORDER BY sc.displayRank ASC`;
         pool.query(sql_querry_getddlCategory, (err, data) => {
             if (err) {
                 console.error("An error occurred in SQL Queery", err);

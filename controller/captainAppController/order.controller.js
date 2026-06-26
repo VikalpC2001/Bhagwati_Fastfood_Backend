@@ -64,7 +64,6 @@ const addDineInOrderByApp = (req, res) => {
                     token = req.headers ? req.headers.authorization.split(" ")[1] : null;
                     if (token) {
                         const decoded = jwt.verify(token, process.env.JWT_SECRET);
-                        console.log(decoded);
                         const cashier = decoded.id.firstName;
 
                         const currentDate = getCurrentDate();
@@ -692,7 +691,6 @@ const updateSubTokenDataByIdForApp = (req, res) => {
                         const cashier = decoded.id.firstName;
                         const currentDate = getCurrentDate();
                         const billData = req.body;
-                        console.log("gggg", billData);
                         if (!billData.subTokenId || !billData.billId || !billData.subTokenNumber || !billData.settledAmount || !billData.subTotal || !billData.itemsData.length) {
                             connection.rollback(() => {
                                 connection.release();
@@ -769,10 +767,6 @@ const updateSubTokenDataByIdForApp = (req, res) => {
                                                                 const json2 = Object.values(JSON.parse(JSON.stringify(billData.itemsData)));
 
                                                                 const { added, removed, modified } = compareJson(json1, json2);
-
-                                                                console.log("addd+++", added);
-                                                                console.log("Remove---", removed);
-                                                                console.log("Updated", modified);
 
                                                                 if (added.length || removed.length || modified.length) {
                                                                     const modifiedNewJson = modified.map(({ new: newItem }) => newItem);

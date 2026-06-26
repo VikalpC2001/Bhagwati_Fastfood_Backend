@@ -160,7 +160,7 @@ const getSocialLinks = (req, res) => {
                 "firmAddress": "Palace Road, Rajkot",
                 "pincode": 360001,
                 "firmMobileNo": "9825360287",
-                "otherMobileNo": "9879248281",
+                "otherMobileNo": "9099984949",
             },
             "socialLinks": {
                 "Instagram": "https://www.instagram.com/bhagwati_fastfood?igsh=MW5ibnk1dTIxeGUwcQ==",

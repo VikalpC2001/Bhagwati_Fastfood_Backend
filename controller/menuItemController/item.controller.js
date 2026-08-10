@@ -613,8 +613,7 @@ const exportPdfForItemSalesReport = (req, res) => {
             subCategoryId: req.query.subCategoryId ? req.query.subCategoryId : null,
             billType: req.query.billType ? req.query.billType : '',
             startDate: (req.query.startDate ? req.query.startDate : '').slice(4, 15),
-            endDate: (req.query.endDate ? req.query.endDate : '').slice(4, 15),
-            menuCategoryId: req.query.menuCategoryId ? req.query.menuCategoryId : process.env.BASE_MENU
+            endDate: (req.query.endDate ? req.query.endDate : '').slice(4, 15)
         }
         let sql_querry_getDetails = `SELECT
                                          uwi.itemId,
@@ -636,7 +635,7 @@ const exportPdfForItemSalesReport = (req, res) => {
                                      AND uwi.unit = bbi.unit 
                                      AND bbi.billDate BETWEEN STR_TO_DATE('${data.startDate ? data.startDate : firstDay}', '%b %d %Y') AND STR_TO_DATE('${data.endDate ? data.endDate : lastDay}', '%b %d %Y')
                                      AND bbi.billType LIKE '%` + data.billType + `%'
-                                     WHERE uwi.menuCategoryId = '${data.menuCategoryId}' ${data.subCategoryId ? `AND iscd.subCategoryId = '${data.subCategoryId}'` : ''}
+                                     WHERE uwi.menuCategoryId = '${process.env.BASE_MENU}' ${data.subCategoryId ? `AND iscd.subCategoryId = '${data.subCategoryId}'` : ''}
                                      GROUP BY
                                          uwi.itemId,
                                          uwi.unit,
@@ -768,6 +767,7 @@ async function createMenuPricePDF(res, datas) {
 const exportPdfForMenuItemPriceList = (req, res) => {
     try {
         const subCategoryId = req.query.subCategoryId ? req.query.subCategoryId : null;
+        const menuCategoryId = req.query.menuCategoryId ? req.query.menuCategoryId : process.env.BASE_MENU;
         let sql_querry_getDetails = `SELECT
                                          uwi.itemId,
                                          CONCAT(item.itemName, ' (', uwi.unit, ')') AS itemName,
@@ -779,7 +779,7 @@ const exportPdfForMenuItemPriceList = (req, res) => {
                                          item_unitWisePrice_data AS uwi
                                      INNER JOIN item_menuList_data AS item ON item.itemId = uwi.itemId
                                      INNER JOIN item_subCategory_data AS iscd ON iscd.subCategoryId = item.itemSubCategory
-                                     WHERE uwi.menuCategoryId = '${process.env.BASE_MENU}'
+                                     WHERE uwi.menuCategoryId = '${menuCategoryId}'
                                      ${subCategoryId ? `AND iscd.subCategoryId = '${subCategoryId}'` : ''}
                                      GROUP BY
                                          uwi.itemId,

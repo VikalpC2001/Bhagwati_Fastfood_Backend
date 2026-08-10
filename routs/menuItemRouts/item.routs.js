@@ -58,6 +58,7 @@ router.get('/updateItemStatus', protect, itemController.updateItemStatus);
 router.get('/getItemSalesReport', protect, itemController.getItemSalesReport);
 router.post('/updateItemPriceByMenuId', protect, itemController.updateItemPriceByMenuId);
 router.get('/exportPdfForItemSalesReport', itemController.exportPdfForItemSalesReport);
+router.get('/exportPdfForMenuItemPriceList', itemController.exportPdfForMenuItemPriceList);
 router.get('/getItmeDataForTouchView', itemController.getItmeDataForTouchView);
 router.get('/getItemDataByCode', itemController.getItemDataByCode);
 router.get('/getItemDataForOnlineOrder', itemController.getItemDataForOnlineOrder);

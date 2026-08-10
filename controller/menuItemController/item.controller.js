@@ -613,7 +613,8 @@ const exportPdfForItemSalesReport = (req, res) => {
             subCategoryId: req.query.subCategoryId ? req.query.subCategoryId : null,
             billType: req.query.billType ? req.query.billType : '',
             startDate: (req.query.startDate ? req.query.startDate : '').slice(4, 15),
-            endDate: (req.query.endDate ? req.query.endDate : '').slice(4, 15)
+            endDate: (req.query.endDate ? req.query.endDate : '').slice(4, 15),
+            menuCategoryId: req.query.menuCategoryId ? req.query.menuCategoryId : process.env.BASE_MENU
         }
         let sql_querry_getDetails = `SELECT
                                          uwi.itemId,
@@ -635,7 +636,7 @@ const exportPdfForItemSalesReport = (req, res) => {
                                      AND uwi.unit = bbi.unit 
                                      AND bbi.billDate BETWEEN STR_TO_DATE('${data.startDate ? data.startDate : firstDay}', '%b %d %Y') AND STR_TO_DATE('${data.endDate ? data.endDate : lastDay}', '%b %d %Y')
                                      AND bbi.billType LIKE '%` + data.billType + `%'
-                                     WHERE uwi.menuCategoryId = '${process.env.BASE_MENU}' ${data.subCategoryId ? `AND iscd.subCategoryId = '${data.subCategoryId}'` : ''}
+                                     WHERE uwi.menuCategoryId = '${data.menuCategoryId}' ${data.subCategoryId ? `AND iscd.subCategoryId = '${data.subCategoryId}'` : ''}
                                      GROUP BY
                                          uwi.itemId,
                                          uwi.unit,
@@ -686,6 +687,145 @@ const exportPdfForItemSalesReport = (req, res) => {
                     });
             }
         })
+    } catch (error) {
+        console.error('An error occurred', error);
+        res.status(500).send('Internal Server Error');
+    }
+}
+
+/**
+ * PDF export for menu item original prices, grouped by subcategory.
+ * @param {import('express').Response} res
+ * @param {Record<string, { items: Array<object> }>} datas
+ */
+async function createMenuPricePDF(res, datas) {
+    try {
+        const doc = new jsPDF();
+
+        function addSection(doc, title, items, isFirstPage = false) {
+            if (!isFirstPage) {
+                doc.addPage();
+            }
+            doc.text(title, 14, 20);
+
+            const tableData = items.map((item, index) => (
+                [
+                    index + 1,
+                    item.itemName,
+                    parseFloat(item.price || 0).toLocaleString('en-IN'),
+                    ''
+                ]
+            ));
+
+            const head = [['Sr.', 'Item Name', 'Price', 'New Price']];
+
+            doc.autoTable({
+                head: head,
+                body: tableData,
+                startY: 30,
+                theme: 'grid',
+                styles: {
+                    cellPadding: 2,
+                    halign: 'center',
+                    fontSize: 12,
+                    lineWidth: 0.2,
+                    lineColor: [192, 192, 192]
+                },
+                headStyles: {
+                    lineWidth: 0.1,
+                    lineColor: [192, 192, 192],
+                    fontSize: 12,
+                    fontStyle: 'bold',
+                    halign: 'center',
+                },
+                columnStyles: {
+                    1: { halign: 'left' }
+                }
+            });
+        }
+
+        let isFirstPage = true;
+        Object.keys(datas).forEach((key, index) => {
+            const section = datas[key];
+            addSection(doc, `${index + 1}. ${key}`, section.items, isFirstPage);
+            isFirstPage = false;
+        });
+
+        const pdfBytes = await doc.output('arraybuffer');
+        const fileName = 'menu-item-price-list.pdf';
+
+        res.setHeader('Content-Disposition', `attachment; filename="${fileName}"`);
+        res.setHeader('Content-Type', 'application/pdf');
+        res.send(Buffer.from(pdfBytes));
+    } catch (error) {
+        console.error('An error occurred', error);
+        res.status(500).json('Internal Server Error');
+    }
+}
+
+// Export Menu Item Original Price List (subcategory-wise / whole)
+
+const exportPdfForMenuItemPriceList = (req, res) => {
+    try {
+        const subCategoryId = req.query.subCategoryId ? req.query.subCategoryId : null;
+        let sql_querry_getDetails = `SELECT
+                                         uwi.itemId,
+                                         CONCAT(item.itemName, ' (', uwi.unit, ')') AS itemName,
+                                         item.itemSubCategory,
+                                         iscd.subCategoryName,
+                                         uwi.unit,
+                                         uwi.price
+                                     FROM
+                                         item_unitWisePrice_data AS uwi
+                                     INNER JOIN item_menuList_data AS item ON item.itemId = uwi.itemId
+                                     INNER JOIN item_subCategory_data AS iscd ON iscd.subCategoryId = item.itemSubCategory
+                                     WHERE uwi.menuCategoryId = '${process.env.BASE_MENU}'
+                                     ${subCategoryId ? `AND iscd.subCategoryId = '${subCategoryId}'` : ''}
+                                     GROUP BY
+                                         uwi.itemId,
+                                         uwi.unit,
+                                         item.itemName,
+                                         item.itemSubCategory,
+                                         iscd.subCategoryName,
+                                         uwi.price
+                                     ORDER BY
+                                         uwi.itemId,
+                                         CASE
+                                            WHEN uwi.unit = 'NO' THEN 1
+                                            WHEN uwi.unit = 'HP' THEN 2
+                                            WHEN uwi.unit = 'KG' THEN 3
+                                            ELSE 4
+                                          END`;
+        pool.query(sql_querry_getDetails, (err, rows) => {
+            if (err) {
+                console.error("An error occurred in SQL Queery", err);
+                return res.status(500).send('Database Error');
+            }
+            if (!rows || !rows.length) {
+                return res.status(404).send('No Data Found');
+            }
+
+            const result = rows.reduce((acc, item) => {
+                const key = item.subCategoryName;
+                if (!acc[key]) {
+                    acc[key] = {
+                        items: []
+                    };
+                }
+                acc[key].items.push(item);
+                return acc;
+            }, {});
+
+            createMenuPricePDF(res, result)
+                .then(() => {
+                    console.log('Menu price PDF created successfully');
+                    res.status(200);
+                })
+                .catch((pdfErr) => {
+                    console.log(pdfErr);
+                    res.status(500).send('Error creating PDF');
+                });
+        });
     } catch (error) {
         console.error('An error occurred', error);
         res.status(500).send('Internal Server Error');
@@ -1002,6 +1142,7 @@ module.exports = {
     getItemSalesReport,
     updateItemPriceByMenuId,
     exportPdfForItemSalesReport,
+    exportPdfForMenuItemPriceList,
     getItmeDataForTouchView,
     getItemDataByCode,
     getItemDataForOnlineOrder

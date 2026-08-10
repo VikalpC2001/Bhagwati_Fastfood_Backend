@@ -153,6 +153,8 @@ function deletePendingBillRows(pendingId, callback) {
 function normalizeBillStatusForAccept(pendingStatus) {
     const s = String(pendingStatus || '').toLowerCase();
     if (s === 'reject') return 'complete';
+    // Claim flips Pending -> Accepting; keep prior accept behaviour (Pending on real bill).
+    if (s === 'accepting') return 'Pending';
     return pendingStatus ? String(pendingStatus) : 'complete';
 }
 
@@ -224,7 +226,55 @@ function mapPendingToPickUpOnlineBody(p) {
 }
 
 /**
+ * Atomically claims a pending order so only one accept can proceed.
+ * @param {string} pendingId
+ * @param {(err: Error|null, claimed: boolean) => void} callback
+ */
+function claimPendingBillForAccept(pendingId, callback) {
+    const sql = `UPDATE pending_data
+                  SET billStatus = 'Accepting'
+                  WHERE pendingId = ? AND billStatus = 'Pending'`;
+    pool.query(sql, [pendingId], (err, result) => {
+        if (err) return callback(err, false);
+        callback(null, !!(result && result.affectedRows > 0));
+    });
+}
+
+/**
+ * Reverts Accepting -> Pending when bill creation fails after claim.
+ * @param {string} pendingId
+ * @param {(err: Error|null) => void} [callback]
+ */
+function releasePendingBillClaim(pendingId, callback) {
+    const sql = `UPDATE pending_data
+                  SET billStatus = 'Pending'
+                  WHERE pendingId = ? AND billStatus = 'Accepting'`;
+    pool.query(sql, [pendingId], (err) => {
+        if (typeof callback === 'function') callback(err || null);
+    });
+}
+
+/**
+ * Emits pending list + count so other PCs drop a claimed/removed order.
+ * @param {import('express').Request} req
+ * @param {(err: Error|null, pendingCount: number) => void} [callback]
+ */
+function emitPendingListAndCount(req, callback) {
+    pool.query(`SELECT COUNT(*) AS pendingNo FROM pending_data WHERE billStatus = 'Pending'`, (cntErr, rows) => {
+        if (cntErr) {
+            if (typeof callback === 'function') return callback(cntErr, 0);
+            return;
+        }
+        const pendingCount = rows && rows[0] ? rows[0].pendingNo : 0;
+        req?.io?.emit('pendingBillList');
+        req?.io?.emit('getpendingCount', pendingCount);
+        if (typeof callback === 'function') callback(null, pendingCount);
+    });
+}
+
+/**
  * Express-like res wrapper: on HTTP 200 from online billing, deletes pending rows and emits pending count.
+ * On non-200, releases Accepting claim so another PC can retry.
  * @param {string} pendingId
  * @param {import('express').Request} req
  * @param {import('express').Response} res
@@ -232,21 +282,25 @@ function mapPendingToPickUpOnlineBody(p) {
 function createResWithPendingCleanup(pendingId, req, res) {
     const forward = (code, body, sendOrJson) => {
         if (code !== 200) {
-            return sendOrJson === 'json' ? res.status(code).json(body) : res.status(code).send(body);
+            return releasePendingBillClaim(pendingId, (releaseErr) => {
+                if (releaseErr) {
+                    console.error('Failed to release pending claim after bill error:', releaseErr);
+                } else {
+                    emitPendingListAndCount(req);
+                }
+                return sendOrJson === 'json' ? res.status(code).json(body) : res.status(code).send(body);
+            });
         }
         deletePendingBillRows(pendingId, (delErr) => {
             if (delErr) {
                 console.error('Failed to remove pending after bill:', delErr);
                 return res.status(500).send('Bill created but pending cleanup failed');
             }
-            pool.query(`SELECT COUNT(*) AS pendingNo FROM pending_data WHERE billStatus = 'Pending'`, (cntErr, rows) => {
+            emitPendingListAndCount(req, (cntErr) => {
                 if (cntErr) {
                     console.error(cntErr);
                     return res.status(500).send('Database Error');
                 }
-                const pendingCount = rows && rows[0] ? rows[0].pendingNo : 0;
-                req?.io?.emit('pendingBillList');
-                req?.io?.emit('getpendingCount', pendingCount);
                 const orderAcceptPayload = { orderAccept: true };
                 if (body != null && typeof body === 'object' && !Array.isArray(body) && body.tokenNo != null) {
                     orderAcceptPayload.tokenNo = body.tokenNo;
@@ -384,37 +438,62 @@ const acceptPendingBillData = (req, res) => {
         if (!pendingId) {
             return res.status(404).send('pendingId Not Found');
         }
-        fetchPendingBillPayloadById(pendingId, (err, pendingJson) => {
-            if (err) {
-                console.error("An error occurred in SQL Query", err);
+        claimPendingBillForAccept(pendingId, (claimErr, claimed) => {
+            if (claimErr) {
+                console.error("An error occurred in SQL Query", claimErr);
                 return res.status(500).send('Database Error');
             }
-            if (!pendingJson) {
-                return res.status(404).send('Pending Id Not Found');
+            if (!claimed) {
+                return res.status(409).send('Order already accepted or processed');
             }
 
-            const { addOnlineHotelBillData, addOnlineBillData } = require('./onlineBilling.controller');
-            const fakeReq = { body: {}, io: req.io };
-            const fakeRes = createResWithPendingCleanup(pendingId, req, res);
+            // Drop from other PCs immediately while bill is being created.
+            emitPendingListAndCount(req);
 
-            try {
-                if (pendingJson.billType === 'Hotel') {
-                    fakeReq.body = mapPendingToHotelOnlineBody(pendingJson);
-                    return addOnlineHotelBillData(fakeReq, fakeRes);
+            fetchPendingBillPayloadById(pendingId, (err, pendingJson) => {
+                if (err) {
+                    console.error("An error occurred in SQL Query", err);
+                    return releasePendingBillClaim(pendingId, () => {
+                        emitPendingListAndCount(req);
+                        return res.status(500).send('Database Error');
+                    });
                 }
-                if (pendingJson.billType === 'Pick Up') {
-                    fakeReq.body = mapPendingToPickUpOnlineBody(pendingJson);
-                    return addOnlineBillData(fakeReq, fakeRes);
+                if (!pendingJson) {
+                    return releasePendingBillClaim(pendingId, () => {
+                        emitPendingListAndCount(req);
+                        return res.status(404).send('Pending Id Not Found');
+                    });
                 }
-                if (pendingJson.billType === 'Delivery') {
-                    fakeReq.body = mapPendingToPickUpOnlineBody(pendingJson);
-                    return addOnlineBillData(fakeReq, fakeRes);
+
+                const { addOnlineHotelBillData, addOnlineBillData } = require('./onlineBilling.controller');
+                const fakeReq = { body: {}, io: req.io };
+                const fakeRes = createResWithPendingCleanup(pendingId, req, res);
+
+                try {
+                    if (pendingJson.billType === 'Hotel') {
+                        fakeReq.body = mapPendingToHotelOnlineBody(pendingJson);
+                        return addOnlineHotelBillData(fakeReq, fakeRes);
+                    }
+                    if (pendingJson.billType === 'Pick Up') {
+                        fakeReq.body = mapPendingToPickUpOnlineBody(pendingJson);
+                        return addOnlineBillData(fakeReq, fakeRes);
+                    }
+                    if (pendingJson.billType === 'Delivery') {
+                        fakeReq.body = mapPendingToPickUpOnlineBody(pendingJson);
+                        return addOnlineBillData(fakeReq, fakeRes);
+                    }
+                    return releasePendingBillClaim(pendingId, () => {
+                        emitPendingListAndCount(req);
+                        return res.status(400).send('Unsupported bill type for accept');
+                    });
+                } catch (mapErr) {
+                    console.error('acceptPendingBillData mapping error:', mapErr);
+                    return releasePendingBillClaim(pendingId, () => {
+                        emitPendingListAndCount(req);
+                        return res.status(400).send(mapErr.message || 'Invalid pending data');
+                    });
                 }
-                return res.status(400).send('Unsupported bill type for accept');
-            } catch (mapErr) {
-                console.error('acceptPendingBillData mapping error:', mapErr);
-                return res.status(400).send(mapErr.message || 'Invalid pending data');
-            }
+            });
         });
     } catch (error) {
         console.error('An error occurred', error);
@@ -431,18 +510,23 @@ const rejectPendingBillData = (req, res) => {
         if (!pendingId) {
             return res.status(404).send('pendingId Not Found....!');
         }
-        const sql = `UPDATE pending_data SET billStatus = 'Reject' WHERE pendingId = '${pendingId}'`;
-        pool.query(sql, (err, result) => {
+        const sql = `UPDATE pending_data SET billStatus = 'Reject' WHERE pendingId = ? AND billStatus = 'Pending'`;
+        pool.query(sql, [pendingId], (err, result) => {
             if (err) {
                 console.error("An error occurred in SQL Query", err);
                 return res.status(500).send('Database Error');
             }
             if (!result || result.affectedRows === 0) {
-                return res.status(404).send('Pending Id Not Found');
+                return res.status(409).send('Order already accepted or processed');
             }
-            req?.io?.emit('pendingBillList');
-            req?.io?.emit(`order_${pendingId}`, { orderAccept: false });
-            return res.status(200).send('Order Rejected');
+            emitPendingListAndCount(req, (cntErr) => {
+                if (cntErr) {
+                    console.error("An error occurred in SQL Query", cntErr);
+                    return res.status(500).send('Database Error');
+                }
+                req?.io?.emit(`order_${pendingId}`, { orderAccept: false });
+                return res.status(200).send('Order Rejected');
+            });
         });
     } catch (error) {
         console.error('An error occurred', error);

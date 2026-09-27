@@ -261,6 +261,50 @@ const getOnDeliveryData = (req, res) => {
     }
 }
 
+/**
+ * Builds a parameterized insert of bill-wise delivery rows plus On Delivery status updates.
+ * @param {Array<Record<string, unknown>>} deliveryBillData
+ * @param {string} deliveryId
+ * @param {string} currentDate
+ * @returns {{ sql: string, values: Array<unknown> }}
+ */
+function buildBillWiseDeliveryInsert(deliveryBillData, deliveryId, currentDate) {
+    const rowPlaceholder = `(?, ?, ?, ?, ?, ?, ?, ?, ?, STR_TO_DATE(?, '%b %d %Y'))`;
+    const placeholders = [];
+    const values = [];
+
+    deliveryBillData.forEach((item, index) => {
+        const uniqueId = `bwd_${Date.now() + index}_${index}`;
+        placeholders.push(rowPlaceholder);
+        values.push(
+            uniqueId,
+            deliveryId,
+            item.billId || null,
+            item.billAddress || null,
+            item.deliveryType,
+            item.billPayType || null,
+            item.billAmt ? item.billAmt : 0,
+            item.billChange ? item.billChange : 0,
+            item.desiredAmt ? item.desiredAmt : 0,
+            currentDate
+        );
+    });
+
+    const billIdList = deliveryBillData.map((item) => item.billId).filter(Boolean);
+    const inClause = billIdList.length ? `(${billIdList.map(() => '?').join(',')})` : '(NULL)';
+
+    const sql = `INSERT INTO delivery_billWiseDelivery_data (bwdId, deliveryId, billId, billAddress, deliveryType, billPayType, billAmt, billChange, desiredAmt, bwdDate)
+                  VALUES ${placeholders.join(', ')};
+                  UPDATE billing_data SET billStatus = 'On Delivery' WHERE billId IN ${inClause};
+                  UPDATE billing_Official_data SET billStatus = 'On Delivery' WHERE billId IN ${inClause};
+                  UPDATE billing_Complimentary_data SET billStatus = 'On Delivery' WHERE billId IN ${inClause}`;
+
+    return {
+        sql,
+        values: billIdList.length ? values.concat(billIdList, billIdList, billIdList) : values
+    };
+}
+
 // ADD Delivery Data
 
 const addDeliveryData = (req, res) => {
@@ -294,8 +338,8 @@ const addDeliveryData = (req, res) => {
                             const uid1 = new Date();
                             const deliveryId = String("delivery_" + uid1.getTime());
 
-                            let sql_querry_chkDeliveryPerson = `SELECT personId, deliveryId FROM delivery_data WHERE personId = '${deliveryData.personId}' AND deliveryStatus = 'On Delivery'`;
-                            connection.query(sql_querry_chkDeliveryPerson, (err, person) => {
+                            let sql_querry_chkDeliveryPerson = `SELECT personId, deliveryId FROM delivery_data WHERE personId = ? AND deliveryStatus = 'On Delivery'`;
+                            connection.query(sql_querry_chkDeliveryPerson, [deliveryData.personId], (err, person) => {
                                 if (err) {
                                     console.error("Error Check Delivery Person Availability:", err);
                                     connection.rollback(() => {
@@ -326,7 +370,7 @@ const addDeliveryData = (req, res) => {
                                                                            FROM
                                                                                delivery_data
                                                                            INNER JOIN delivery_person_data ON delivery_person_data.personId = delivery_data.personId
-                                                                           WHERE deliveryId = '${onDeliveryId}';
+                                                                           WHERE deliveryId = ?;
                                                                            SELECT
                                                                               bwd.bwdId,
                                                                               bwd.deliveryId,
@@ -349,8 +393,8 @@ const addDeliveryData = (req, res) => {
                                                                            FROM
                                                                               delivery_billWiseDelivery_data AS bwd
                                                                            LEFT JOIN billing_token_data AS btd ON btd.billId = bwd.billId
-                                                                           WHERE bwd.deliveryId = '${onDeliveryId}'`;
-                                        connection.query(sql_query_getOnDeliveryData, (err, result) => {
+                                                                           WHERE bwd.deliveryId = ?`;
+                                        connection.query(sql_query_getOnDeliveryData, [onDeliveryId, onDeliveryId], (err, result) => {
                                             if (err) {
                                                 console.error("Error Get Delivery Bill Data:", err);
                                                 connection.rollback(() => {
@@ -397,17 +441,27 @@ const addDeliveryData = (req, res) => {
                                                                                          deliveryStatus
                                                                                         )
                                                                                  VALUES (
-                                                                                         '${deliveryId}',
-                                                                                         '${enterBy}',
-                                                                                         '${deliveryData.personId}',
-                                                                                          ${sums.billAmt ? sums.billAmt : 0},
-                                                                                          ${sums.billChange ? sums.billChange : 0},
-                                                                                          ${sums.desiredAmt ? sums.desiredAmt : 0},
-                                                                                         '${deliveryData.durationTime}',
-                                                                                         STR_TO_DATE('${currentDate}','%b %d %Y'),
+                                                                                         ?,
+                                                                                         ?,
+                                                                                         ?,
+                                                                                         ?,
+                                                                                         ?,
+                                                                                         ?,
+                                                                                         ?,
+                                                                                         STR_TO_DATE(?, '%b %d %Y'),
                                                                                          'On Delivery'
                                                                                         )`;
-                                        connection.query(sql_querry_addDeliveryData, (err) => {
+                                        const sql_querry_addDeliveryData_values = [
+                                            deliveryId,
+                                            enterBy,
+                                            deliveryData.personId,
+                                            sums.billAmt ? sums.billAmt : 0,
+                                            sums.billChange ? sums.billChange : 0,
+                                            sums.desiredAmt ? sums.desiredAmt : 0,
+                                            deliveryData.durationTime || null,
+                                            currentDate
+                                        ];
+                                        connection.query(sql_querry_addDeliveryData, sql_querry_addDeliveryData_values, (err) => {
                                             if (err) {
                                                 console.error("Error inserting Delivery Data:", err);
                                                 connection.rollback(() => {
@@ -416,30 +470,8 @@ const addDeliveryData = (req, res) => {
                                                 });
                                             } else {
                                                 const deliveryBillData = deliveryData.deliveryBillData;
-
-                                                let billIds = (deliveryBillData && deliveryBillData.length)
-                                                    ? `(${deliveryBillData.map(item => `'${item.billId}'`).join(',')})`
-                                                    : '(NULL)';
-
-                                                let addBillWiseDeliveryData = deliveryBillData.map((item, index) => {
-                                                    let uniqueId = `bwd_${Date.now() + index + '_' + index}`; // Generating a unique ID using current timestamp
-                                                    return `('${uniqueId}', 
-                                                             '${deliveryId}', 
-                                                              ${item.billId ? `'${item.billId}'` : null}, 
-                                                              ${item.billAddress ? `'${item.billAddress}'` : null}, 
-                                                             '${item.deliveryType}', 
-                                                              ${item.billPayType ? `'${item.billPayType}'` : null}, 
-                                                              ${item.billAmt ? item.billAmt : 0}, 
-                                                              ${item.billChange ? item.billChange : 0},
-                                                              ${item.desiredAmt ? item.desiredAmt : 0},
-                                                             STR_TO_DATE('${currentDate}','%b %d %Y'))`;
-                                                }).join(', ');
-                                                let sql_query_addDeliveries = `INSERT INTO delivery_billWiseDelivery_data (bwdId, deliveryId, billId, billAddress, deliveryType, billPayType, billAmt, billChange, desiredAmt, bwdDate)
-                                                                               VALUES ${addBillWiseDeliveryData};
-                                                                               UPDATE billing_data SET billStatus = 'On Delivery' WHERE billId IN ${billIds};
-                                                                               UPDATE billing_Official_data SET billStatus = 'On Delivery' WHERE billId IN ${billIds};
-                                                                               UPDATE billing_Complimentary_data SET billStatus = 'On Delivery' WHERE billId IN ${billIds}`;
-                                                connection.query(sql_query_addDeliveries, (err) => {
+                                                const { sql: sql_query_addDeliveries, values: sql_query_addDeliveries_values } = buildBillWiseDeliveryInsert(deliveryBillData, deliveryId, currentDate);
+                                                connection.query(sql_query_addDeliveries, sql_query_addDeliveries_values, (err) => {
                                                     if (err) {
                                                         console.error("Error inserting Delivery Bill Data:", err);
                                                         connection.rollback(() => {
@@ -627,20 +659,31 @@ const updateDeliveryData = (req, res) => {
                             let sql_querry_addDeliveryData = `UPDATE
                                                                   delivery_data
                                                               SET
-                                                                  enterBy = '${enterBy}',
-                                                                  personId = '${deliveryData.personId}',
-                                                                  totalBillAmt = ${sums.billAmt ? sums.billAmt : 0},
-                                                                  totalChange = ${sums.billChange ? sums.billChange : 0},
-                                                                  totalDesiredAmt = ${sums.desiredAmt ? sums.desiredAmt : 0}
+                                                                  enterBy = ?,
+                                                                  personId = ?,
+                                                                  totalBillAmt = ?,
+                                                                  totalChange = ?,
+                                                                  totalDesiredAmt = ?
                                                               WHERE
-                                                                  deliveryId = '${deliveryData.deliveryId}';
+                                                                  deliveryId = ?;
                                                               UPDATE billing_data SET billStatus = 'Print' 
-                                                              WHERE billId IN (SELECT COALESCE(billId,NULL) FROM delivery_billWiseDelivery_data WHERE deliveryId = '${deliveryData.deliveryId}') AND billStatus != 'cancel';
+                                                              WHERE billId IN (SELECT COALESCE(billId,NULL) FROM delivery_billWiseDelivery_data WHERE deliveryId = ?) AND billStatus != 'cancel';
                                                               UPDATE billing_Official_data SET billStatus = 'Print'
-                                                              WHERE billId IN (SELECT COALESCE(billId,NULL) FROM delivery_billWiseDelivery_data WHERE deliveryId = '${deliveryData.deliveryId}') AND billStatus != 'cancel';
+                                                              WHERE billId IN (SELECT COALESCE(billId,NULL) FROM delivery_billWiseDelivery_data WHERE deliveryId = ?) AND billStatus != 'cancel';
                                                               UPDATE billing_Complimentary_data SET billStatus = 'Print'
-                                                              WHERE billId IN (SELECT COALESCE(billId,NULL) FROM delivery_billWiseDelivery_data WHERE deliveryId = '${deliveryData.deliveryId}' AND billStatus != 'cancel')`;
-                            connection.query(sql_querry_addDeliveryData, (err) => {
+                                                              WHERE billId IN (SELECT COALESCE(billId,NULL) FROM delivery_billWiseDelivery_data WHERE deliveryId = ? AND billStatus != 'cancel')`;
+                            const sql_querry_addDeliveryData_values = [
+                                enterBy,
+                                deliveryData.personId,
+                                sums.billAmt ? sums.billAmt : 0,
+                                sums.billChange ? sums.billChange : 0,
+                                sums.desiredAmt ? sums.desiredAmt : 0,
+                                deliveryData.deliveryId,
+                                deliveryData.deliveryId,
+                                deliveryData.deliveryId,
+                                deliveryData.deliveryId
+                            ];
+                            connection.query(sql_querry_addDeliveryData, sql_querry_addDeliveryData_values, (err) => {
                                 if (err) {
                                     console.error("Error Update Delivery Data:", err);
                                     connection.rollback(() => {
@@ -648,8 +691,8 @@ const updateDeliveryData = (req, res) => {
                                         return res.status(500).send('Database Error');
                                     });
                                 } else {
-                                    let sql_query_removeOldDeliveries = `DELETE FROM delivery_billWiseDelivery_data WHERE deliveryId = '${deliveryData.deliveryId}'`;
-                                    connection.query(sql_query_removeOldDeliveries, (err) => {
+                                    let sql_query_removeOldDeliveries = `DELETE FROM delivery_billWiseDelivery_data WHERE deliveryId = ?`;
+                                    connection.query(sql_query_removeOldDeliveries, [deliveryData.deliveryId], (err) => {
                                         if (err) {
                                             console.error("Error Remove Old Delivery Bill Data:", err);
                                             connection.rollback(() => {
@@ -658,31 +701,8 @@ const updateDeliveryData = (req, res) => {
                                             });
                                         } else {
                                             const deliveryBillData = deliveryData.deliveryBillData;
-
-                                            let billIds = (deliveryBillData && deliveryBillData.length)
-                                                ? `(${deliveryBillData.map(item => `'${item.billId}'`).join(',')})`
-                                                : '(NULL)';
-
-                                            let addBillWiseDeliveryData = deliveryBillData.map((item, index) => {
-                                                let uniqueId = `bwd_${Date.now() + index + '_' + index}`; // Generating a unique ID using current timestamp
-                                                return `('${uniqueId}', 
-                                                 '${deliveryData.deliveryId}', 
-                                                  ${item.billId ? `'${item.billId}'` : null}, 
-                                                  ${item.billAddress ? `'${item.billAddress}'` : null}, 
-                                                 '${item.deliveryType}', 
-                                                  ${item.billPayType ? `'${item.billPayType}'` : null}, 
-                                                  ${item.billAmt ? item.billAmt : 0}, 
-                                                  ${item.billChange ? item.billChange : 0},
-                                                  ${item.desiredAmt ? item.desiredAmt : 0},
-                                                 STR_TO_DATE('${currentDate}','%b %d %Y'))`;
-                                            }).join(', ');
-
-                                            let sql_query_addDeliveries = `INSERT INTO delivery_billWiseDelivery_data (bwdId, deliveryId, billId, billAddress, deliveryType, billPayType, billAmt, billChange, desiredAmt, bwdDate)
-                                                                           VALUES ${addBillWiseDeliveryData};
-                                                                           UPDATE billing_data SET billStatus = 'On Delivery' WHERE billId IN ${billIds};
-                                                                           UPDATE billing_Official_data SET billStatus = 'On Delivery' WHERE billId IN ${billIds};
-                                                                           UPDATE billing_Complimentary_data SET billStatus = 'On Delivery' WHERE billId IN ${billIds}`;
-                                            connection.query(sql_query_addDeliveries, (err) => {
+                                            const { sql: sql_query_addDeliveries, values: sql_query_addDeliveries_values } = buildBillWiseDeliveryInsert(deliveryBillData, deliveryData.deliveryId, currentDate);
+                                            connection.query(sql_query_addDeliveries, sql_query_addDeliveries_values, (err) => {
                                                 if (err) {
                                                     console.error("Error inserting Delivery Bill Data:", err);
                                                     connection.rollback(() => {
@@ -709,7 +729,7 @@ const updateDeliveryData = (req, res) => {
                                                                                         ) AS timeDifference
                                                                                      FROM
                                                                                          delivery_data
-                                                                                     WHERE deliveryId = '${deliveryData.deliveryId}';
+                                                                                     WHERE deliveryId = ?;
                                                                                      SELECT
                                                                                         bwd.bwdId,
                                                                                         bwd.deliveryId,
@@ -732,8 +752,8 @@ const updateDeliveryData = (req, res) => {
                                                                                      FROM
                                                                                         delivery_billWiseDelivery_data AS bwd
                                                                                      LEFT JOIN billing_token_data AS btd ON btd.billId = bwd.billId
-                                                                                     WHERE bwd.deliveryId = '${deliveryData.deliveryId}'`;
-                                                    connection.query(sql_query_getDeliveryData, (err, data) => {
+                                                                                     WHERE bwd.deliveryId = ?`;
+                                                    connection.query(sql_query_getDeliveryData, [deliveryData.deliveryId, deliveryData.deliveryId], (err, data) => {
                                                         if (err) {
                                                             console.error("Error inserting Delivery Bill Data:", err);
                                                             connection.rollback(() => {
